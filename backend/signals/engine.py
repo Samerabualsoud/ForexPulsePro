@@ -12,7 +12,7 @@ from ..providers.mock import MockDataProvider
 from ..providers.alphavantage import AlphaVantageProvider
 from ..providers.freecurrency import FreeCurrencyAPIProvider
 from ..providers.mt5_data import MT5DataProvider
-from ..providers.metaapi_provider import MetaApiProvider
+from ..providers.finnhub_provider import FinnhubProvider
 from ..risk.guards import RiskManager
 from ..services.whatsapp import WhatsAppService
 from ..regime.detector import regime_detector
@@ -33,8 +33,8 @@ class SignalEngine:
     """Main signal generation engine"""
     
     def __init__(self):
-        # Initialize data providers (priority order: MetaApi Cloud -> MT5 Bridge -> FreeCurrency -> Alpha Vantage -> Mock)
-        self.metaapi_provider = MetaApiProvider()
+        # Initialize data providers (priority order: Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)
+        self.finnhub_provider = FinnhubProvider()
         self.mt5_provider = MT5DataProvider()
         self.freecurrency_provider = FreeCurrencyAPIProvider()
         self.alphavantage_provider = AlphaVantageProvider()
@@ -110,19 +110,12 @@ class SignalEngine:
             logger.error(f"Error processing symbol {symbol}: {e}")
     
     async def _get_market_data(self, symbol: str) -> Optional[pd.DataFrame]:
-        """Get market data from available providers (priority: MetaApi Cloud -> MT5 Bridge -> FreeCurrency -> Alpha Vantage -> Mock)"""
-        # Try MetaApi Cloud first for real ACY Securities data via cloud API
-        if self.metaapi_provider.is_available():
-            data = await self.metaapi_provider.get_ohlc_data(symbol, limit=200)
+        """Get market data from available providers (priority: Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)"""
+        # Try Finnhub first for real-time forex data (free tier)
+        if self.finnhub_provider.is_available():
+            data = await self.finnhub_provider.get_ohlc_data(symbol, limit=200)
             if data is not None:
-                logger.info(f"Using MetaApi Cloud ACY Securities live data for {symbol}")
-                return data
-                
-        # Try MT5 Bridge as fallback for real ACY Securities data
-        if self.mt5_provider.is_available():
-            data = await self.mt5_provider.get_ohlc_data(symbol, limit=200)
-            if data is not None:
-                logger.info(f"Using MT5 Bridge ACY Securities live data for {symbol}")
+                logger.info(f"Using Finnhub real-time forex data for {symbol}")
                 return data
         
         # Try FreeCurrencyAPI for live data

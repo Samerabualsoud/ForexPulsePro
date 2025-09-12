@@ -3,13 +3,14 @@ Signal Generation Scheduler
 """
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 import threading
 from sqlalchemy.orm import sessionmaker
 
 from .database import engine
 from .signals.engine import SignalEngine
+from .services.signal_evaluator import evaluator
 from .logs.logger import get_logger
 
 logger = get_logger(__name__)
@@ -23,7 +24,7 @@ class SignalScheduler:
     def start(self):
         """Start the scheduler"""
         try:
-            # Add job to run every minute
+            # Add job to generate signals every minute
             self.scheduler.add_job(
                 func=self._run_signal_generation,
                 trigger=IntervalTrigger(minutes=1),
@@ -32,11 +33,28 @@ class SignalScheduler:
                 replace_existing=True
             )
             
+            # Add job to evaluate signals every minute (offset by 30 seconds)
+            self.scheduler.add_job(
+                func=self._run_signal_evaluation,
+                trigger=IntervalTrigger(minutes=1),
+                id='signal_evaluation',
+                name='Evaluate Forex Signals',
+                replace_existing=True
+            )
+            
             self.scheduler.start()
             logger.info("Signal scheduler started successfully")
             
             # Run immediately on start
             self._run_signal_generation()
+            # Run evaluation 10 seconds after to allow signals to be created first
+            self.scheduler.add_job(
+                func=self._run_signal_evaluation,
+                trigger='date',
+                run_date=datetime.utcnow().replace(microsecond=0) + timedelta(seconds=10),
+                id='initial_evaluation',
+                name='Initial Signal Evaluation'
+            )
             
         except Exception as e:
             logger.error(f"Failed to start scheduler: {e}")
@@ -83,6 +101,39 @@ class SignalScheduler:
             logger.error(f"Signal generation failed: {e}")
         finally:
             db.close()
+    
+    def _run_signal_evaluation(self):
+        """Run signal evaluation in a separate thread"""
+        def run_evaluation():
+            db = self.SessionLocal()
+            try:
+                # First, evaluate expired signals
+                results = evaluator.evaluate_expired_signals(db)
+                
+                # Then simulate outcomes for newly expired signals
+                if results['expired_count'] > 0:
+                    # Get the signals that were just marked as EXPIRED and simulate their outcomes
+                    from .models import Signal
+                    expired_signals = db.query(Signal).filter(
+                        Signal.result == "EXPIRED",
+                        Signal.evaluated_at.isnot(None)
+                    ).order_by(Signal.evaluated_at.desc()).limit(results['expired_count']).all()
+                    
+                    for signal in expired_signals:
+                        try:
+                            evaluator.simulate_signal_outcome(signal, db)
+                        except Exception as e:
+                            logger.error(f"Error simulating outcome for signal {signal.id}: {e}")
+                
+                logger.info(f"Signal evaluation completed: {results}")
+                
+            except Exception as e:
+                logger.error(f"Signal evaluation failed: {e}")
+            finally:
+                db.close()
+        
+        thread = threading.Thread(target=run_evaluation)
+        thread.start()
     
     def get_status(self):
         """Get scheduler status"""

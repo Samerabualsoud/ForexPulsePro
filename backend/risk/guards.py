@@ -157,20 +157,45 @@ class RiskManager:
                 return False
             
             # Check that SL and TP are reasonable
-            if signal.sl and signal.tp:
-                sl_distance = abs(signal.price - signal.sl)
-                tp_distance = abs(signal.price - signal.tp)
-                
-                # Risk/reward ratio should be at least 1:1.5
-                if tp_distance / sl_distance < 1.5:
-                    logger.debug(f"Poor risk/reward ratio: {tp_distance/sl_distance:.2f}")
-                    return False
+            if signal.sl is None or signal.tp is None:
+                logger.debug(f"Signal missing SL or TP: SL={signal.sl}, TP={signal.tp}")
+                return False
+            
+            sl_distance = abs(signal.price - signal.sl)
+            tp_distance = abs(signal.price - signal.tp)
+            
+            # Get minimum tick size for the currency pair
+            min_distance = self._get_min_tick_distance(signal.symbol)
+            
+            # Check minimum SL distance (prevent SL = entry price)
+            if sl_distance <= min_distance:
+                logger.debug(f"SL too close to entry: distance={sl_distance:.5f}, min={min_distance:.5f}")
+                return False
+            
+            # Check minimum TP distance
+            if tp_distance <= min_distance:
+                logger.debug(f"TP too close to entry: distance={tp_distance:.5f}, min={min_distance:.5f}")
+                return False
+            
+            # Risk/reward ratio should be at least 1:1.5
+            risk_reward = tp_distance / sl_distance
+            if risk_reward < 1.5:
+                logger.debug(f"Poor risk/reward ratio: {risk_reward:.2f}")
+                return False
             
             return True
             
         except Exception as e:
             logger.error(f"Error checking signal quality: {e}")
             return True  # Allow by default on error
+    
+    def _get_min_tick_distance(self, symbol: str) -> float:
+        """Get minimum tick distance for a currency pair"""
+        # JPY pairs have different pip values
+        if 'JPY' in symbol:
+            return 0.01  # 1 pip for JPY pairs
+        else:
+            return 0.0001  # 1 pip for non-JPY pairs
     
     def is_kill_switch_active(self) -> bool:
         """Check if kill switch is active"""

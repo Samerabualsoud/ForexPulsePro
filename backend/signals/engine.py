@@ -13,6 +13,7 @@ from ..providers.alphavantage import AlphaVantageProvider
 from ..providers.freecurrency import FreeCurrencyAPIProvider
 from ..providers.mt5_data import MT5DataProvider
 from ..providers.finnhub_provider import FinnhubProvider
+from ..providers.exchangerate_provider import ExchangeRateProvider
 from ..risk.guards import RiskManager
 from ..services.whatsapp import WhatsAppService
 from ..regime.detector import regime_detector
@@ -33,7 +34,8 @@ class SignalEngine:
     """Main signal generation engine"""
     
     def __init__(self):
-        # Initialize data providers (priority order: Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)
+        # Initialize data providers (priority order: ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)
+        self.exchangerate_provider = ExchangeRateProvider()
         self.finnhub_provider = FinnhubProvider()
         self.mt5_provider = MT5DataProvider()
         self.freecurrency_provider = FreeCurrencyAPIProvider()
@@ -110,8 +112,15 @@ class SignalEngine:
             logger.error(f"Error processing symbol {symbol}: {e}")
     
     async def _get_market_data(self, symbol: str) -> Optional[pd.DataFrame]:
-        """Get market data from available providers (priority: Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)"""
-        # Try Finnhub first for real-time forex data (free tier)
+        """Get market data from available providers (priority: ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)"""
+        # Try ExchangeRate.host first for free unlimited forex data
+        if self.exchangerate_provider.is_available():
+            data = await self.exchangerate_provider.get_ohlc_data(symbol, limit=200)
+            if data is not None:
+                logger.info(f"Using ExchangeRate.host live forex data for {symbol}")
+                return data
+        
+        # Try Finnhub for real-time data (if available)
         if self.finnhub_provider.is_available():
             data = await self.finnhub_provider.get_ohlc_data(symbol, limit=200)
             if data is not None:

@@ -152,20 +152,34 @@ def call_api(endpoint, method="GET", data=None):
         return None
 
 # Load data
-@st.cache_data(ttl=60)  # Cache for 1 minute
+@st.cache_data(ttl=30)  # Cache for 30 seconds
 def load_recent_signals():
     """Load recent signals from API"""
     return call_api("/api/signals/recent?limit=20")
 
-@st.cache_data(ttl=300)  # Cache for 5 minutes
+@st.cache_data(ttl=30)  # Cache for 30 seconds
 def load_risk_status():
     """Load risk status from API"""
     return call_api("/api/risk/status")
 
-@st.cache_data(ttl=300)  # Cache for 5 minutes
+@st.cache_data(ttl=30)  # Cache for 30 seconds
 def load_success_rate():
     """Load success rate statistics from API"""
     return call_api("/api/signals/success-rate?days=30")
+
+# Auto-refresh setup
+import time
+
+# Add auto-refresh every 30 seconds
+if 'last_refresh' not in st.session_state:
+    st.session_state.last_refresh = time.time()
+
+# Check if 30 seconds have passed
+current_time = time.time()
+if current_time - st.session_state.last_refresh > 30:
+    st.cache_data.clear()
+    st.session_state.last_refresh = current_time
+    st.rerun()
 
 # Load data
 recent_signals = load_recent_signals()
@@ -594,7 +608,7 @@ st.markdown('<div class="footer-section">', unsafe_allow_html=True)
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("🔄 Auto-refresh", "60s", delta="Active")
+    st.metric("🔄 Auto-refresh", "30s", delta="Active")
 
 with col2:
     st.metric("📊 Signal Engine", "Running", delta="7 Strategies")

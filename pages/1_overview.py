@@ -144,7 +144,7 @@ with col1:
             return ''
         
         styled_df = df.style.map(style_action, subset=['Action'])
-        st.dataframe(styled_df, width='stretch')
+        st.dataframe(styled_df, width='stretch', hide_index=True)
         
         # Quick action buttons for recent signals
         st.subheader("Quick Actions")

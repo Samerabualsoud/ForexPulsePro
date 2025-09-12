@@ -11,6 +11,110 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Custom CSS for professional styling
+st.markdown("""
+<style>
+    /* Main styling */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    
+    /* Custom title styling */
+    .dashboard-title {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 3rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    /* Status card styling */
+    .status-card {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        border: 1px solid #e1e8ed;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    
+    /* Metric enhancement */
+    [data-testid="metric-container"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        padding: 1rem;
+        border-radius: 15px;
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    [data-testid="metric-container"] > div {
+        color: white;
+    }
+    
+    [data-testid="metric-container"] label {
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 600;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    /* Quick action section */
+    .quick-actions {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 2rem;
+        border-radius: 20px;
+        margin: 2rem 0;
+        color: white;
+        text-align: center;
+    }
+    
+    /* API info section */
+    .api-section {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+    }
+    
+    /* Footer styling */
+    .footer-text {
+        text-align: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 import threading
 import time
 import os
@@ -107,8 +211,8 @@ if "api_endpoint" in query_params:
         st.stop()
 
 # Main dashboard
-
-st.title("📊 Forex Signal Dashboard")
+st.markdown('<h1 class="dashboard-title">📊 Forex Signal Dashboard</h1>', unsafe_allow_html=True)
+st.markdown("### *Professional Trading Signal Generation & Risk Management*")
 st.markdown("---")
 
 # Sidebar navigation
@@ -140,29 +244,35 @@ with col3:
     )
 
 # Quick access buttons
-st.markdown("### Quick Actions")
+st.markdown('<div class="quick-actions">', unsafe_allow_html=True)
+st.markdown("### 🚀 Quick Actions")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("📈 View Signals", use_container_width=True):
+    if st.button("📈 View Signals", width='stretch'):
         st.switch_page("pages/1_overview.py")
 
 with col2:
-    if st.button("⚙️ Configure Strategies", use_container_width=True):
+    if st.button("⚙️ Configure Strategies", width='stretch'):
         st.switch_page("pages/2_strategies.py")
 
 with col3:
-    if st.button("🛡️ Risk Management", use_container_width=True):
+    if st.button("🛡️ Risk Management", width='stretch'):
         st.switch_page("pages/3_risk.py")
+        
+st.markdown('</div>', unsafe_allow_html=True)
 
 # API Information
-st.markdown("### API Endpoints")
+st.markdown('<div class="api-section">', unsafe_allow_html=True)
+st.markdown("### 🔗 API Endpoints")
 st.code("""
-Health Check: GET http://localhost:8000/api/health
-Latest Signals: GET http://localhost:8000/api/signals/latest
-Recent Signals: GET http://localhost:8000/api/signals/recent
-Metrics: GET http://localhost:8000/metrics
-""")
+🏥 Health Check: GET http://localhost:8000/api/health
+📊 Latest Signals: GET http://localhost:8000/api/signals/latest  
+📈 Recent Signals: GET http://localhost:8000/api/signals/recent
+📉 Metrics: GET http://localhost:8000/metrics
+🛡️ Risk Status: GET http://localhost:8000/api/risk/status
+""", language="bash")
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")
-st.markdown("*Forex Signal Dashboard v1.0 - Production Ready*")
+st.markdown('<p class="footer-text">Forex Signal Dashboard v1.0 - Production Ready ✨</p>', unsafe_allow_html=True)

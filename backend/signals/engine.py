@@ -11,6 +11,7 @@ from ..models import Signal, Strategy
 from ..providers.mock import MockDataProvider
 from ..providers.alphavantage import AlphaVantageProvider
 from ..providers.freecurrency import FreeCurrencyAPIProvider
+from ..providers.mt5_data import MT5DataProvider
 from ..risk.guards import RiskManager
 from ..services.whatsapp import WhatsAppService
 from ..regime.detector import regime_detector
@@ -31,7 +32,8 @@ class SignalEngine:
     """Main signal generation engine"""
     
     def __init__(self):
-        # Initialize data providers (priority order: Live -> Alpha Vantage -> Mock)
+        # Initialize data providers (priority order: MT5 Bridge -> FreeCurrency -> Alpha Vantage -> Mock)
+        self.mt5_provider = MT5DataProvider()
         self.freecurrency_provider = FreeCurrencyAPIProvider()
         self.alphavantage_provider = AlphaVantageProvider()
         self.mock_provider = MockDataProvider()
@@ -106,12 +108,19 @@ class SignalEngine:
             logger.error(f"Error processing symbol {symbol}: {e}")
     
     async def _get_market_data(self, symbol: str) -> Optional[pd.DataFrame]:
-        """Get market data from available providers (priority: Live -> Alpha Vantage -> Mock)"""
-        # Try FreeCurrencyAPI first for live data
+        """Get market data from available providers (priority: MT5 Bridge -> FreeCurrency -> Alpha Vantage -> Mock)"""
+        # Try MT5 Bridge first for real ACY Securities data
+        if self.mt5_provider.is_available():
+            data = await self.mt5_provider.get_ohlc_data(symbol, limit=200)
+            if data is not None:
+                logger.info(f"Using MT5 ACY Securities live data for {symbol}")
+                return data
+        
+        # Try FreeCurrencyAPI for live data
         if self.freecurrency_provider.is_available():
             data = await self.freecurrency_provider.get_ohlc_data(symbol, limit=200)
             if data is not None:
-                logger.debug(f"Using live data for {symbol}")
+                logger.debug(f"Using FreeCurrency live data for {symbol}")
                 return data
         
         # Try Alpha Vantage if available

@@ -480,6 +480,114 @@ with col2:
     
     st.markdown('</div>', unsafe_allow_html=True)
     
+# Sidebar Lot Calculator
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 💰 Lot Size Calculator")
+    
+    with st.container():
+        # Account settings
+        account_size = st.number_input(
+            "Account Balance ($)",
+            min_value=100.0,
+            max_value=1000000.0,
+            value=10000.0,
+            step=100.0,
+            help="Your total trading account balance"
+        )
+        
+        risk_percent = st.slider(
+            "Risk per Trade (%)",
+            min_value=0.5,
+            max_value=5.0,
+            value=2.0,
+            step=0.1,
+            help="Percentage of account to risk per trade (recommended: 1-3%)"
+        )
+        
+        stop_loss_pips = st.number_input(
+            "Stop Loss (pips)",
+            min_value=5,
+            max_value=200,
+            value=20,
+            step=1,
+            help="Stop loss distance in pips"
+        )
+        
+        # Currency pair selection for pip value
+        currency_pair = st.selectbox(
+            "Currency Pair",
+            ["EURUSD", "GBPUSD", "AUDUSD", "NZDUSD", "USDCAD", "USDCHF", "USDJPY"],
+            help="Select currency pair to calculate pip value"
+        )
+        
+        # Calculate lot size
+        if st.button("📊 Calculate Lot Size", use_container_width=True):
+            # Risk amount in dollars
+            risk_amount = account_size * (risk_percent / 100)
+            
+            # Pip value calculation (simplified)
+            if currency_pair in ["EURUSD", "GBPUSD", "AUDUSD", "NZDUSD"]:
+                pip_value_per_lot = 10  # $10 per pip for 1 standard lot
+            elif currency_pair in ["USDCAD", "USDCHF"]:
+                pip_value_per_lot = 10  # Approximately $10 per pip
+            elif currency_pair == "USDJPY":
+                pip_value_per_lot = 9.09  # Approximately $9.09 per pip (varies with rate)
+            else:
+                pip_value_per_lot = 10  # Default
+            
+            # Calculate lot size
+            # Lot Size = Risk Amount / (Stop Loss Pips × Pip Value per Lot)
+            lot_size = risk_amount / (stop_loss_pips * pip_value_per_lot)
+            
+            # Display results
+            st.success("📈 **Position Size Results:**")
+            
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.metric("Risk Amount", f"${risk_amount:.2f}")
+                st.metric("Standard Lots", f"{lot_size:.2f}")
+            
+            with col_b:
+                st.metric("Mini Lots", f"{lot_size * 10:.1f}")
+                st.metric("Micro Lots", f"{lot_size * 100:.0f}")
+            
+            # Position size recommendations
+            if lot_size >= 1.0:
+                st.info(f"💡 **Recommendation:** Trade {lot_size:.2f} standard lots")
+            elif lot_size >= 0.1:
+                mini_lots = lot_size * 10
+                st.info(f"💡 **Recommendation:** Trade {mini_lots:.1f} mini lots (0.{mini_lots:.0f})")
+            else:
+                micro_lots = lot_size * 100
+                st.info(f"💡 **Recommendation:** Trade {micro_lots:.0f} micro lots (0.0{micro_lots:.0f})")
+            
+            # Risk warning
+            if risk_percent > 3.0:
+                st.warning("⚠️ **High Risk:** Consider reducing risk percentage below 3%")
+            elif risk_percent < 1.0:
+                st.info("ℹ️ **Conservative:** Very low risk approach")
+    
+    # Position sizing tips
+    with st.expander("📚 Position Sizing Tips"):
+        st.markdown("""
+        **Risk Management Guidelines:**
+        - **Conservative:** 1% risk per trade
+        - **Moderate:** 2% risk per trade  
+        - **Aggressive:** 3% risk per trade
+        - **Never exceed:** 5% risk per trade
+        
+        **Lot Size Types:**
+        - **Standard Lot:** 100,000 units
+        - **Mini Lot:** 10,000 units (0.1)
+        - **Micro Lot:** 1,000 units (0.01)
+        
+        **Formula:**
+        `Lot Size = Risk Amount ÷ (Stop Loss Pips × Pip Value)`
+        """)
+        
+    st.markdown("---")
+    
 # Footer with enhanced styling
 st.markdown("---")
 st.markdown('<div class="footer-section">', unsafe_allow_html=True)

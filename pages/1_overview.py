@@ -7,8 +7,22 @@ import requests
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
+import sys
+from pathlib import Path
 
 st.set_page_config(page_title="Overview", page_icon="📈", layout="wide")
+
+# Add authentication
+sys.path.append(str(Path(__file__).parent.parent / "utils"))
+try:
+    from auth import require_authentication, render_user_info
+    
+    # Require authentication for this page
+    user_info = require_authentication()
+    render_user_info()
+except ImportError:
+    st.warning("⚠️ Authentication module not found - running in demo mode")
+    user_info = {"username": "demo", "role": "admin"}
 
 # Enhanced CSS styling for signals page
 st.markdown("""

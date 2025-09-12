@@ -277,7 +277,7 @@ with col1:
                 'Urgency': urgency,
                 'SL': f"{signal.get('sl', 0):.5f}" if signal.get('sl') else 'N/A',
                 'TP': f"{signal.get('tp', 0):.5f}" if signal.get('tp') else 'N/A',
-                'Confidence': f"{signal.get('confidence', 0):.2f}",
+                'Confidence': f"{signal.get('confidence', 0):.0%}",
                 'Strategy': signal.get('strategy', 'N/A'),
                 'Result': signal.get('result', 'PENDING'),
                 'WhatsApp': "✅" if signal.get('sent_to_whatsapp') else "❌",

@@ -10,7 +10,7 @@ from datetime import datetime
 
 from .auth import verify_token, create_access_token
 from .models import Signal, User, Strategy
-from .schemas import SignalResponse, SignalCreate, UserCreate, StrategyUpdate, LoginRequest, KillSwitchRequest
+from .schemas import SignalResponse, SignalCreate, UserCreate, StrategyUpdate, LoginRequest, KillSwitchRequest, RiskConfigUpdate
 from .database import get_db, SessionLocal
 from .services.whatsapp import WhatsAppService
 from .risk.guards import RiskManager
@@ -192,6 +192,27 @@ async def get_risk_status(db: Session = Depends(get_db)):
         "current_daily_loss": risk_manager.get_current_daily_loss(),
         "volatility_guard_enabled": risk_manager.is_volatility_guard_active()
     }
+
+@app.put("/api/risk/config")
+async def update_risk_config(
+    config: RiskConfigUpdate,
+    token: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Update risk configuration (Admin only)"""
+    user = verify_token(token.credentials)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    risk_manager = RiskManager(db)
+    
+    if config.daily_loss_limit is not None:
+        risk_manager.set_daily_loss_limit(config.daily_loss_limit)
+    if config.kill_switch_enabled is not None:
+        risk_manager.set_kill_switch(config.kill_switch_enabled)
+    
+    logger.info(f"Risk config updated by user {user.get('username')}")
+    return {"status": "success", "config": config}
 
 @app.get("/api/strategies")
 async def get_strategies(db: Session = Depends(get_db)):

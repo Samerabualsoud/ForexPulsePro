@@ -144,12 +144,12 @@ with col1:
             return ''
         
         styled_df = df.style.map(style_action, subset=['Action'])
-        st.dataframe(styled_df, use_container_width=True)
+        st.dataframe(styled_df, width='stretch')
         
         # Quick action buttons for recent signals
         st.subheader("Quick Actions")
         
-        if st.button("🔄 Refresh Data", use_container_width=True):
+        if st.button("🔄 Refresh Data", width='stretch'):
             st.cache_data.clear()
             st.rerun()
         
@@ -159,18 +159,18 @@ with col1:
             col_a, col_b = st.columns(2)
             
             with col_a:
-                if st.button(f"📱 Resend Latest to WhatsApp", use_container_width=True):
+                if st.button(f"📱 Resend Latest to WhatsApp", width='stretch'):
                     # This would require authentication - simplified for demo
                     st.info("Feature requires admin authentication")
             
             with col_b:
-                if st.button("🧪 Test WhatsApp", use_container_width=True):
+                if st.button("🧪 Test WhatsApp", width='stretch'):
                     st.info("Feature requires admin authentication")
     
     else:
         st.info("No recent signals found. The system may be starting up or no signals have been generated yet.")
         
-        if st.button("🔄 Refresh", use_container_width=True):
+        if st.button("🔄 Refresh", width='stretch'):
             st.cache_data.clear()
             st.rerun()
 

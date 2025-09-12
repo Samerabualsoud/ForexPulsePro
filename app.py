@@ -2,6 +2,15 @@
 Forex Signal Dashboard - Main Streamlit Application
 """
 import streamlit as st
+
+# Configure Streamlit page (must be first st command)
+st.set_page_config(
+    page_title="Forex Signal Dashboard",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import threading
 import time
 import os
@@ -69,12 +78,6 @@ def initialize_app():
 initialize_app()
 
 # Main dashboard
-st.set_page_config(
-    page_title="Forex Signal Dashboard",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 st.title("📊 Forex Signal Dashboard")
 st.markdown("---")

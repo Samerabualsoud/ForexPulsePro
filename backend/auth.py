@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException, status
 from typing import Dict, Any
 
-# Get secret key from environment
-JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
+# Get secret key from environment (with temporary fallback for testing)
+JWT_SECRET = os.getenv("JWT_SECRET", "demo_jwt_secret_change_in_production")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
@@ -31,7 +31,7 @@ def verify_token(token: str) -> Dict[str, Any]:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired"
         )
-    except jwt.JWTError:
+    except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"

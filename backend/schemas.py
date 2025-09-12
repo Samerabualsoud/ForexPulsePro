@@ -51,6 +51,13 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class KillSwitchRequest(BaseModel):
+    enabled: bool
+
 class StrategyUpdate(BaseModel):
     enabled: Optional[bool] = None
     config: Optional[Dict[str, Any]] = None

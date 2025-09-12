@@ -10,7 +10,7 @@ from datetime import datetime
 
 from .auth import verify_token, create_access_token
 from .models import Signal, User, Strategy
-from .schemas import SignalResponse, SignalCreate, UserCreate, StrategyUpdate
+from .schemas import SignalResponse, SignalCreate, UserCreate, StrategyUpdate, LoginRequest, KillSwitchRequest
 from .database import get_db, SessionLocal
 from .services.whatsapp import WhatsAppService
 from .risk.guards import RiskManager
@@ -130,7 +130,7 @@ async def test_whatsapp(
 
 @app.post("/api/risk/killswitch")
 async def toggle_killswitch(
-    enabled: bool,
+    request: KillSwitchRequest,
     token: str = Depends(security),
     db: Session = Depends(get_db)
 ):
@@ -140,10 +140,10 @@ async def toggle_killswitch(
         raise HTTPException(status_code=403, detail="Admin access required")
     
     risk_manager = RiskManager(db)
-    risk_manager.set_kill_switch(enabled)
+    risk_manager.set_kill_switch(request.enabled)
     
-    logger.info(f"Kill switch {'enabled' if enabled else 'disabled'} by user {user.get('username')}")
-    return {"status": "success", "kill_switch_enabled": enabled}
+    logger.info(f"Kill switch {'enabled' if request.enabled else 'disabled'} by user {user.get('username')}")
+    return {"status": "success", "kill_switch_enabled": request.enabled}
 
 @app.get("/api/risk/status")
 async def get_risk_status(db: Session = Depends(get_db)):
@@ -193,10 +193,10 @@ async def get_metrics():
     return Response(generate_latest(), media_type="text/plain")
 
 @app.post("/api/auth/login")
-async def login(username: str, password: str, db: Session = Depends(get_db)):
+async def login(request: LoginRequest, db: Session = Depends(get_db)):
     """User authentication"""
-    user = db.query(User).filter(User.username == username).first()
-    if not user or not user.verify_password(password):
+    user = db.query(User).filter(User.username == request.username).first()
+    if not user or not user.verify_password(request.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token = create_access_token({"username": user.username, "role": user.role})

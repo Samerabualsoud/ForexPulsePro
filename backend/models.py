@@ -52,6 +52,16 @@ class Signal(Base):
     blocked_by_risk = Column(Boolean, default=False)
     risk_reason = Column(Text)
     
+    # Auto-trading fields
+    auto_traded = Column(Boolean, default=False)
+    auto_trade_failed = Column(Boolean, default=False)
+    broker_ticket = Column(String, nullable=True)  # MT5 ticket number
+    executed_price = Column(Float, nullable=True)  # Actual execution price
+    executed_volume = Column(Float, nullable=True)  # Executed lot size
+    execution_slippage = Column(Float, nullable=True)  # Slippage in pips
+    execution_time = Column(DateTime, nullable=True)  # When trade was executed
+    execution_error = Column(String, nullable=True)  # Error message if failed
+    
     # Signal outcome tracking
     tp_reached = Column(Boolean, default=None)  # True if take profit was hit
     sl_hit = Column(Boolean, default=None)      # True if stop loss was hit  
@@ -79,7 +89,13 @@ class Signal(Base):
             "sl_hit": self.sl_hit,
             "result": self.result,
             "evaluated_at": self.evaluated_at.isoformat() if self.evaluated_at else None,
-            "pips_result": self.pips_result
+            "pips_result": self.pips_result,
+            "auto_traded": self.auto_traded,
+            "broker_ticket": self.broker_ticket,
+            "executed_price": self.executed_price,
+            "executed_volume": self.executed_volume,
+            "execution_slippage": self.execution_slippage,
+            "execution_time": self.execution_time.isoformat() if self.execution_time else None
         }
 
 class Strategy(Base):

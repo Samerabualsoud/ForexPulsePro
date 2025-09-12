@@ -332,19 +332,83 @@ with col1:
                 minutes = int(time_to_expiry.total_seconds() / 60)
                 validity = f"ACTIVE ({minutes}m)"
             
-            # Calculate execution urgency based on signal state
+            # Calculate execution urgency with advanced logic
             signal_result = signal.get('result', 'PENDING')
             is_blocked = signal.get('blocked_by_risk', False)
             signal_age_minutes = (current_time - issued_at).total_seconds() / 60
+            confidence = signal.get('confidence', 0)
+            strategy = signal.get('strategy', '')
             
+            # Base case: expired or blocked signals
             if signal_result == 'EXPIRED' or time_to_expiry.total_seconds() <= 0:
-                urgency = "EXPIRED"  # Analysis contradicts or signal expired
+                urgency = "EXPIRED"
             elif is_blocked:
-                urgency = "EXPIRED"  # Blocked signals are considered expired for trading
-            elif signal_age_minutes <= 3 and signal_result == 'PENDING':
-                urgency = "NOW"  # Fresh signal requiring immediate execution  
+                urgency = "EXPIRED"
+            elif signal_result != 'PENDING':
+                urgency = "EXPIRED"  # Already executed (WIN/LOSS)
             else:
-                urgency = "PENDING"  # Trade can still meet conditions (TP/SL not hit yet)
+                # Advanced urgency calculation for active signals
+                urgency_score = 0
+                
+                # Time factor (0-40 points): More urgent as expiration approaches
+                time_remaining_minutes = time_to_expiry.total_seconds() / 60
+                if time_remaining_minutes <= 2:
+                    urgency_score += 40  # Critical time pressure
+                elif time_remaining_minutes <= 5:
+                    urgency_score += 35  # High time pressure
+                elif time_remaining_minutes <= 10:
+                    urgency_score += 25  # Medium time pressure
+                elif time_remaining_minutes <= 30:
+                    urgency_score += 15  # Some time pressure
+                else:
+                    urgency_score += 5   # Low time pressure
+                
+                # Confidence factor (0-25 points): Higher confidence = higher urgency
+                if confidence >= 0.85:
+                    urgency_score += 25  # Very high confidence
+                elif confidence >= 0.75:
+                    urgency_score += 20  # High confidence
+                elif confidence >= 0.65:
+                    urgency_score += 15  # Medium confidence
+                elif confidence >= 0.55:
+                    urgency_score += 10  # Low confidence
+                else:
+                    urgency_score += 0   # Very low confidence
+                
+                # Freshness factor (0-20 points): Fresher signals are more urgent
+                if signal_age_minutes <= 1:
+                    urgency_score += 20  # Very fresh
+                elif signal_age_minutes <= 3:
+                    urgency_score += 15  # Fresh
+                elif signal_age_minutes <= 5:
+                    urgency_score += 10  # Moderately fresh
+                elif signal_age_minutes <= 10:
+                    urgency_score += 5   # Getting old
+                else:
+                    urgency_score += 0   # Old signal
+                
+                # Strategy factor (0-15 points): Some strategies are more time-sensitive
+                time_sensitive_strategies = ['EMAStrategy', 'MACDStrategy', 'RSIStrategy']
+                moderate_strategies = ['DonchianATRStrategy', 'BollingerBandsStrategy']
+                
+                if strategy in time_sensitive_strategies:
+                    urgency_score += 15  # Very time-sensitive
+                elif strategy in moderate_strategies:
+                    urgency_score += 10  # Moderately time-sensitive
+                else:
+                    urgency_score += 5   # Standard time-sensitivity
+                
+                # Determine urgency level based on total score (0-100)
+                if urgency_score >= 80:
+                    urgency = "CRITICAL"  # 🔴 Immediate action required
+                elif urgency_score >= 65:
+                    urgency = "HIGH"      # 🟠 Act quickly
+                elif urgency_score >= 45:
+                    urgency = "MEDIUM"    # 🟡 Act soon
+                elif urgency_score >= 25:
+                    urgency = "LOW"       # 🟢 Can wait
+                else:
+                    urgency = "MINIMAL"   # ⚪ Low priority
                 
             df_data.append({
                 'Time': issued_at.strftime("%H:%M:%S"),
@@ -398,12 +462,23 @@ with col1:
             return ''
             
         def style_urgency(val):
-            if val == 'NOW':
-                return 'background-color: #dc3545; color: white; font-weight: bold; padding: 8px; border-radius: 8px; animation: blink 1s infinite;'
-            elif val == 'PENDING':
+            if val == 'CRITICAL':
+                return 'background-color: #dc3545; color: white; font-weight: bold; padding: 8px; border-radius: 8px; box-shadow: 0 0 10px #dc3545;'
+            elif val == 'HIGH':
+                return 'background-color: #fd7e14; color: white; font-weight: bold; padding: 6px; border-radius: 6px;'
+            elif val == 'MEDIUM':
                 return 'background-color: #ffc107; color: #212529; font-weight: bold; padding: 5px; border-radius: 5px;'
+            elif val == 'LOW':
+                return 'background-color: #20c997; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
+            elif val == 'MINIMAL':
+                return 'background-color: #e9ecef; color: #495057; font-weight: bold; padding: 5px; border-radius: 5px;'
             elif val == 'EXPIRED':
                 return 'background-color: #6c757d; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
+            # Legacy support for old urgency values
+            elif val == 'NOW':
+                return 'background-color: #dc3545; color: white; font-weight: bold; padding: 8px; border-radius: 8px; box-shadow: 0 0 10px #dc3545;'
+            elif val == 'PENDING':
+                return 'background-color: #ffc107; color: #212529; font-weight: bold; padding: 5px; border-radius: 5px;'
             return ''
         
         styled_df = df.style.map(style_signal_table, subset=['Action']) \

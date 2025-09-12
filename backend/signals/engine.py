@@ -2,6 +2,7 @@
 Signal Generation Engine
 """
 import pandas as pd
+import os
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -13,6 +14,8 @@ from ..providers.freecurrency import FreeCurrencyAPIProvider
 from ..risk.guards import RiskManager
 from ..services.whatsapp import WhatsAppService
 from ..regime.detector import regime_detector
+from ..providers.execution.mt5_bridge import MT5BridgeExecutionProvider
+from ..providers.execution.base import OrderRequest, OrderType
 from ..logs.logger import get_logger
 from .strategies.ema_rsi import EMAStragey
 from .strategies.donchian_atr import DonchianATRStrategy
@@ -45,6 +48,12 @@ class SignalEngine:
         }
         
         self.whatsapp_service = WhatsAppService()
+        self.execution_provider = MT5BridgeExecutionProvider()
+        
+        # Auto-trading configuration
+        self.auto_trade_enabled = os.getenv('AUTO_TRADE_ENABLED', 'false').lower() == 'true'
+        self.confidence_threshold = float(os.getenv('AUTO_TRADE_CONFIDENCE_THRESHOLD', '0.85'))
+        self.default_lot_size = float(os.getenv('AUTO_TRADE_LOT_SIZE', '0.01'))  # Micro lot
     
     async def process_symbol(self, symbol: str, db: Session):
         """Process signals for a single symbol"""
@@ -192,6 +201,13 @@ class SignalEngine:
                     logger.info(f"Signal sent to WhatsApp for {symbol}")
                 except Exception as e:
                     logger.error(f"Failed to send WhatsApp message: {e}")
+                
+                # Automatic trade execution if enabled and confidence threshold met
+                if self.auto_trade_enabled and signal.confidence >= self.confidence_threshold:
+                    try:
+                        await self._execute_auto_trade(signal, db)
+                    except Exception as e:
+                        logger.error(f"Auto-trade execution failed for signal {signal.id}: {e}")
             
             # Save signal to database
             db.add(signal)
@@ -202,6 +218,60 @@ class SignalEngine:
         except Exception as e:
             logger.error(f"Error processing strategy {strategy_config.name} for {symbol}: {e}")
             db.rollback()
+    
+    async def _execute_auto_trade(self, signal: Signal, db: Session):
+        """Execute automatic trade for high-confidence signals"""
+        try:
+            logger.info(f"Executing auto-trade for signal {signal.id}: {signal.action} {signal.symbol} @ {signal.price} (confidence: {signal.confidence:.1%})")
+            
+            # Determine order type
+            if signal.action == 'BUY':
+                order_type = OrderType.MARKET_BUY
+            elif signal.action == 'SELL':
+                order_type = OrderType.MARKET_SELL
+            else:
+                raise ValueError(f"Unknown signal action: {signal.action}")
+            
+            # Create order request
+            order_request = OrderRequest(
+                symbol=signal.symbol,
+                order_type=order_type,
+                volume=self.default_lot_size,
+                price=None,  # Market order
+                stop_loss=signal.sl,
+                take_profit=signal.tp,
+                comment=f"AutoTrade-{signal.id}-{signal.strategy}",
+                magic_number=234000 + signal.id  # Unique magic number
+            )
+            
+            # Execute order through MT5 bridge
+            execution_result = await self.execution_provider.execute_order(order_request)
+            
+            if execution_result.success:
+                # Update signal with execution details
+                signal.auto_traded = True
+                signal.broker_ticket = execution_result.ticket
+                signal.executed_price = execution_result.executed_price
+                signal.executed_volume = execution_result.executed_volume
+                signal.execution_slippage = execution_result.slippage
+                signal.execution_time = execution_result.execution_time
+                
+                logger.info(f"Auto-trade executed successfully - Ticket: {execution_result.ticket}, Price: {execution_result.executed_price}")
+                
+            else:
+                # Log execution failure
+                signal.auto_trade_failed = True
+                signal.execution_error = execution_result.message
+                
+                logger.error(f"Auto-trade execution failed: {execution_result.message}")
+                
+        except Exception as e:
+            # Update signal with failure info
+            signal.auto_trade_failed = True
+            signal.execution_error = str(e)
+            
+            logger.error(f"Auto-trade execution error: {e}")
+            raise
     
     def _is_duplicate_signal(self, symbol: str, signal_data: dict, strategy_name: str, db: Session) -> bool:
         """Check if this signal conflicts with recent signals (enhanced logic)"""

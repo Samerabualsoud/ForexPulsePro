@@ -14,6 +14,8 @@ st.set_page_config(
 import threading
 import time
 import os
+import requests
+import json
 from pathlib import Path
 
 # Add backend to Python path
@@ -76,6 +78,33 @@ def initialize_app():
 
 # Initialize the application
 initialize_app()
+
+# Handle API routing through query parameters
+query_params = st.query_params
+
+# Check if this is an API request
+if "api_endpoint" in query_params:
+    endpoint = query_params["api_endpoint"]
+    try:
+        if endpoint == "health":
+            response = requests.get("http://localhost:8000/api/health", timeout=5)
+            st.json(response.json())
+            st.stop()
+        elif endpoint == "metrics":
+            response = requests.get("http://localhost:8000/metrics", timeout=5)
+            st.text(response.text)
+            st.stop()
+        elif endpoint.startswith("monitoring"):
+            # Extract the full monitoring path
+            monitoring_path = endpoint.replace("monitoring_", "monitoring/")
+            auth_header = query_params.get("auth", "")
+            headers = {"Authorization": f"Bearer {auth_header}"} if auth_header else {}
+            response = requests.get(f"http://localhost:8000/api/{monitoring_path}", headers=headers, timeout=5)
+            st.json(response.json())
+            st.stop()
+    except Exception as e:
+        st.error(f"API Error: {str(e)}")
+        st.stop()
 
 # Main dashboard
 

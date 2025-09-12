@@ -99,7 +99,8 @@ class AlphaVantageProvider(BaseDataProvider):
         self, 
         symbol: str, 
         timeframe: str = "M1", 
-        limit: int = 100
+        limit: int = 100,
+        retry_count: int = 0
     ) -> Optional[pd.DataFrame]:
         """
         Get OHLC data from Alpha Vantage API with rate limiting and caching
@@ -158,7 +159,6 @@ class AlphaVantageProvider(BaseDataProvider):
             
             if "Note" in data:
                 # Exponential backoff with jitter for rate limit notes
-                retry_count = getattr(self, '_retry_count', 0)
                 if retry_count >= 3:  # Max 3 retries
                     logger.error(f"Alpha Vantage max retries exceeded: {data['Note']}")
                     return None
@@ -170,11 +170,8 @@ class AlphaVantageProvider(BaseDataProvider):
                 logger.warning(f"Alpha Vantage rate limit hit (retry {retry_count + 1}/3): {data['Note']}, waiting {delay:.1f}s")
                 await asyncio.sleep(delay)
                 
-                # Increment retry count and recurse
-                self._retry_count = retry_count + 1
-                result = await self.get_ohlc_data(symbol, timeframe, limit)
-                self._retry_count = 0  # Reset on success
-                return result
+                # Increment retry count and recurse with updated count
+                return await self.get_ohlc_data(symbol, timeframe, limit, retry_count + 1)
             
             if "Information" in data and "rate limit" in data["Information"].lower():
                 logger.warning(f"Alpha Vantage rate limit: {data['Information']}")

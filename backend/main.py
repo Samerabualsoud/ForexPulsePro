@@ -3,7 +3,7 @@ FastAPI Main Application
 """
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 from typing import List, Optional
 from datetime import datetime
@@ -16,14 +16,29 @@ from .services.whatsapp import WhatsAppService
 from .risk.guards import RiskManager
 from .logs.logger import get_logger
 from sqlalchemy.orm import Session
-from prometheus_client import Counter, Histogram, generate_latest
+from sqlalchemy import text
+from prometheus_client import generate_latest
 from fastapi.responses import Response
+from .monitoring.metrics import metrics
+from .api.monitoring import router as monitoring_router
+import time
+import asyncio
+from contextlib import asynccontextmanager
 
-# Initialize FastAPI app
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    metrics.update_system_metrics()
+    yield
+    # Shutdown
+    pass
+
+# Initialize FastAPI app with lifespan
 app = FastAPI(
     title="Forex Signal Dashboard API",
     description="Production-ready Forex Signal Dashboard REST API",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS Configuration
@@ -35,23 +50,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include monitoring router
+app.include_router(monitoring_router)
+
 # Security
 security = HTTPBearer()
 logger = get_logger(__name__)
 
-# Prometheus metrics
-signals_generated_total = Counter('signals_generated_total', 'Total signals generated')
-whatsapp_send_total = Counter('whatsapp_send_total', 'Total WhatsApp messages sent')
-whatsapp_errors_total = Counter('whatsapp_errors_total', 'Total WhatsApp errors')
-signal_processing_time = Histogram('signal_processing_seconds', 'Time spent processing signals')
+# Lifespan function already defined above
 
 @app.get("/api/health")
-async def health_check():
-    """Health check endpoint"""
+async def health_check(db: Session = Depends(get_db)):
+    """Comprehensive health check endpoint"""
+    # Update system metrics
+    metrics.update_system_metrics()
+    
+    # Check database connectivity
+    try:
+        db.execute(text("SELECT 1"))
+        db_healthy = True
+        metrics.update_database_status(True)
+    except Exception as e:
+        db_healthy = False
+        metrics.update_database_status(False)
+        logger.error(f"Database health check failed: {e}")
+    
     return {
-        "status": "healthy",
+        "status": "healthy" if db_healthy else "degraded",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "database": "connected" if db_healthy else "disconnected",
+        "services": {
+            "signal_engine": "active",
+            "database": "connected" if db_healthy else "disconnected",
+            "whatsapp": "configured",  # Will be enhanced with actual status
+            "monitoring": "active"
+        }
     }
 
 @app.get("/api/signals/latest")
@@ -87,7 +121,7 @@ async def get_recent_signals(
 @app.post("/api/signals/resend")
 async def resend_signal(
     signal_id: int,
-    token: str = Depends(security),
+    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """Resend a signal to WhatsApp (Admin only)"""
@@ -100,19 +134,21 @@ async def resend_signal(
         raise HTTPException(status_code=404, detail="Signal not found")
     
     whatsapp_service = WhatsAppService()
+    start_time = time.time()
     try:
         result = await whatsapp_service.send_signal(signal)
-        whatsapp_send_total.inc()
+        delivery_time = time.time() - start_time
+        metrics.record_whatsapp_message("sent", "signal", delivery_time)
         logger.info(f"Signal {signal_id} resent successfully")
         return {"status": "sent", "message_id": result.get("message_id")}
     except Exception as e:
-        whatsapp_errors_total.inc()
+        metrics.record_whatsapp_error("send_failure", str(e)[:50])
         logger.error(f"Failed to resend signal {signal_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/whatsapp/test")
 async def test_whatsapp(
-    token: str = Depends(security),
+    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """Test WhatsApp connectivity (Admin only)"""
@@ -131,7 +167,7 @@ async def test_whatsapp(
 @app.post("/api/risk/killswitch")
 async def toggle_killswitch(
     request: KillSwitchRequest,
-    token: str = Depends(security),
+    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """Toggle global kill switch (Admin only)"""
@@ -166,7 +202,7 @@ async def get_strategies(db: Session = Depends(get_db)):
 async def update_strategy(
     strategy_id: int,
     strategy_update: StrategyUpdate,
-    token: str = Depends(security),
+    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """Update strategy configuration (Admin only)"""
@@ -188,8 +224,18 @@ async def update_strategy(
     return strategy
 
 @app.get("/metrics")
-async def get_metrics():
-    """Prometheus metrics endpoint"""
+async def get_metrics(db: Session = Depends(get_db)):
+    """Enhanced Prometheus metrics endpoint"""
+    # Update all system metrics before serving
+    metrics.update_system_metrics()
+    
+    # Check and update database status
+    try:
+        db.execute(text("SELECT 1"))
+        metrics.update_database_status(True)
+    except Exception:
+        metrics.update_database_status(False)
+    
     return Response(generate_latest(), media_type="text/plain")
 
 @app.post("/api/auth/login")

@@ -13,6 +13,7 @@ dependencies = [
     "prometheus-client>=0.22.1",
     "psycopg2-binary>=2.9.10",
     "pyjwt>=2.10.1",
+    "pytest-asyncio>=1.2.0",
     "pytest>=8.4.2",
     "python-jose[cryptography]>=3.5.0",
     "python-multipart>=0.0.20",
@@ -22,4 +23,5 @@ dependencies = [
     "structlog>=25.4.0",
     "ta-lib>=0.6.7",
     "uvicorn>=0.35.0",
+    "psutil>=7.0.0",
 ]

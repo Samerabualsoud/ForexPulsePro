@@ -267,20 +267,19 @@ with col1:
                 minutes = int(time_to_expiry.total_seconds() / 60)
                 validity = f"ACTIVE ({minutes}m)"
             
-            # Calculate execution urgency
-            signal_age = current_time - issued_at
-            age_minutes = signal_age.total_seconds() / 60
+            # Calculate execution urgency based on signal state
+            signal_result = signal.get('result', 'PENDING')
+            is_blocked = signal.get('blocked_by_risk', False)
+            signal_age_minutes = (current_time - issued_at).total_seconds() / 60
             
-            if signal.get('blocked_by_risk', False):
-                urgency = "BLOCKED"
-            elif age_minutes <= 2:
-                urgency = "EXECUTE NOW"
-            elif age_minutes <= 5:
-                urgency = "FRESH"
-            elif age_minutes <= 15:
-                urgency = "AGING"
+            if signal_result == 'EXPIRED' or time_to_expiry.total_seconds() <= 0:
+                urgency = "EXPIRED"  # Analysis contradicts or signal expired
+            elif is_blocked:
+                urgency = "EXPIRED"  # Blocked signals are considered expired for trading
+            elif signal_age_minutes <= 3 and signal_result == 'PENDING':
+                urgency = "NOW"  # Fresh signal requiring immediate execution  
             else:
-                urgency = "OLD"
+                urgency = "PENDING"  # Trade can still meet conditions (TP/SL not hit yet)
                 
             df_data.append({
                 'Time': issued_at.strftime("%H:%M:%S"),
@@ -334,15 +333,11 @@ with col1:
             return ''
             
         def style_urgency(val):
-            if val == 'EXECUTE NOW':
+            if val == 'NOW':
                 return 'background-color: #dc3545; color: white; font-weight: bold; padding: 8px; border-radius: 8px; animation: blink 1s infinite;'
-            elif val == 'FRESH':
-                return 'background-color: #28a745; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
-            elif val == 'AGING':
+            elif val == 'PENDING':
                 return 'background-color: #ffc107; color: #212529; font-weight: bold; padding: 5px; border-radius: 5px;'
-            elif val == 'OLD':
-                return 'background-color: #6c757d; color: white; padding: 5px; border-radius: 5px;'
-            elif val == 'BLOCKED':
+            elif val == 'EXPIRED':
                 return 'background-color: #6c757d; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
             return ''
         

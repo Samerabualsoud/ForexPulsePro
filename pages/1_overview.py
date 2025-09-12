@@ -235,12 +235,46 @@ with col1:
     if recent_signals and len(recent_signals) > 0:
         # Convert to DataFrame for display
         df_data = []
+        current_time = datetime.now()
+        
         for signal in recent_signals:
+            # Calculate signal timing
+            issued_at = datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).replace(tzinfo=None)
+            expires_at = datetime.fromisoformat(signal['expires_at'].replace('Z', '+00:00')).replace(tzinfo=None)
+            
+            # Calculate validity status
+            time_to_expiry = expires_at - current_time
+            if time_to_expiry.total_seconds() <= 0:
+                validity = "EXPIRED"
+            elif time_to_expiry.total_seconds() <= 300:  # Less than 5 minutes
+                minutes = int(time_to_expiry.total_seconds() / 60)
+                validity = f"{minutes}m LEFT" if minutes > 0 else "EXPIRING"
+            else:
+                minutes = int(time_to_expiry.total_seconds() / 60)
+                validity = f"ACTIVE ({minutes}m)"
+            
+            # Calculate execution urgency
+            signal_age = current_time - issued_at
+            age_minutes = signal_age.total_seconds() / 60
+            
+            if signal.get('blocked_by_risk', False):
+                urgency = "BLOCKED"
+            elif age_minutes <= 2:
+                urgency = "EXECUTE NOW"
+            elif age_minutes <= 5:
+                urgency = "FRESH"
+            elif age_minutes <= 15:
+                urgency = "AGING"
+            else:
+                urgency = "OLD"
+                
             df_data.append({
-                'Time': datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).strftime("%H:%M:%S"),
+                'Time': issued_at.strftime("%H:%M:%S"),
                 'Symbol': signal.get('symbol', 'N/A'),
                 'Action': signal.get('action', 'N/A'),
                 'Price': f"{signal.get('price', 0):.5f}",
+                'Validity': validity,
+                'Urgency': urgency,
                 'SL': f"{signal.get('sl', 0):.5f}" if signal.get('sl') else 'N/A',
                 'TP': f"{signal.get('tp', 0):.5f}" if signal.get('tp') else 'N/A',
                 'Confidence': f"{signal.get('confidence', 0):.2f}",
@@ -275,10 +309,34 @@ with col1:
             elif val == '✅':
                 return 'background-color: #28a745; padding: 5px; border-radius: 5px;'
             return ''
+            
+        def style_validity(val):
+            if 'EXPIRED' in val or 'EXPIRING' in val:
+                return 'background-color: #dc3545; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
+            elif 'LEFT' in val and int(val.split('m')[0]) <= 5:
+                return 'background-color: #fd7e14; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
+            elif 'ACTIVE' in val:
+                return 'background-color: #28a745; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
+            return ''
+            
+        def style_urgency(val):
+            if val == 'EXECUTE NOW':
+                return 'background-color: #dc3545; color: white; font-weight: bold; padding: 8px; border-radius: 8px; animation: blink 1s infinite;'
+            elif val == 'FRESH':
+                return 'background-color: #28a745; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
+            elif val == 'AGING':
+                return 'background-color: #ffc107; color: #212529; font-weight: bold; padding: 5px; border-radius: 5px;'
+            elif val == 'OLD':
+                return 'background-color: #6c757d; color: white; padding: 5px; border-radius: 5px;'
+            elif val == 'BLOCKED':
+                return 'background-color: #6c757d; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
+            return ''
         
         styled_df = df.style.map(style_signal_table, subset=['Action']) \
                            .map(style_result, subset=['Result']) \
-                           .map(style_blocked, subset=['Blocked'])
+                           .map(style_blocked, subset=['Blocked']) \
+                           .map(style_validity, subset=['Validity']) \
+                           .map(style_urgency, subset=['Urgency'])
                            
         st.markdown('<div class="signals-section">', unsafe_allow_html=True)
         st.markdown('<h3 class="signals-header">🎯 Recent Signals</h3>', unsafe_allow_html=True)

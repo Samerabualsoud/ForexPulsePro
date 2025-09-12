@@ -132,9 +132,14 @@ class SignalEngine:
                 logger.debug(f"No signal generated for {symbol} using {strategy_name}")
                 return
             
-            # Check for signal deduplication
+            # Check for signal deduplication and conflicts
             if self._is_duplicate_signal(symbol, signal_data, strategy_name, db):
-                logger.debug(f"Duplicate signal filtered for {symbol} using {strategy_name}")
+                logger.debug(f"Duplicate/conflicting signal filtered for {symbol} using {strategy_name}")
+                return
+                
+            # Check cross-strategy consensus
+            if not self._get_cross_strategy_consensus(symbol, signal_data, db):
+                logger.debug(f"Cross-strategy consensus check failed for {symbol} using {strategy_name}")
                 return
             
             # Create signal object
@@ -187,24 +192,69 @@ class SignalEngine:
             db.rollback()
     
     def _is_duplicate_signal(self, symbol: str, signal_data: dict, strategy_name: str, db: Session) -> bool:
-        """Check if this signal is a duplicate of the last one from the same strategy"""
+        """Check if this signal conflicts with recent signals (enhanced logic)"""
         try:
-            # Get the last signal for this symbol and strategy combination
-            last_signal = db.query(Signal).filter(
+            now = datetime.utcnow()
+            cooldown_minutes = 15  # No new signals for same symbol within 15 minutes
+            
+            # Check for any recent signal for this symbol (regardless of strategy)
+            recent_signal = db.query(Signal).filter(
                 Signal.symbol == symbol,
-                Signal.strategy == strategy_name
+                Signal.issued_at > now - timedelta(minutes=cooldown_minutes)
             ).order_by(Signal.issued_at.desc()).first()
             
-            if not last_signal:
-                return False
-            
-            # Check if action is the same and signal is still valid
-            if (last_signal.action == signal_data['action'] and 
-                last_signal.expires_at > datetime.utcnow()):
-                return True
+            if recent_signal:
+                # If recent signal has same action, it's a duplicate
+                if recent_signal.action == signal_data['action']:
+                    logger.debug(f"Duplicate signal blocked for {symbol}: same action within cooldown")
+                    return True
+                    
+                # If recent signal has opposite action, check confidence levels
+                if recent_signal.action != signal_data['action']:
+                    # Only allow opposite signal if new signal has significantly higher confidence
+                    confidence_threshold = recent_signal.confidence + 0.15  # 15% higher confidence required
+                    if signal_data['confidence'] < confidence_threshold:
+                        logger.debug(f"Conflicting signal blocked for {symbol}: insufficient confidence {signal_data['confidence']:.2f} vs required {confidence_threshold:.2f}")
+                        return True
             
             return False
             
         except Exception as e:
             logger.error(f"Error checking duplicate signal: {e}")
             return False
+            
+    def _get_cross_strategy_consensus(self, symbol: str, signal_data: dict, db: Session) -> bool:
+        """Check if multiple strategies agree on signal direction"""
+        try:
+            now = datetime.utcnow()
+            recent_minutes = 10  # Look at signals in last 10 minutes
+            
+            # Get recent signals for this symbol from all strategies
+            recent_signals = db.query(Signal).filter(
+                Signal.symbol == symbol,
+                Signal.issued_at > now - timedelta(minutes=recent_minutes),
+                Signal.blocked_by_risk == False
+            ).all()
+            
+            if not recent_signals:
+                return True  # No recent signals, allow
+                
+            # Count signals by action
+            buy_count = sum(1 for s in recent_signals if s.action == 'BUY')
+            sell_count = sum(1 for s in recent_signals if s.action == 'SELL')
+            
+            # Current signal action
+            current_action = signal_data['action']
+            
+            # If there are conflicting signals, require higher confidence
+            if (current_action == 'BUY' and sell_count > 0) or (current_action == 'SELL' and buy_count > 0):
+                # Require 80%+ confidence for conflicting signals
+                if signal_data['confidence'] < 0.80:
+                    logger.debug(f"Cross-strategy conflict: {symbol} needs 80%+ confidence for {current_action}, got {signal_data['confidence']:.2f}")
+                    return False
+                    
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error checking cross-strategy consensus: {e}")
+            return True  # Allow on error

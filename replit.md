@@ -15,7 +15,7 @@ Preferred communication style: Simple, everyday language.
 - **Pages**: Overview dashboard, strategy configuration, risk management, API keys, logs viewer, and documentation
 - **Components**: Reusable components for signal tables, kill switches, log viewers, and strategy forms
 - **State Management**: Streamlit session state for authentication and caching
-- **API Integration**: Direct HTTP requests to FastAPI backend with error handling
+- **API Integration**: Direct HTTP requests to FastAPI backend with smart fallback to demo data for published apps
 
 ### Backend Architecture
 - **Framework**: FastAPI with asynchronous request handling
@@ -25,8 +25,10 @@ Preferred communication style: Simple, everyday language.
 - **Error Handling**: Structured error responses with appropriate HTTP status codes
 
 ### Data Processing
-- **Signal Engine**: APScheduler-based system running signal analysis every minute
-- **Strategy Pattern**: Pluggable strategy architecture with three built-in strategies
+- **Signal Engine**: APScheduler-based system running signal analysis every 5 minutes (reduced from 1 minute to prevent noise)
+- **Strategy Pattern**: Pluggable strategy architecture with seven advanced trading strategies
+- **Cross-Strategy Consensus**: Intelligent conflict resolution requiring 80%+ confidence for opposing signals
+- **Signal Cooldown**: 15-minute cooldown per symbol to prevent whipsaw trading
 - **Technical Indicators**: TA-Lib integration for professional-grade technical analysis
 - **Data Providers**: Pluggable provider system with MockDataProvider (CSV/synthetic data) and AlphaVantageProvider stub
 

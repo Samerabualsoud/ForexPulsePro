@@ -24,10 +24,10 @@ class SignalScheduler:
     def start(self):
         """Start the scheduler"""
         try:
-            # Add job to generate signals every minute
+            # Add job to generate signals every 5 minutes (reduced frequency to prevent noise)
             self.scheduler.add_job(
                 func=self._run_signal_generation,
-                trigger=IntervalTrigger(minutes=1),
+                trigger=IntervalTrigger(minutes=5),
                 id='signal_generation',
                 name='Generate Forex Signals',
                 replace_existing=True

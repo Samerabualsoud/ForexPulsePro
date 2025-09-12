@@ -120,6 +120,7 @@ with col1:
         df_data = []
         for signal in recent_signals:
             df_data.append({
+                'Time': datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).strftime("%H:%M:%S"),
                 'Symbol': signal.get('symbol', 'N/A'),
                 'Action': signal.get('action', 'N/A'),
                 'Price': f"{signal.get('price', 0):.5f}",
@@ -127,7 +128,6 @@ with col1:
                 'TP': f"{signal.get('tp', 0):.5f}" if signal.get('tp') else 'N/A',
                 'Confidence': f"{signal.get('confidence', 0):.2f}",
                 'Strategy': signal.get('strategy', 'N/A'),
-                'Time': datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).strftime("%H:%M:%S"),
                 'Result': signal.get('result', 'PENDING'),
                 'WhatsApp': "✅" if signal.get('sent_to_whatsapp') else "❌",
                 'Blocked': "🚫" if signal.get('blocked_by_risk') else "✅"

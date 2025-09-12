@@ -48,11 +48,18 @@ class RiskManager:
                 }
             
             # Check daily loss limit
-            if not self._check_daily_loss_limit():
-                return {
-                    'allowed': False,
-                    'reason': 'Daily loss limit exceeded'
-                }
+            daily_loss_exceeded = not self._check_daily_loss_limit()
+            if daily_loss_exceeded:
+                # When daily loss limit is reached, only allow high-confidence signals (90%+)
+                if signal.confidence < 0.90:
+                    return {
+                        'allowed': False,
+                        'reason': 'Daily loss limit reached - only high confidence signals (90%+) allowed'
+                    }
+                else:
+                    # Allow high-confidence signals even when daily loss limit is reached
+                    logger.info(f"High-confidence signal ({signal.confidence:.1%}) allowed despite daily loss limit being reached")
+                    pass  # Continue with other checks
             
             # Check volatility guard
             if not self._check_volatility_guard(signal.symbol, market_data):

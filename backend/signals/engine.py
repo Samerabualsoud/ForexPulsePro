@@ -40,10 +40,10 @@ class SignalEngine:
         try:
             logger.debug(f"Processing signals for {symbol}")
             
-            # Get OHLC data
+            # Get initial OHLC data
             data = await self._get_market_data(symbol)
-            if data is None or len(data) < 50:
-                logger.warning(f"Insufficient data for {symbol}")
+            if data is None:
+                logger.warning(f"No data available for {symbol}")
                 return
             
             # Add a new bar to simulate real-time updates
@@ -51,6 +51,11 @@ class SignalEngine:
                 self.mock_provider.add_new_bar(symbol)
                 # Refresh data with new bar
                 data = await self._get_market_data(symbol)
+                
+            # Check data sufficiency after refresh
+            if data is None or len(data) < 30:
+                logger.warning(f"Insufficient data for {symbol}: {len(data) if data is not None else 0} bars")
+                return
             
             # Get strategy configurations for this symbol
             strategies = db.query(Strategy).filter(
@@ -120,13 +125,19 @@ class SignalEngine:
                 minutes=strategy_config.config.get('expiry_bars', 60)
             )
             
+            # Convert numpy types to Python types for database compatibility
+            price = float(signal_data['price']) if signal_data['price'] is not None else None
+            sl = float(signal_data.get('sl')) if signal_data.get('sl') is not None else None
+            tp = float(signal_data.get('tp')) if signal_data.get('tp') is not None else None
+            confidence = float(signal_data['confidence']) if signal_data['confidence'] is not None else None
+            
             signal = Signal(
                 symbol=symbol,
                 action=signal_data['action'],
-                price=signal_data['price'],
-                sl=signal_data.get('sl'),
-                tp=signal_data.get('tp'),
-                confidence=signal_data['confidence'],
+                price=price,
+                sl=sl,
+                tp=tp,
+                confidence=confidence,
                 strategy=strategy_name,
                 expires_at=expires_at
             )

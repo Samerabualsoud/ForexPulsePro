@@ -32,7 +32,7 @@ class EMAStragey:
             rsi_period = config.get('rsi_period', 14)
             rsi_buy_threshold = config.get('rsi_buy_threshold', 50)
             rsi_sell_threshold = config.get('rsi_sell_threshold', 50)
-            min_confidence = config.get('min_confidence', 0.6)
+            min_confidence = config.get('min_confidence', 0.5)
             
             # Calculate indicators
             close_prices = data['close'].values
@@ -66,7 +66,7 @@ class EMAStragey:
                 # Calculate confidence based on RSI strength and EMA separation
                 rsi_strength = min((current_rsi - 50) / 50, 1.0)  # 0 to 1
                 ema_separation = (current_ema_fast - current_ema_slow) / current_price
-                confidence = min(0.5 + rsi_strength * 0.3 + abs(ema_separation) * 1000, 1.0)
+                confidence = min(0.5 + rsi_strength * 0.3 + abs(ema_separation) * 10000, 1.0)
             
             # Bearish crossover
             elif (prev_ema_fast >= prev_ema_slow and 
@@ -77,7 +77,7 @@ class EMAStragey:
                 # Calculate confidence
                 rsi_strength = min((50 - current_rsi) / 50, 1.0)  # 0 to 1
                 ema_separation = (current_ema_slow - current_ema_fast) / current_price
-                confidence = min(0.5 + rsi_strength * 0.3 + abs(ema_separation) * 1000, 1.0)
+                confidence = min(0.5 + rsi_strength * 0.3 + abs(ema_separation) * 10000, 1.0)
             
             # No signal if action is flat or confidence too low
             if action is None or confidence < min_confidence:

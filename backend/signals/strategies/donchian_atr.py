@@ -61,21 +61,21 @@ class DonchianATRStrategy:
             action = None
             confidence = 0.0
             
-            # Bullish breakout
-            if current_high > current_upper and prev_high <= upper_channel[-2]:
+            # Bullish breakout - compare against previous channel value
+            if current_high > upper_channel[-2] and prev_high <= upper_channel[-2]:
                 action = "BUY"
                 
                 # Calculate confidence based on breakout strength
-                breakout_strength = (current_high - current_upper) / current_atr
+                breakout_strength = (current_high - upper_channel[-2]) / current_atr
                 volatility_factor = min(current_atr / current_price, 0.01) * 100  # Normalize
                 confidence = min(0.6 + breakout_strength * 0.2 + volatility_factor * 0.2, 1.0)
             
-            # Bearish breakout
-            elif current_low < current_lower and prev_low >= lower_channel[-2]:
+            # Bearish breakout - compare against previous channel value
+            elif current_low < lower_channel[-2] and prev_low >= lower_channel[-2]:
                 action = "SELL"
                 
                 # Calculate confidence
-                breakout_strength = (current_lower - current_low) / current_atr
+                breakout_strength = (lower_channel[-2] - current_low) / current_atr
                 volatility_factor = min(current_atr / current_price, 0.01) * 100
                 confidence = min(0.6 + breakout_strength * 0.2 + volatility_factor * 0.2, 1.0)
             

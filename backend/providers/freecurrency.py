@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from pathlib import Path
 import os
+import time
 
 from .base import BaseDataProvider
 from ..logs.logger import get_logger
@@ -27,6 +28,12 @@ class FreeCurrencyAPIProvider(BaseDataProvider):
         self.rate_cache = {}
         self.last_update = {}
         
+        # Shared async client for connection reuse
+        self._client = None
+        self._availability_checked = False
+        self._is_api_available = False
+        self._last_availability_check = 0
+        
         # Major forex pairs to base currency mapping
         self.pair_mapping = {
             'EURUSD': ('EUR', 'USD'), 'GBPUSD': ('GBP', 'USD'), 'USDJPY': ('USD', 'JPY'),
@@ -36,9 +43,46 @@ class FreeCurrencyAPIProvider(BaseDataProvider):
             'EURCHF': ('EUR', 'CHF'), 'GBPAUD': ('GBP', 'AUD'), 'AUDCAD': ('AUD', 'CAD')
         }
     
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create shared async client"""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=10)
+        return self._client
+    
+    async def _check_api_availability(self) -> bool:
+        """Actually test if the API is working"""
+        try:
+            client = await self._get_client()
+            params = {}
+            if self.api_key:
+                params['apikey'] = self.api_key
+                
+            response = await client.get(
+                f"{self.base_url}/latest",
+                params={**params, 'base_currency': 'USD'},
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return 'data' in data
+            else:
+                logger.warning(f"FreeCurrency API check failed: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.warning(f"FreeCurrency API availability check failed: {e}")
+            return False
+    
     def is_available(self) -> bool:
-        """Check if the API is available"""
-        return True  # FreeCurrencyAPI is free and doesn't require API key for basic use
+        """Check if the API is available (cached result)"""
+        # Check cache first (check every 5 minutes)
+        now = time.time()
+        if self._availability_checked and (now - self._last_availability_check) < 300:
+            return self._is_api_available
+            
+        # Return False if we haven't checked or it's been too long
+        # The actual check happens async in get_live_rates
+        return False
     
     async def get_live_rates(self) -> dict:
         """Fetch latest exchange rates from FreeCurrencyAPI"""
@@ -48,21 +92,34 @@ class FreeCurrencyAPIProvider(BaseDataProvider):
             if self.api_key:
                 params['apikey'] = self.api_key
             
-            async with httpx.AsyncClient() as client:
-                # Get latest rates with USD as base
-                response = await client.get(
-                    f"{self.base_url}/latest",
-                    params={**params, 'base_currency': 'USD'},
-                    timeout=10
-                )
-                response.raise_for_status()
+            client = await self._get_client()
+            # Get latest rates with USD as base
+            response = await client.get(
+                f"{self.base_url}/latest",
+                params={**params, 'base_currency': 'USD'},
+            )
+            
+            if response.status_code == 200:
                 data = response.json()
-                
                 if 'data' in data:
+                    # Update availability cache on success
+                    self._is_api_available = True
+                    self._availability_checked = True
+                    self._last_availability_check = time.time()
                     return data['data']
                 else:
                     logger.error(f"Invalid API response format: {data}")
                     return {}
+            elif response.status_code == 401:
+                # API key required or invalid
+                logger.warning("FreeCurrency API requires authentication (401 Unauthorized)")
+                self._is_api_available = False
+                self._availability_checked = True
+                self._last_availability_check = time.time()
+                return {}
+            else:
+                logger.warning(f"FreeCurrency API error: {response.status_code}")
+                return {}
                     
         except Exception as e:
             logger.error(f"Error fetching live rates: {e}")

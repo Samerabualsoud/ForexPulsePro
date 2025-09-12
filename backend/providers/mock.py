@@ -134,7 +134,7 @@ class MockDataProvider(BaseDataProvider):
         """Mock provider is always available"""
         return True
     
-    def get_latest_price(self, symbol: str) -> Optional[float]:
+    async def get_latest_price(self, symbol: str) -> Optional[float]:
         """Get latest price from cached data"""
         try:
             if symbol in self.data_cache:

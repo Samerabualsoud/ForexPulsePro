@@ -34,6 +34,6 @@ class BaseDataProvider(ABC):
         pass
     
     @abstractmethod
-    def get_latest_price(self, symbol: str) -> Optional[float]:
+    async def get_latest_price(self, symbol: str) -> Optional[float]:
         """Get the latest price for a symbol"""
         pass

@@ -11,8 +11,11 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# Secret key for JWT tokens (use environment variable in production)
-JWT_SECRET = st.secrets.get("JWT_SECRET", "forex_dashboard_secret_change_in_production")
+# Secret key for JWT tokens - MUST be set in production
+import os
+JWT_SECRET = os.getenv("JWT_SECRET", st.secrets.get("JWT_SECRET", "forex_dashboard_secret_change_in_production"))
+if JWT_SECRET == "forex_dashboard_secret_change_in_production":
+    st.warning("⚠️ Using default JWT secret - SET JWT_SECRET environment variable in production!")
 JWT_ALGORITHM = "HS256"
 TOKEN_EXPIRY_HOURS = 24
 

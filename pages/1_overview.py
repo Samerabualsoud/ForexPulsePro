@@ -14,14 +14,17 @@ st.set_page_config(page_title="Overview", page_icon="📈", layout="wide")
 
 # Add authentication
 sys.path.append(str(Path(__file__).parent.parent / "utils"))
+sys.path.append(str(Path(__file__).parent.parent / "components"))
 try:
     from auth import require_authentication, render_user_info
+    from cache import get_cached_signals, get_cached_market_data, get_cached_performance_stats
+    from advanced_charts import chart_builder
     
     # Require authentication for this page
     user_info = require_authentication()
     render_user_info()
 except ImportError:
-    st.warning("⚠️ Authentication module not found - running in demo mode")
+    st.warning("⚠️ Authentication or components modules not found - running in demo mode")
     user_info = {"username": "demo", "role": "admin"}
 
 # Enhanced CSS styling for signals page

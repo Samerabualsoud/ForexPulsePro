@@ -1,0 +1,181 @@
+You are a senior full-stack engineer. Build a production-ready Forex Signal Dashboard that (1) computes signals every minute, (2) displays them on a web UI, and (3) pushes the signals to WhatsApp via the WhatsApp Cloud API. Do NOT integrate with MT5 or any broker.
+
+0) Tech / Quality
+
+Type: Web app
+
+Backend: Python 3.11 + FastAPI
+
+Frontend: React (Vite) + Tailwind
+
+Scheduler: APScheduler (1-minute jobs)
+
+Indicators: pandas, numpy, ta (plus a small custom utils module)
+
+DB: PostgreSQL via SQLAlchemy; fall back to SQLite if DATABASE_URL not set
+
+Auth: JWT (admin/viewer)
+
+Logging: structlog (JSON) + rotating file handler
+
+Tests: pytest basic API tests
+
+Docker: Dockerfile + docker-compose (app, db)
+
+CI: GitHub Actions (lint/type/test/build)
+
+1) What to build
+
+Dashboard pages
+
+Overview: cards for kill switch, scheduler status, last run time; table of symbols with latest price, last action, confidence, age, and “push to WhatsApp now” button.
+
+Strategies: per-symbol configs (preset strategies below), edit/save to DB.
+
+Risk: global kill switch, daily loss limit (manual number you can update), volatility guard (e.g., skip if ATR% > threshold).
+
+Keys: manage JWT/API keys, WhatsApp settings (masked).
+
+Logs: last 100 events (signal generated / WhatsApp sent / blocked by risk).
+
+Docs: how to use the pull API & WhatsApp webhook format.
+
+Signal engine (runs every 1 min)
+
+Data providers (pluggable):
+
+MockProvider (CSV in /data/mock/*.csv) with 1-minute candles for EURUSD, GBPUSD, USDJPY. If missing, generate synthetic candles so the app always runs.
+
+Alpha Vantage adapter stub (env ALPHAVANTAGE_KEY) — disabled by default.
+
+Compute indicators using ta and custom helpers.
+
+Create a canonical Signal object:
+
+{
+  "symbol":"EURUSD","timeframe":"M1","action":"BUY|SELL|FLAT",
+  "price":1.08523,"sl":1.08323,"tp":1.08723,
+  "confidence":0.72,"strategy":"ema_rsi","version":"v1",
+  "expires_at":"ISO-8601","issued_at":"ISO-8601"
+}
+
+
+Deduping: don’t create a new record if action didn’t change on the current bar.
+
+Risk gates: kill switch, daily loss limit, volatility guard → if tripped, store reason and don’t push.
+
+Delivery
+
+WhatsApp Cloud API push on each new (non-duplicate, non-blocked) signal.
+
+Endpoint: POST https://graph.facebook.com/v19.0/{WHATSAPP_PHONE_ID}/messages
+
+Text template:
+{{symbol}} {{action}} @ {{price}} | SL {{sl}} | TP {{tp}} | conf {{confidence}} | {{strategy}}
+
+HMAC optional (for your logs only).
+
+Pull API for your other tools:
+
+GET /api/signals/latest?symbol=EURUSD → latest valid signal
+
+GET /api/signals/recent?limit=50
+
+GET /api/health
+
+Admin endpoints (JWT): update strategy, toggle kill switch, trigger manual resend.
+
+2) Strategies to include (configurable)
+
+ema_rsi: EMA(12/26) cross + RSI(14) gate (buy on cross↑ & RSI>50; sell on cross↓ & RSI<50). SL/TP in pips or ATR-x from config.
+
+donchian_atr: Donchian(20) breakout with ATR(14) trailing stop; optional SuperTrend filter.
+
+meanrev_bb: Bollinger Bands(20,2) z-score reversion with ADX gate.
+
+Shared params: sl_mode (pips|atrx), tp_mode, lots_hint (just carried in payload), min_confidence, expiry_bars.
+
+3) WhatsApp integration (Cloud API)
+
+Env vars (Secrets) required:
+
+WHATSAPP_TOKEN – permanent/long-lived User Access Token
+
+WHATSAPP_PHONE_ID – the sender phone number ID (from Meta App)
+
+WHATSAPP_TO – comma-separated recipient numbers in E.164 (e.g., +9665xxxxxxxx)
+
+Sender: Authorization: Bearer ${WHATSAPP_TOKEN}
+
+Payload:
+
+{
+  "messaging_product":"whatsapp",
+  "to":"<recipient>",
+  "type":"text",
+  "text":{"body":"EURUSD BUY @ 1.08523 | SL 1.08323 | TP 1.08723 | conf 0.72 | ema_rsi"}
+}
+
+
+Build a small service whatsapp.py to send and handle errors/backoff.
+
+4) Security
+
+No secrets in code; read all from env.
+
+JWT-protected admin routes; rate-limit public GETs.
+
+CORS allow only configured origins.
+
+Kill switch must block WhatsApp pushes as well.
+
+5) Files to generate
+/backend
+  main.py (FastAPI + routers)
+  scheduler.py (APScheduler 1-min job)
+  models.py, schemas.py (SQLAlchemy & pydantic)
+  auth.py (JWT)
+  providers/base.py, providers/mock.py, providers/alphavantage.py (stub)
+  signals/engine.py, signals/strategies/*.py, signals/utils.py
+  risk/guards.py
+  services/whatsapp.py
+  logs/logger.py
+/frontend
+  src/ (React + Tailwind)
+    pages: Overview, Strategies, Risk, Keys, Logs, Docs
+    components: SignalTable, StrategyForm, KillSwitch, LogsViewer
+infra/
+  docker-compose.yml, Dockerfile, .env.example
+tests/
+  test_api.py, test_engine.py, test_whatsapp.py
+README.md
+
+6) Defaults & DX
+
+Seed on first run: create admin user, three symbols, default configs.
+
+Scheduler: every 1 minute (document how to change to 30s if needed).
+
+Prometheus /metrics: signals_generated_total, last_signal_timestamp, whatsapp_send_total, whatsapp_errors_total.
+
+Buttons on UI:
+
+“Resend last signal to WhatsApp”
+
+“Test WhatsApp message”
+
+“Pause/Resume (kill switch)”
+
+7) README must include
+
+How to set secrets:
+
+JWT_SECRET, DATABASE_URL (optional), WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, WHATSAPP_TO
+
+How to obtain WhatsApp Cloud API credentials (Meta App → WhatsApp → Phone number ID & token; make sure recipients have opted in).
+
+How to add your own data provider later.
+
+How to run with Docker or Replit run button.
+
+Build all of the above with clean, commented code and a minimal, modern UI.

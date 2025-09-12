@@ -9,12 +9,17 @@ from typing import Optional, List
 from ..models import Signal, Strategy
 from ..providers.mock import MockDataProvider
 from ..providers.alphavantage import AlphaVantageProvider
+from ..providers.freecurrency import FreeCurrencyAPIProvider
 from ..risk.guards import RiskManager
 from ..services.whatsapp import WhatsAppService
 from ..logs.logger import get_logger
 from .strategies.ema_rsi import EMAStragey
 from .strategies.donchian_atr import DonchianATRStrategy
 from .strategies.meanrev_bb import MeanReversionBBStrategy
+from .strategies.macd_strategy import MACDStrategy
+from .strategies.stochastic_strategy import StochasticStrategy
+from .strategies.rsi_divergence import RSIDivergenceStrategy
+from .strategies.fibonacci_strategy import FibonacciStrategy
 
 logger = get_logger(__name__)
 
@@ -22,15 +27,20 @@ class SignalEngine:
     """Main signal generation engine"""
     
     def __init__(self):
-        # Initialize data providers
-        self.mock_provider = MockDataProvider()
+        # Initialize data providers (priority order: Live -> Alpha Vantage -> Mock)
+        self.freecurrency_provider = FreeCurrencyAPIProvider()
         self.alphavantage_provider = AlphaVantageProvider()
+        self.mock_provider = MockDataProvider()
         
-        # Strategy mapping
+        # Strategy mapping - 7 Advanced Trading Strategies
         self.strategies = {
             'ema_rsi': EMAStragey(),
             'donchian_atr': DonchianATRStrategy(),
-            'meanrev_bb': MeanReversionBBStrategy()
+            'meanrev_bb': MeanReversionBBStrategy(),
+            'macd_crossover': MACDStrategy(),
+            'stochastic': StochasticStrategy(),
+            'rsi_divergence': RSIDivergenceStrategy(),
+            'fibonacci': FibonacciStrategy()
         }
         
         self.whatsapp_service = WhatsAppService()
@@ -75,8 +85,15 @@ class SignalEngine:
             logger.error(f"Error processing symbol {symbol}: {e}")
     
     async def _get_market_data(self, symbol: str) -> Optional[pd.DataFrame]:
-        """Get market data from available providers"""
-        # Try Alpha Vantage first if available
+        """Get market data from available providers (priority: Live -> Alpha Vantage -> Mock)"""
+        # Try FreeCurrencyAPI first for live data
+        if self.freecurrency_provider.is_available():
+            data = await self.freecurrency_provider.get_ohlc_data(symbol, limit=200)
+            if data is not None:
+                logger.debug(f"Using live data for {symbol}")
+                return data
+        
+        # Try Alpha Vantage if available
         if self.alphavantage_provider.is_available():
             data = await self.alphavantage_provider.get_ohlc_data(symbol, limit=200)
             if data is not None:

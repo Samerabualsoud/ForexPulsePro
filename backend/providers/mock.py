@@ -23,7 +23,11 @@ class MockDataProvider(BaseDataProvider):
     
     def _ensure_mock_data(self):
         """Ensure mock data files exist, generate if missing"""
-        symbols = ['EURUSD', 'GBPUSD', 'USDJPY']
+        symbols = [
+            'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 
+            'USDCHF', 'NZDUSD', 'EURGBP', 'EURJPY', 'GBPJPY',
+            'AUDJPY', 'CHFJPY', 'EURCHF', 'GBPAUD', 'AUDCAD'
+        ]
         
         for symbol in symbols:
             csv_path = self.data_dir / f"{symbol}.csv"
@@ -33,11 +37,13 @@ class MockDataProvider(BaseDataProvider):
     
     def _generate_synthetic_data(self, symbol: str, filepath: Path):
         """Generate synthetic OHLC data"""
-        # Base prices for different pairs
+        # Base prices for different pairs (realistic 2025 levels)
         base_prices = {
-            'EURUSD': 1.0850,
-            'GBPUSD': 1.2650,
-            'USDJPY': 149.50
+            'EURUSD': 1.0850, 'GBPUSD': 1.2650, 'USDJPY': 149.50,
+            'AUDUSD': 0.6420, 'USDCAD': 1.4350, 'USDCHF': 0.8950,
+            'NZDUSD': 0.5680, 'EURGBP': 0.8580, 'EURJPY': 162.30,
+            'GBPJPY': 189.20, 'AUDJPY': 96.00, 'CHFJPY': 167.10,
+            'EURCHF': 0.9710, 'GBPAUD': 1.9700, 'AUDCAD': 0.9210
         }
         
         base_price = base_prices.get(symbol, 1.0000)

@@ -95,10 +95,15 @@ class SignalEvaluator:
                 signal.sl_hit = False
                 
                 # Calculate simulated pips result
-                if signal.action == "BUY":
-                    signal.pips_result = abs(signal.tp - signal.price) * 10000
-                else:  # SELL
-                    signal.pips_result = abs(signal.price - signal.tp) * 10000
+                # For forex, 1 pip = 0.0001 for most pairs (except JPY pairs where 1 pip = 0.01)
+                # JPY pairs: 1 pip = 0.01, others: 1 pip = 0.0001
+                if 'JPY' in signal.symbol:
+                    pip_value = 0.01
+                else:
+                    pip_value = 0.0001
+                
+                price_diff = abs(signal.tp - signal.price)
+                signal.pips_result = price_diff / pip_value
                     
             else:
                 # LOSS - SL hit
@@ -107,10 +112,15 @@ class SignalEvaluator:
                 signal.sl_hit = True
                 
                 # Calculate simulated pips loss
-                if signal.action == "BUY":
-                    signal.pips_result = -abs(signal.price - signal.sl) * 10000
-                else:  # SELL
-                    signal.pips_result = -abs(signal.sl - signal.price) * 10000
+                # For forex, 1 pip = 0.0001 for most pairs (except JPY pairs where 1 pip = 0.01)
+                # JPY pairs: 1 pip = 0.01, others: 1 pip = 0.0001
+                if 'JPY' in signal.symbol:
+                    pip_value = 0.01
+                else:
+                    pip_value = 0.0001
+                
+                price_diff = abs(signal.price - signal.sl)
+                signal.pips_result = -(price_diff / pip_value)
             
             signal.evaluated_at = datetime.utcnow()
             db.commit()

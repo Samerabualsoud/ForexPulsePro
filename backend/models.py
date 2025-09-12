@@ -107,6 +107,22 @@ class RiskConfig(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class MarketRegime(Base):
+    __tablename__ = "market_regimes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String(10), index=True, nullable=False)
+    regime = Column(String(20), nullable=False)  # TRENDING, RANGING, HIGH_VOLATILITY, STRONG_TRENDING
+    confidence = Column(Float, nullable=False)
+    adx = Column(Float)
+    atr_ratio = Column(Float)
+    detected_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Index for efficient queries
+    __table_args__ = (
+        UniqueConstraint('symbol', 'detected_at', name='_symbol_time_uc'),
+    )
+
 class LogEntry(Base):
     __tablename__ = "log_entries"
     

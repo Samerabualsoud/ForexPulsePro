@@ -12,6 +12,7 @@ from ..providers.alphavantage import AlphaVantageProvider
 from ..providers.freecurrency import FreeCurrencyAPIProvider
 from ..risk.guards import RiskManager
 from ..services.whatsapp import WhatsAppService
+from ..regime.detector import regime_detector
 from ..logs.logger import get_logger
 from .strategies.ema_rsi import EMAStragey
 from .strategies.donchian_atr import DonchianATRStrategy
@@ -77,8 +78,19 @@ class SignalEngine:
                 logger.debug(f"No enabled strategies for {symbol}")
                 return
             
+            # Detect market regime first
+            regime_data = regime_detector.detect_regime(data, symbol)
+            if regime_data['regime'] != 'UNKNOWN':
+                regime_detector.store_regime(symbol, regime_data, db)
+                logger.debug(f"Market regime for {symbol}: {regime_data['regime']} ({regime_data['confidence']:.2f})")
+            
             # Process each strategy
             for strategy_config in strategies:
+                # Check if strategy is suitable for current regime
+                if not regime_detector.is_regime_suitable_for_strategy(regime_data['regime'], strategy_config.name):
+                    logger.debug(f"Strategy {strategy_config.name} skipped for {symbol} - unsuitable for {regime_data['regime']} regime")
+                    continue
+                    
                 await self._process_strategy(symbol, data, strategy_config, db)
                 
         except Exception as e:

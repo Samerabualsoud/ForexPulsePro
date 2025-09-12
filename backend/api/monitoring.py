@@ -11,9 +11,11 @@ import psutil
 import time
 
 from ..database import get_db
-from ..models import Signal, Strategy, User
+from ..models import Signal, Strategy, User, MarketRegime
 from ..auth import verify_token
 from ..monitoring.metrics import metrics
+from ..performance.pnl_tracker import pnl_tracker
+from ..regime.detector import regime_detector
 from ..logs.logger import get_logger
 
 router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
@@ -236,4 +238,78 @@ async def get_performance_metrics(
         
     except Exception as e:
         logger.error(f"Failed to get performance metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/pnl/{strategy}")
+async def get_strategy_pnl(
+    strategy: str,
+    days: int = 30,
+    token: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Get P&L performance for specific strategy"""
+    user = verify_token(token.credentials)
+    if user.get("role") not in ["admin", "viewer"]:
+        raise HTTPException(status_code=403, detail="Access required")
+    
+    try:
+        performance = pnl_tracker.get_strategy_performance(strategy, days, db)
+        return performance
+        
+    except Exception as e:
+        logger.error(f"Failed to get strategy P&L: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/pnl/portfolio")
+async def get_portfolio_pnl(
+    days: int = 30,
+    token: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Get overall portfolio P&L performance"""
+    user = verify_token(token.credentials)
+    if user.get("role") not in ["admin", "viewer"]:
+        raise HTTPException(status_code=403, detail="Access required")
+    
+    try:
+        performance = pnl_tracker.get_portfolio_performance(days, db)
+        return performance
+        
+    except Exception as e:
+        logger.error(f"Failed to get portfolio P&L: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/regimes")
+async def get_market_regimes(
+    token: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Get current market regimes for all symbols"""
+    user = verify_token(token.credentials)
+    if user.get("role") not in ["admin", "viewer"]:
+        raise HTTPException(status_code=403, detail="Access required")
+    
+    try:
+        # Get latest regime for each symbol
+        regimes = db.query(MarketRegime).filter(
+            MarketRegime.detected_at >= datetime.utcnow() - timedelta(hours=1)
+        ).order_by(MarketRegime.symbol, MarketRegime.detected_at.desc()).all()
+        
+        # Group by symbol and get latest
+        regime_map = {}
+        for regime in regimes:
+            if regime.symbol not in regime_map:
+                regime_map[regime.symbol] = {
+                    'symbol': regime.symbol,
+                    'regime': regime.regime,
+                    'confidence': regime.confidence,
+                    'adx': regime.adx,
+                    'atr_ratio': regime.atr_ratio,
+                    'detected_at': regime.detected_at.isoformat()
+                }
+        
+        return {"regimes": list(regime_map.values())}
+        
+    except Exception as e:
+        logger.error(f"Failed to get market regimes: {e}")
         raise HTTPException(status_code=500, detail=str(e))

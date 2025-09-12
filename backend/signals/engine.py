@@ -116,8 +116,8 @@ class SignalEngine:
                 return
             
             # Check for signal deduplication
-            if self._is_duplicate_signal(symbol, signal_data, db):
-                logger.debug(f"Duplicate signal filtered for {symbol}")
+            if self._is_duplicate_signal(symbol, signal_data, strategy_name, db):
+                logger.debug(f"Duplicate signal filtered for {symbol} using {strategy_name}")
                 return
             
             # Create signal object
@@ -169,12 +169,13 @@ class SignalEngine:
             logger.error(f"Error processing strategy {strategy_config.name} for {symbol}: {e}")
             db.rollback()
     
-    def _is_duplicate_signal(self, symbol: str, signal_data: dict, db: Session) -> bool:
-        """Check if this signal is a duplicate of the last one"""
+    def _is_duplicate_signal(self, symbol: str, signal_data: dict, strategy_name: str, db: Session) -> bool:
+        """Check if this signal is a duplicate of the last one from the same strategy"""
         try:
-            # Get the last signal for this symbol
+            # Get the last signal for this symbol and strategy combination
             last_signal = db.query(Signal).filter(
-                Signal.symbol == symbol
+                Signal.symbol == symbol,
+                Signal.strategy == strategy_name
             ).order_by(Signal.issued_at.desc()).first()
             
             if not last_signal:

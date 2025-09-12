@@ -52,8 +52,16 @@ class Signal(Base):
     blocked_by_risk = Column(Boolean, default=False)
     risk_reason = Column(Text)
     
+    # Signal outcome tracking
+    tp_reached = Column(Boolean, default=None)  # True if take profit was hit
+    sl_hit = Column(Boolean, default=None)      # True if stop loss was hit  
+    result = Column(String(20), default="PENDING")  # PENDING, WIN, LOSS, EXPIRED
+    evaluated_at = Column(DateTime, default=None)   # When outcome was determined
+    pips_result = Column(Float, default=None)       # Actual pips gained/lost
+    
     def to_dict(self):
         return {
+            "id": self.id,
             "symbol": self.symbol,
             "timeframe": self.timeframe,
             "action": self.action,
@@ -64,7 +72,14 @@ class Signal(Base):
             "strategy": self.strategy,
             "version": self.version,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
-            "issued_at": self.issued_at.isoformat() if self.issued_at else None
+            "issued_at": self.issued_at.isoformat() if self.issued_at else None,
+            "sent_to_whatsapp": self.sent_to_whatsapp,
+            "blocked_by_risk": self.blocked_by_risk,
+            "tp_reached": self.tp_reached,
+            "sl_hit": self.sl_hit,
+            "result": self.result,
+            "evaluated_at": self.evaluated_at.isoformat() if self.evaluated_at else None,
+            "pips_result": self.pips_result
         }
 
 class Strategy(Base):

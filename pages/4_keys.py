@@ -67,7 +67,7 @@ if not st.session_state.authenticated:
             else:
                 st.error("❌ Invalid credentials")
     
-    st.info("💡 Default credentials: admin/admin123")
+    st.info("💡 Use your admin credentials to access API keys and settings")
     st.stop()
 
 # Check if user is admin
@@ -88,13 +88,76 @@ def get_whatsapp_config():
     return call_api("/api/whatsapp/test", "POST", {}, st.session_state.auth_token)
 
 # Main interface
-st.subheader("📱 WhatsApp Cloud API Configuration")
+st.subheader("📱 WhatsApp Cloud API Setup")
 
-# Current WhatsApp configuration status
+# Show setup wizard if not configured
 whatsapp_token = os.getenv("WHATSAPP_TOKEN", "")
 whatsapp_phone_id = os.getenv("WHATSAPP_PHONE_ID", "")
 whatsapp_recipients = os.getenv("WHATSAPP_TO", "")
 
+# Check if WhatsApp is fully configured
+is_configured = bool(whatsapp_token and whatsapp_phone_id and whatsapp_recipients)
+
+if not is_configured:
+    st.info("🚀 Let's set up WhatsApp Cloud API in 3 simple steps!")
+    
+    with st.expander("📋 Step-by-Step Setup Guide", expanded=True):
+        st.markdown("""
+        ### 🔧 WhatsApp Cloud API Setup Guide
+        
+        **Step 1: Create Meta Business Account** 📝
+        1. Go to [Meta for Developers](https://developers.facebook.com/)
+        2. Create a developer account and app
+        3. Add WhatsApp Business API product
+        
+        **Step 2: Get Your API Credentials** 🔑
+        1. **WhatsApp Token**: Go to WhatsApp > API Setup > Temporary access token
+           - Copy the permanent access token
+           - Add to environment variable: `WHATSAPP_TOKEN=your_token_here`
+        
+        2. **Phone Number ID**: In WhatsApp > API Setup > Phone numbers
+           - Copy the Phone Number ID (not the phone number itself)
+           - Add to environment variable: `WHATSAPP_PHONE_ID=your_phone_id_here`
+        
+        **Step 3: Add Recipients** 📱
+        - Add phone numbers in E.164 format (e.g., +1234567890)
+        - Multiple numbers: separate with commas
+        - Add to environment variable: `WHATSAPP_TO=+1234567890,+0987654321`
+        
+        **💡 Quick Setup Commands:**
+        ```bash
+        # Set in your environment or .env file:
+        export WHATSAPP_TOKEN="your_permanent_token_here"
+        export WHATSAPP_PHONE_ID="your_phone_id_here" 
+        export WHATSAPP_TO="+1234567890,+0987654321"
+        ```
+        
+        **🔄 After setting variables:** Restart the application to apply changes.
+        """)
+        
+        # Quick verification checklist
+        st.markdown("### ✅ Setup Checklist")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            token_check = "✅" if whatsapp_token else "❌"
+            st.markdown(f"{token_check} **WhatsApp Token**")
+            if not whatsapp_token:
+                st.markdown("🔴 Missing: Set WHATSAPP_TOKEN")
+        
+        with col2:
+            phone_check = "✅" if whatsapp_phone_id else "❌"
+            st.markdown(f"{phone_check} **Phone Number ID**")
+            if not whatsapp_phone_id:
+                st.markdown("🔴 Missing: Set WHATSAPP_PHONE_ID")
+        
+        with col3:
+            recipients_check = "✅" if whatsapp_recipients else "❌"
+            st.markdown(f"{recipients_check} **Recipients**")
+            if not whatsapp_recipients:
+                st.markdown("🔴 Missing: Set WHATSAPP_TO")
+
+st.markdown("---")
 col1, col2 = st.columns(2)
 
 with col1:

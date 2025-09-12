@@ -15,6 +15,7 @@ from .database import get_db, SessionLocal
 from .services.whatsapp import WhatsAppService
 from .risk.guards import RiskManager
 from .logs.logger import get_logger
+from .services.signal_evaluator import evaluator
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from prometheus_client import generate_latest
@@ -247,6 +248,65 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
     
     token = create_access_token({"username": user.username, "role": user.role})
     return {"access_token": token, "token_type": "bearer", "role": user.role}
+
+@app.get("/api/signals/success-rate")
+async def get_success_rate(
+    days: int = 30,
+    db: Session = Depends(get_db)
+):
+    """Get signal success rate statistics"""
+    try:
+        stats = evaluator.get_success_rate_stats(db, days)
+        return stats
+    except Exception as e:
+        logger.error(f"Error getting success rate stats: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get success rate statistics")
+
+@app.post("/api/signals/evaluate-expired")
+async def evaluate_expired_signals(
+    token: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Evaluate expired signals and update their outcomes (Admin only)"""
+    user = verify_token(token.credentials)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        results = evaluator.evaluate_expired_signals(db)
+        return {
+            "status": "success",
+            "message": f"Evaluated {results['evaluated_count']} expired signals",
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Error evaluating expired signals: {e}")
+        raise HTTPException(status_code=500, detail="Failed to evaluate expired signals")
+
+@app.post("/api/signals/{signal_id}/simulate")
+async def simulate_signal_outcome(
+    signal_id: int,
+    token: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Simulate signal outcome for testing (Admin only)"""
+    user = verify_token(token.credentials)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    signal = db.query(Signal).filter(Signal.id == signal_id).first()
+    if not signal:
+        raise HTTPException(status_code=404, detail="Signal not found")
+    
+    if signal.result != "PENDING":
+        raise HTTPException(status_code=400, detail="Signal already evaluated")
+    
+    try:
+        evaluator.simulate_signal_outcome(signal, db)
+        return {"status": "success", "message": f"Signal {signal_id} outcome simulated"}
+    except Exception as e:
+        logger.error(f"Error simulating signal outcome: {e}")
+        raise HTTPException(status_code=500, detail="Failed to simulate signal outcome")
 
 if __name__ == "__main__":
     import uvicorn

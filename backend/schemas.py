@@ -27,6 +27,13 @@ class SignalResponse(SignalBase):
     blocked_by_risk: bool
     risk_reason: Optional[str] = None
     
+    # Success rate tracking fields
+    tp_reached: Optional[bool] = None
+    sl_hit: Optional[bool] = None
+    result: str = "PENDING"
+    evaluated_at: Optional[datetime] = None
+    pips_result: Optional[float] = None
+    
     class Config:
         from_attributes = True
 

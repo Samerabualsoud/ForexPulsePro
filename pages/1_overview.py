@@ -44,9 +44,15 @@ def load_risk_status():
     """Load risk status from API"""
     return call_api("/api/risk/status")
 
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def load_success_rate():
+    """Load success rate statistics from API"""
+    return call_api("/api/signals/success-rate?days=30")
+
 # Load data
 recent_signals = load_recent_signals()
 risk_status = load_risk_status()
+success_rate = load_success_rate()
 
 # Top metrics row
 col1, col2, col3, col4 = st.columns(4)
@@ -89,18 +95,17 @@ with col3:
         st.metric("Today's Signals", "❓")
 
 with col4:
-    if risk_status:
-        daily_loss = risk_status.get('current_daily_loss', 0)
-        loss_limit = risk_status.get('daily_loss_limit', 1000)
-        loss_pct = (daily_loss / loss_limit) * 100 if loss_limit > 0 else 0
+    if success_rate:
+        success_pct = success_rate.get('success_rate', 0)
+        total_signals = success_rate.get('total_signals', 0)
         
         st.metric(
-            "Daily Loss", 
-            f"${daily_loss:.0f}",
-            delta=f"{loss_pct:.1f}% of limit"
+            "Success Rate (30d)", 
+            f"{success_pct}%",
+            delta=f"{total_signals} signals"
         )
     else:
-        st.metric("Daily Loss", "❓")
+        st.metric("Success Rate", "❓")
 
 st.markdown("---")
 
@@ -122,7 +127,8 @@ with col1:
                 'TP': f"{signal.get('tp', 0):.5f}" if signal.get('tp') else 'N/A',
                 'Confidence': f"{signal.get('confidence', 0):.2f}",
                 'Strategy': signal.get('strategy', 'N/A'),
-                'Time': datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).strftime("%H:%M"),
+                'Time': datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).strftime("%H:%M:%S"),
+                'Result': signal.get('result', 'PENDING'),
                 'WhatsApp': "✅" if signal.get('sent_to_whatsapp') else "❌",
                 'Blocked': "🚫" if signal.get('blocked_by_risk') else "✅"
             })
@@ -137,7 +143,7 @@ with col1:
                 return 'background-color: #f8d7da; color: #721c24'
             return ''
         
-        styled_df = df.style.applymap(style_action, subset=['Action'])
+        styled_df = df.style.map(style_action, subset=['Action'])
         st.dataframe(styled_df, use_container_width=True)
         
         # Quick action buttons for recent signals

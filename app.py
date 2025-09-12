@@ -249,16 +249,16 @@ st.markdown("### 🚀 Quick Actions")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("📈 View Signals", width='stretch'):
-        st.switch_page("pages/1_overview.py")
+    if st.button("📈 View Signals", use_container_width=True):
+        st.info("Navigate to 'Overview' in the sidebar to view live signals →")
 
 with col2:
-    if st.button("⚙️ Configure Strategies", width='stretch'):
-        st.switch_page("pages/2_strategies.py")
+    if st.button("⚙️ Configure Strategies", use_container_width=True):
+        st.info("Navigate to 'Strategies' in the sidebar to configure trading strategies →")
 
 with col3:
-    if st.button("🛡️ Risk Management", width='stretch'):
-        st.switch_page("pages/3_risk.py")
+    if st.button("🛡️ Risk Management", use_container_width=True):
+        st.info("Navigate to 'Risk' in the sidebar to manage risk settings →")
         
 st.markdown('</div>', unsafe_allow_html=True)
 

@@ -10,7 +10,125 @@ import plotly.express as px
 
 st.set_page_config(page_title="Overview", page_icon="📈", layout="wide")
 
-st.title("📈 Overview Dashboard")
+# Enhanced CSS styling for signals page
+st.markdown("""
+<style>
+    /* Professional title styling */
+    .signals-title {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    /* Enhanced metrics styling */
+    [data-testid="metric-container"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        padding: 1.2rem;
+        border-radius: 15px;
+        color: white;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        transition: transform 0.2s ease;
+    }
+    
+    [data-testid="metric-container"]:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+    
+    [data-testid="metric-container"] > div {
+        color: white;
+    }
+    
+    [data-testid="metric-container"] label {
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    
+    /* Signals table styling */
+    .signals-section {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        padding: 2rem;
+        border-radius: 20px;
+        margin: 1rem 0;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .signals-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+    
+    /* Status indicators */
+    .status-section {
+        background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-header {
+        color: #2d3436;
+        font-weight: bold;
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Enhanced dataframe styling */
+    .stDataFrame {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.6rem 1.2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Activity section styling */
+    .activity-section {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .activity-header {
+        color: #2d3436;
+        font-weight: bold;
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<h1 class="signals-title">📈 Live Trading Signals</h1>', unsafe_allow_html=True)
 
 # Helper function to call backend API
 def call_api(endpoint, method="GET", data=None):
@@ -113,7 +231,6 @@ st.markdown("---")
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    st.subheader("Recent Signals")
     
     if recent_signals and len(recent_signals) > 0:
         # Convert to DataFrame for display
@@ -135,21 +252,43 @@ with col1:
         
         df = pd.DataFrame(df_data)
         
-        # Style the dataframe
-        def style_action(val):
+        # Enhanced styling for the signals table
+        def style_signal_table(val):
             if val == 'BUY':
-                return 'background-color: #d4edda; color: #155724'
+                return 'background-color: #28a745; color: white; font-weight: bold; padding: 8px; border-radius: 8px;'
             elif val == 'SELL':
-                return 'background-color: #f8d7da; color: #721c24'
+                return 'background-color: #dc3545; color: white; font-weight: bold; padding: 8px; border-radius: 8px;'
             return ''
         
-        styled_df = df.style.map(style_action, subset=['Action'])
-        st.dataframe(styled_df, width='stretch', hide_index=True)
+        def style_result(val):
+            if val == 'WIN':
+                return 'background-color: #20c997; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
+            elif val == 'LOSS':
+                return 'background-color: #e74c3c; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
+            elif val == 'PENDING':
+                return 'background-color: #ffc107; color: #212529; font-weight: bold; padding: 5px; border-radius: 5px;'
+            return ''
+        
+        def style_blocked(val):
+            if val == '🚫':
+                return 'background-color: #6c757d; padding: 5px; border-radius: 5px;'
+            elif val == '✅':
+                return 'background-color: #28a745; padding: 5px; border-radius: 5px;'
+            return ''
+        
+        styled_df = df.style.map(style_signal_table, subset=['Action']) \
+                           .map(style_result, subset=['Result']) \
+                           .map(style_blocked, subset=['Blocked'])
+                           
+        st.markdown('<div class="signals-section">', unsafe_allow_html=True)
+        st.markdown('<h3 class="signals-header">🎯 Recent Signals</h3>', unsafe_allow_html=True)
+        st.dataframe(styled_df, use_container_width=True, hide_index=True, height=400)
+        st.markdown('</div>', unsafe_allow_html=True)
         
         # Quick action buttons for recent signals
-        st.subheader("Quick Actions")
+        st.markdown('<h3 class="signals-header">🚀 Quick Actions</h3>', unsafe_allow_html=True)
         
-        if st.button("🔄 Refresh Data", width='stretch'):
+        if st.button("🔄 Refresh Data", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
         
@@ -159,23 +298,24 @@ with col1:
             col_a, col_b = st.columns(2)
             
             with col_a:
-                if st.button(f"📱 Resend Latest to WhatsApp", width='stretch'):
+                if st.button(f"📱 Resend Latest to WhatsApp", use_container_width=True):
                     # This would require authentication - simplified for demo
                     st.info("Feature requires admin authentication")
             
             with col_b:
-                if st.button("🧪 Test WhatsApp", width='stretch'):
+                if st.button("🧪 Test WhatsApp", use_container_width=True):
                     st.info("Feature requires admin authentication")
     
     else:
         st.info("No recent signals found. The system may be starting up or no signals have been generated yet.")
         
-        if st.button("🔄 Refresh", width='stretch'):
+        if st.button("🔄 Refresh", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
 with col2:
-    st.subheader("System Status")
+    st.markdown('<div class="status-section">', unsafe_allow_html=True)
+    st.markdown('<h3 class="status-header">🛡️ System Status</h3>', unsafe_allow_html=True)
     
     # Risk status
     if risk_status:
@@ -190,10 +330,11 @@ with col2:
             st.progress(progress)
             st.caption(f"Daily Loss: ${daily_loss:.0f} / ${loss_limit:.0f}")
     
-    st.markdown("---")
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Symbol performance today
-    st.subheader("Today's Activity")
+    st.markdown('<div class="activity-section">', unsafe_allow_html=True)
+    st.markdown('<h3 class="activity-header">📊 Today\'s Activity</h3>', unsafe_allow_html=True)
     
     if recent_signals:
         symbol_counts = {}
@@ -211,32 +352,88 @@ with col2:
         else:
             st.info("No signals today")
     
-    st.markdown("---")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Performance Chart
+    st.markdown('<div class="activity-section">', unsafe_allow_html=True)
+    st.markdown('<h3 class="activity-header">📈 Performance Chart</h3>', unsafe_allow_html=True)
+    
+    if success_rate and success_rate.get('total_signals', 0) > 0:
+        # Create performance pie chart
+        labels = ['Successful', 'Losses', 'Expired/Pending']
+        values = [
+            success_rate.get('successful_signals', 0),
+            success_rate.get('losing_signals', 0), 
+            success_rate.get('expired_signals', 0) + max(0, success_rate.get('total_signals', 0) - success_rate.get('successful_signals', 0) - success_rate.get('losing_signals', 0))
+        ]
+        colors = ['#28a745', '#dc3545', '#ffc107']
+        
+        fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=0.4)])
+        fig.update_traces(marker=dict(colors=colors, line=dict(color='white', width=2)))
+        fig.update_layout(
+            title="Signal Performance Distribution",
+            showlegend=True,
+            height=350,
+            margin=dict(t=50, b=0, l=0, r=0),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='#2d3436')
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Performance metrics
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            st.metric("Total Pips", f"{success_rate.get('total_pips', 0):.1f}")
+        with col_b:
+            st.metric("Avg Per Trade", f"{success_rate.get('avg_pips_per_trade', 0):.1f}")
+        with col_c:
+            success_pct = success_rate.get('success_rate', 0)
+            delta_color = "normal" if success_pct >= 60 else "inverse"
+            st.metric("Win Rate", f"{success_pct}%", delta=f"{'🔥' if success_pct >= 70 else '📈' if success_pct >= 60 else '⚠️'}")
+    else:
+        st.info("📊 Performance data will appear once signals are evaluated")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Recent activity feed
-    st.subheader("Activity Feed")
+    st.markdown('<div class="activity-section">', unsafe_allow_html=True)
+    st.markdown('<h3 class="activity-header">⚡ Recent Activity</h3>', unsafe_allow_html=True)
     
-    if recent_signals:
-        for i, signal in enumerate(recent_signals[:5]):
+    if recent_signals and len(recent_signals) >= 5:
+        for i in range(5):
+            signal = recent_signals[i]
             time_str = datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).strftime("%H:%M")
-            action_color = "🟢" if signal.get('action') == 'BUY' else "🔴" if signal.get('action') == 'SELL' else "⚪"
+            action_emoji = "🟢" if signal['action'] == 'BUY' else "🔴"
+            result_emoji = {"WIN": "✅", "LOSS": "❌", "PENDING": "⏳"}.get(signal.get('result', 'PENDING'), "⏳")
             
             with st.container():
-                st.write(f"{action_color} **{signal.get('symbol')}** {signal.get('action')} @ {signal.get('price', 0):.5f}")
-                st.caption(f"{time_str} • {signal.get('strategy')} • Conf: {signal.get('confidence', 0):.2f}")
-                
-                if i < 4:  # Don't show separator for last item
-                    st.markdown("---")
-
-# Footer
+                col_time, col_signal, col_result = st.columns([1, 2, 1])
+                with col_time:
+                    st.write(f"**{time_str}**")
+                with col_signal:
+                    st.write(f"{action_emoji} **{signal.get('symbol', 'N/A')}** {signal.get('action', 'N/A')} @ {signal.get('price', 0):.5f}")
+                with col_result:
+                    st.write(f"{result_emoji} {signal.get('result', 'PENDING')}")
+                    
+                st.markdown("---")
+    else:
+        st.info("No recent activity - signals will appear here as they are generated")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+# Footer with enhanced styling
 st.markdown("---")
+st.markdown('<div class="footer-section">', unsafe_allow_html=True)
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.caption("🔄 Auto-refresh: 60 seconds")
+    st.metric("🔄 Auto-refresh", "60s", delta="Active")
 
 with col2:
-    st.caption("📊 Signal Engine: Active")
+    st.metric("📊 Signal Engine", "Running", delta="7 Strategies")
 
 with col3:
-    st.caption(f"📅 Last Updated: {datetime.now().strftime('%H:%M:%S')}")
+    st.metric("📅 Last Updated", datetime.now().strftime('%H:%M:%S'), delta="Live Data")
+
+st.markdown('</div>', unsafe_allow_html=True)

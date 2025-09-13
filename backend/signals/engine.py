@@ -86,12 +86,27 @@ class SignalEngine:
         self.confidence_threshold = float(os.getenv('AUTO_TRADE_CONFIDENCE_THRESHOLD', '0.85'))
         self.default_lot_size = float(os.getenv('AUTO_TRADE_LOT_SIZE', '0.01'))  # Micro lot
     
+    def _is_crypto_symbol(self, symbol: str) -> bool:
+        """Check if symbol is a cryptocurrency pair"""
+        crypto_symbols = ['BTCUSD', 'ETHUSD', 'LTCUSD', 'ADAUSD', 'DOGUSD', 'SOLUSD', 'AVAXUSD']
+        return symbol in crypto_symbols or 'BTC' in symbol or 'ETH' in symbol
+    
+    def _is_market_open_for_symbol(self, symbol: str) -> bool:
+        """Check if market is open for the specific symbol type"""
+        # Crypto markets are 24/7 - always open
+        if self._is_crypto_symbol(symbol):
+            logger.debug(f"Crypto market for {symbol} is always open (24/7)")
+            return True
+        
+        # Forex markets have specific hours
+        return is_forex_market_open()
+    
     async def process_symbol(self, symbol: str, db: Session):
         """Process signals for a single symbol"""
         try:
-            # Check if market is open before processing
-            if not is_forex_market_open():
-                logger.info(f"Forex market closed - skipping signal generation for {symbol}")
+            # Check if market is open before processing (only for Forex, crypto is 24/7)
+            if not self._is_market_open_for_symbol(symbol):
+                logger.info(f"Market closed - skipping signal generation for {symbol}")
                 return
                 
             logger.debug(f"Processing signals for {symbol}")

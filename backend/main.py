@@ -9,12 +9,17 @@ from typing import List, Optional
 from datetime import datetime
 
 from .auth import verify_token, create_access_token
-from .models import Signal, User, Strategy
-from .schemas import SignalResponse, SignalCreate, UserCreate, StrategyUpdate, LoginRequest, KillSwitchRequest, RiskConfigUpdate
+from .models import Signal, User, Strategy, NewsArticle, NewsSentiment
+from .schemas import (
+    SignalResponse, SignalCreate, UserCreate, StrategyUpdate, LoginRequest, 
+    KillSwitchRequest, RiskConfigUpdate, NewsArticleResponse, NewsSentimentResponse,
+    SentimentSummaryResponse, NewsAnalysisRequest, NewsFilters
+)
 from .database import get_db, SessionLocal
 from .risk.guards import RiskManager
 from .logs.logger import get_logger
 from .services.signal_evaluator import evaluator
+from .services.news_collector import news_collector
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from prometheus_client import generate_latest
@@ -282,6 +287,279 @@ async def simulate_signal_outcome(
     except Exception as e:
         logger.error(f"Error simulating signal outcome: {e}")
         raise HTTPException(status_code=500, detail="Failed to simulate signal outcome")
+
+# News and Sentiment API Endpoints
+
+@app.get("/api/news/feed", response_model=List[NewsArticleResponse])
+async def get_news_feed(
+    filters: NewsFilters = Depends(),
+    db: Session = Depends(get_db)
+):
+    """Get latest news articles with optional filtering"""
+    try:
+        articles = news_collector.get_news_articles(
+            db=db,
+            symbol=filters.symbol,
+            category=filters.category,
+            days=filters.days,
+            limit=filters.limit,
+            include_sentiment=filters.include_sentiment
+        )
+        
+        # Convert to response format
+        response_articles = []
+        for article in articles:
+            article_dict = {
+                'id': article.id,
+                'title': article.title,
+                'summary': article.summary,
+                'content': article.content,
+                'url': article.url,
+                'source': article.source,
+                'published_at': article.published_at,
+                'retrieved_at': article.retrieved_at,
+                'category': article.category,
+                'symbols': article.symbols,
+                'is_relevant': article.is_relevant,
+                'sentiments': [
+                    {
+                        'id': s.id,
+                        'news_article_id': s.news_article_id,
+                        'analyzer_type': s.analyzer_type,
+                        'sentiment_score': s.sentiment_score,
+                        'confidence_score': s.confidence_score,
+                        'sentiment_label': s.sentiment_label,
+                        'analyzed_at': s.analyzed_at
+                    } for s in article.sentiments
+                ] if filters.include_sentiment and article.sentiments else None
+            }
+            response_articles.append(NewsArticleResponse(**article_dict))
+        
+        logger.info(f"Retrieved {len(response_articles)} news articles with filters: {filters.dict()}")
+        return response_articles
+        
+    except Exception as e:
+        logger.error(f"Error retrieving news feed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve news feed")
+
+@app.get("/api/news/sentiment/{article_id}", response_model=List[NewsSentimentResponse])
+async def get_article_sentiment(
+    article_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get sentiment analysis for a specific news article"""
+    try:
+        # Check if article exists
+        article = db.query(NewsArticle).filter(NewsArticle.id == article_id).first()
+        if not article:
+            raise HTTPException(status_code=404, detail="News article not found")
+        
+        # Get sentiment data
+        sentiments = db.query(NewsSentiment).filter(
+            NewsSentiment.news_article_id == article_id
+        ).all()
+        
+        if not sentiments:
+            # Trigger sentiment analysis if not present
+            success = await news_collector._analyze_article_sentiment(article)
+            if success:
+                # Refetch sentiments
+                sentiments = db.query(NewsSentiment).filter(
+                    NewsSentiment.news_article_id == article_id
+                ).all()
+        
+        response_sentiments = [
+            NewsSentimentResponse(
+                id=s.id,
+                news_article_id=s.news_article_id,
+                analyzer_type=s.analyzer_type,
+                sentiment_score=s.sentiment_score,
+                confidence_score=s.confidence_score,
+                sentiment_label=s.sentiment_label,
+                analyzed_at=s.analyzed_at
+            ) for s in sentiments
+        ]
+        
+        logger.info(f"Retrieved {len(response_sentiments)} sentiment analyses for article {article_id}")
+        return response_sentiments
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving sentiment for article {article_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve sentiment analysis")
+
+@app.get("/api/news/sentiment-summary", response_model=SentimentSummaryResponse)
+async def get_sentiment_summary(
+    symbol: Optional[str] = None,
+    days: int = 7,
+    db: Session = Depends(get_db)
+):
+    """Get overall market sentiment summary for a timeframe"""
+    try:
+        # Validate days parameter
+        if days < 1 or days > 30:
+            raise HTTPException(status_code=400, detail="Days parameter must be between 1 and 30")
+        
+        summary = news_collector.get_sentiment_summary(
+            db=db,
+            symbol=symbol,
+            days=days
+        )
+        
+        logger.info(f"Generated sentiment summary for symbol={symbol}, days={days}")
+        return SentimentSummaryResponse(**summary)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating sentiment summary: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate sentiment summary")
+
+@app.post("/api/news/analyze")
+async def trigger_news_analysis(
+    request: NewsAnalysisRequest,
+    token: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Trigger news collection and sentiment analysis (Admin only)"""
+    # Verify admin access
+    user = verify_token(token.credentials)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        # Run news collection
+        summary = await news_collector.collect_all_news(
+            force_refresh=request.force_refresh,
+            symbols=request.symbols,
+            categories=request.categories
+        )
+        
+        logger.info(f"News analysis triggered by user {user.get('username')}: {summary['total_stored']} articles processed")
+        
+        return {
+            "status": "success",
+            "message": f"News collection completed: {summary['total_stored']} articles stored, {summary['total_analyzed']} analyzed",
+            "summary": summary
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in news analysis: {e}")
+        raise HTTPException(status_code=500, detail="Failed to complete news analysis")
+
+@app.get("/api/news/providers/status")
+async def get_news_providers_status():
+    """Get status of all news data providers"""
+    try:
+        alphavantage_status = {
+            "name": "AlphaVantage",
+            "enabled": news_collector.alphavantage.enabled,
+            "api_key_configured": bool(news_collector.alphavantage.api_key),
+            "rate_limit_calls": len(news_collector.alphavantage.call_timestamps),
+            "capabilities": ["news", "sentiment", "symbol_news"]
+        }
+        
+        finnhub_status = {
+            "name": "Finnhub", 
+            "enabled": news_collector.finnhub.is_available(),
+            "api_key_configured": bool(news_collector.finnhub.api_key),
+            "capabilities": ["news", "market_news", "symbol_news"]
+        }
+        
+        return {
+            "providers": [alphavantage_status, finnhub_status],
+            "total_enabled": sum(1 for p in [alphavantage_status, finnhub_status] if p["enabled"])
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting provider status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get provider status")
+
+@app.get("/api/news/stats")
+async def get_news_statistics(
+    days: int = 7,
+    db: Session = Depends(get_db)
+):
+    """Get news collection and sentiment statistics"""
+    try:
+        from datetime import timedelta
+        from sqlalchemy import func, distinct
+        
+        # Validate days parameter
+        if days < 1 or days > 90:
+            raise HTTPException(status_code=400, detail="Days parameter must be between 1 and 90")
+        
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        
+        # Article statistics
+        total_articles = db.query(NewsArticle).filter(
+            NewsArticle.retrieved_at >= cutoff_date
+        ).count()
+        
+        articles_by_source = db.query(
+            NewsArticle.source,
+            func.count(NewsArticle.id).label('count')
+        ).filter(
+            NewsArticle.retrieved_at >= cutoff_date
+        ).group_by(NewsArticle.source).all()
+        
+        articles_by_category = db.query(
+            NewsArticle.category,
+            func.count(NewsArticle.id).label('count')
+        ).filter(
+            NewsArticle.retrieved_at >= cutoff_date
+        ).group_by(NewsArticle.category).all()
+        
+        # Sentiment statistics
+        total_sentiments = db.query(NewsSentiment).join(NewsArticle).filter(
+            NewsArticle.retrieved_at >= cutoff_date
+        ).count()
+        
+        sentiment_by_label = db.query(
+            NewsSentiment.sentiment_label,
+            func.count(NewsSentiment.id).label('count')
+        ).join(NewsArticle).filter(
+            NewsArticle.retrieved_at >= cutoff_date
+        ).group_by(NewsSentiment.sentiment_label).all()
+        
+        # Average sentiment scores
+        avg_sentiment_score = db.query(
+            func.avg(NewsSentiment.sentiment_score)
+        ).join(NewsArticle).filter(
+            NewsArticle.retrieved_at >= cutoff_date
+        ).scalar() or 0.0
+        
+        # Unique symbols covered
+        symbols_covered = db.query(
+            distinct(func.json_array_elements_text(NewsArticle.symbols))
+        ).filter(
+            NewsArticle.retrieved_at >= cutoff_date,
+            NewsArticle.symbols.isnot(None)
+        ).count()
+        
+        return {
+            "timeframe_days": days,
+            "articles": {
+                "total": total_articles,
+                "by_source": {source: count for source, count in articles_by_source},
+                "by_category": {category: count for category, count in articles_by_category}
+            },
+            "sentiment": {
+                "total_analyzed": total_sentiments,
+                "average_score": round(float(avg_sentiment_score), 4),
+                "by_label": {label: count for label, count in sentiment_by_label}
+            },
+            "coverage": {
+                "unique_symbols": symbols_covered
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting news statistics: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get news statistics")
 
 if __name__ == "__main__":
     import uvicorn

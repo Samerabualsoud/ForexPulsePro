@@ -24,15 +24,19 @@ try:
     from utils.auth import require_authentication, render_user_info
     from utils.cache import get_cached_signals, get_cached_market_data, get_cached_performance_stats
     from components.advanced_charts import chart_builder
+    from pages.components.news_feed import render_news_summary_widget, render_market_sentiment_widget
+    from pages.components.sentiment_indicator import render_sentiment_summary
     
     # Require authentication for this page
     user_info = require_authentication()
     render_user_info()
     imports_successful = True
+    news_components_available = True
 except ImportError as e:
     st.warning("⚠️ Authentication or components modules not found - running in demo mode")
     user_info = {"username": "demo", "role": "admin"}
     imports_successful = False
+    news_components_available = False
 
 # Enhanced CSS styling for signals page
 st.markdown("""
@@ -237,6 +241,55 @@ def get_fallback_data(endpoint):
             "avg_pips_per_trade": round(random.uniform(5, 25), 1)
         }
     
+    elif "/api/news/feed" in endpoint:
+        # Generate sample news articles for overview
+        sample_news = []
+        current_time = datetime.now()
+        
+        news_titles = [
+            "Federal Reserve Signals Interest Rate Changes",
+            "EUR/USD Reaches Key Support Level", 
+            "Asian Markets Show Mixed Results",
+            "Gold Prices Surge on Economic Uncertainty",
+            "Bitcoin Trading Volume Increases"
+        ]
+        
+        sources = ["Reuters", "Bloomberg", "MarketWatch"]
+        symbols = ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD"]
+        
+        for i, title in enumerate(news_titles[:3]):  # Only 3 for overview
+            published_time = current_time - timedelta(hours=random.randint(1, 24))
+            sentiment_score = random.uniform(-0.6, 0.6)
+            
+            sample_news.append({
+                "id": 2000 + i,
+                "title": title,
+                "summary": f"Sample news summary for {title}...",
+                "source": random.choice(sources),
+                "url": f"https://example.com/news/{2000 + i}",
+                "published_at": published_time.isoformat() + "Z",
+                "symbols": random.sample(symbols, random.randint(1, 2)),
+                "sentiment_score": sentiment_score,
+                "sentiment_confidence": random.uniform(0.7, 0.9)
+            })
+        
+        return sample_news
+    
+    elif "/api/news/sentiment-summary" in endpoint:
+        # Generate sentiment summary for overview
+        symbols = ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD"]
+        sentiment_data = []
+        
+        for symbol in symbols[:3]:  # Only 3 for overview
+            sentiment_data.append({
+                "symbol": symbol,
+                "sentiment": random.uniform(-0.5, 0.5),
+                "confidence": random.uniform(0.75, 0.9),
+                "article_count": random.randint(5, 15)
+            })
+        
+        return sentiment_data
+    
     return None
 
 # Load data
@@ -254,6 +307,16 @@ def load_risk_status():
 def load_success_rate():
     """Load success rate statistics from API"""
     return call_api("/api/signals/success-rate?days=30")
+
+@st.cache_data(ttl=60)  # Cache for 60 seconds
+def load_news_feed():
+    """Load recent news from API"""
+    return call_api("/api/news/feed?limit=5")
+
+@st.cache_data(ttl=60)  # Cache for 60 seconds  
+def load_market_sentiment():
+    """Load market sentiment summary from API"""
+    return call_api("/api/news/sentiment-summary")
 
 # Auto-refresh setup
 import time
@@ -273,6 +336,8 @@ if current_time - st.session_state.last_refresh > 30:
 recent_signals = load_recent_signals()
 risk_status = load_risk_status()
 success_rate = load_success_rate()
+news_articles = load_news_feed() if news_components_available else []
+market_sentiment = load_market_sentiment() if news_components_available else []
 
 # Top metrics row
 col1, col2, col3, col4 = st.columns(4)
@@ -639,8 +704,78 @@ with col2:
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-# Sidebar Lot Calculator
+# Sidebar with News Feed and Lot Calculator
 with st.sidebar:
+    # News Feed Widget
+    if news_components_available and news_articles:
+        render_news_summary_widget(news_articles, max_items=3)
+    elif news_articles:
+        # Fallback news display when components aren't available
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1rem;
+            border-radius: 15px;
+            margin: 1rem 0;
+            color: white;
+        ">
+            <h3 style="margin: 0 0 1rem 0; color: white;">📰 Latest News</h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        for article in news_articles[:3]:
+            with st.expander(f"📰 {article.get('title', 'No Title')[:50]}..."):
+                st.write(f"**Source:** {article.get('source', 'Unknown')}")
+                published_time = "Unknown"
+                if article.get('published_at'):
+                    try:
+                        dt = datetime.fromisoformat(article['published_at'].replace('Z', '+00:00'))
+                        published_time = dt.strftime("%m/%d %H:%M")
+                    except:
+                        published_time = str(article['published_at'])[:16]
+                st.write(f"**Published:** {published_time}")
+                st.write(f"**Summary:** {article.get('summary', 'No summary')[:100]}...")
+                
+                # Simple sentiment display
+                sentiment = article.get('sentiment_score', 0)
+                if sentiment > 0.1:
+                    st.success(f"😊 Positive Sentiment: {sentiment:.2f}")
+                elif sentiment < -0.1:
+                    st.error(f"😞 Negative Sentiment: {sentiment:.2f}")
+                else:
+                    st.info(f"😐 Neutral Sentiment: {sentiment:.2f}")
+    
+    # Market Sentiment Widget  
+    if news_components_available and market_sentiment:
+        render_market_sentiment_widget(market_sentiment)
+    elif market_sentiment:
+        # Fallback sentiment display
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            padding: 1rem;
+            border-radius: 15px;
+            margin: 1rem 0;
+            color: #2d3436;
+        ">
+            <h3 style="margin: 0 0 1rem 0; color: #2d3436;">📊 Market Sentiment</h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        for item in market_sentiment:
+            symbol = item.get('symbol', 'Unknown')
+            sentiment = item.get('sentiment', 0)
+            confidence = item.get('confidence', 0)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric(symbol, f"{sentiment:.3f}")
+            with col2:
+                st.metric("Confidence", f"{confidence:.1%}")
+    
+    # View full news page button
+    if st.button("📰 View All News", use_container_width=True):
+        st.switch_page("pages/7_news.py")
     st.markdown("---")
     st.markdown("### 💰 Lot Size Calculator")
     

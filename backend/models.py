@@ -146,3 +146,66 @@ class LogEntry(Base):
     message = Column(Text, nullable=False)
     source = Column(String(50))
     data = Column(JSON)  # Additional structured data
+
+class NewsArticle(Base):
+    __tablename__ = "news_articles"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(500), nullable=False, index=True)
+    summary = Column(Text)
+    content = Column(Text)
+    url = Column(String(1000), unique=True, nullable=False, index=True)
+    source = Column(String(100), nullable=False, index=True)
+    published_at = Column(DateTime, nullable=False, index=True)
+    retrieved_at = Column(DateTime, default=datetime.utcnow, index=True)
+    category = Column(String(50), index=True)  # 'forex', 'crypto', 'general'
+    symbols = Column(JSON)  # Related trading symbols ['EURUSD', 'GBPUSD']
+    is_relevant = Column(Boolean, default=True, index=True)
+    
+    # Relationship to sentiment analysis
+    sentiments = relationship("NewsSentiment", back_populates="article", cascade="all, delete-orphan")
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "summary": self.summary,
+            "content": self.content,
+            "url": self.url,
+            "source": self.source,
+            "published_at": self.published_at.isoformat() if self.published_at else None,
+            "retrieved_at": self.retrieved_at.isoformat() if self.retrieved_at else None,
+            "category": self.category,
+            "symbols": self.symbols,
+            "is_relevant": self.is_relevant
+        }
+
+class NewsSentiment(Base):
+    __tablename__ = "news_sentiments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    news_article_id = Column(Integer, ForeignKey("news_articles.id"), nullable=False, index=True)
+    analyzer_type = Column(String(50), nullable=False, index=True)  # 'vader', 'textblob', 'financial_keywords', 'combined'
+    sentiment_score = Column(Float, nullable=False)  # -1 to 1 range
+    confidence_score = Column(Float, nullable=False)  # 0 to 1 range
+    sentiment_label = Column(String(20), nullable=False, index=True)  # 'POSITIVE', 'NEGATIVE', 'NEUTRAL'
+    analyzed_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Relationship back to news article
+    article = relationship("NewsArticle", back_populates="sentiments")
+    
+    # Unique constraint to prevent duplicate analysis for same article/analyzer
+    __table_args__ = (
+        UniqueConstraint('news_article_id', 'analyzer_type', name='_article_analyzer_uc'),
+    )
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "news_article_id": self.news_article_id,
+            "analyzer_type": self.analyzer_type,
+            "sentiment_score": self.sentiment_score,
+            "confidence_score": self.confidence_score,
+            "sentiment_label": self.sentiment_label,
+            "analyzed_at": self.analyzed_at.isoformat() if self.analyzed_at else None
+        }

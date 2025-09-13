@@ -6,7 +6,7 @@ import requests
 import pandas as pd
 import asyncio
 import httpx
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from pathlib import Path
 import time
@@ -301,3 +301,252 @@ class AlphaVantageProvider(BaseDataProvider):
         except Exception as e:
             logger.error(f"Error getting latest price for {symbol}: {e}")
             return None
+    
+    async def get_news(self, category: str = 'general', limit: int = 20) -> Optional[List[Dict[str, Any]]]:
+        """Get financial news with sentiment analysis from Alpha Vantage"""
+        if not self.enabled:
+            return None
+        
+        try:
+            # Wait for rate limit if necessary
+            await self._check_and_wait_rate_limit()
+            
+            # Map categories to Alpha Vantage topics
+            topic_map = {
+                'general': None,  # No specific topic filter for general news
+                'forex': 'financial_markets',
+                'crypto': 'blockchain',
+                'cryptocurrency': 'blockchain', 
+                'technology': 'technology',
+                'economy': 'economy_macro',
+                'finance': 'financial_markets'
+            }
+            
+            params = {
+                "function": "NEWS_SENTIMENT",
+                "apikey": self.api_key,
+                "limit": min(limit, 1000)  # Alpha Vantage max limit
+            }
+            
+            # Add topic filter if available
+            topic = topic_map.get(category.lower())
+            if topic:
+                params["topics"] = topic
+            
+            client = await self._get_client()
+            response = await client.get(self.base_url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Check for API errors
+            if "Error Message" in data:
+                logger.error(f"Alpha Vantage News API error: {data['Error Message']}")
+                return None
+            
+            if "Note" in data:
+                logger.warning(f"Alpha Vantage News rate limit: {data['Note']}")
+                return None
+            
+            # Parse news feed
+            if "feed" not in data:
+                logger.warning(f"No news feed found in Alpha Vantage response")
+                return None
+            
+            formatted_news = []
+            for article in data["feed"][:limit]:
+                # Parse sentiment data
+                sentiment_data = {
+                    'label': article.get('overall_sentiment_label', 'Neutral'),
+                    'score': float(article.get('overall_sentiment_score', 0)),
+                    'method': 'alpha_vantage_ai'
+                }
+                
+                # Parse ticker sentiments if available
+                ticker_sentiments = []
+                if 'ticker_sentiment' in article:
+                    for ticker_sent in article['ticker_sentiment']:
+                        ticker_sentiments.append({
+                            'ticker': ticker_sent.get('ticker', ''),
+                            'relevance_score': float(ticker_sent.get('relevance_score', 0)),
+                            'sentiment_score': float(ticker_sent.get('ticker_sentiment_score', 0)),
+                            'sentiment_label': ticker_sent.get('ticker_sentiment_label', 'Neutral')
+                        })
+                
+                formatted_article = {
+                    'id': f"av_{hash(article.get('url', ''))}",  # Generate ID from URL hash
+                    'title': article.get('title', ''),
+                    'summary': article.get('summary', ''),
+                    'content': article.get('summary', ''),  # Alpha Vantage provides summary as content
+                    'url': article.get('url', ''),
+                    'source': article.get('source', ''),
+                    'category': category,
+                    'published_at': article.get('time_published', ''),
+                    'timestamp': self._parse_time_to_timestamp(article.get('time_published', '')),
+                    'image_url': article.get('banner_image', ''),
+                    'related_symbols': [ts['ticker'] for ts in ticker_sentiments],
+                    'sentiment': sentiment_data,
+                    'ticker_sentiments': ticker_sentiments,
+                    'provider': 'alpha_vantage'
+                }
+                formatted_news.append(formatted_article)
+            
+            logger.info(f"Retrieved {len(formatted_news)} {category} news articles with sentiment from Alpha Vantage")
+            return formatted_news
+            
+        except httpx.RequestError as e:
+            logger.error(f"Network error retrieving news from Alpha Vantage: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Error retrieving news from Alpha Vantage: {e}")
+            return None
+    
+    async def get_symbol_news(self, symbol: str, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+        """Get news articles related to a specific symbol with sentiment analysis"""
+        if not self.enabled:
+            return None
+        
+        try:
+            # Wait for rate limit if necessary  
+            await self._check_and_wait_rate_limit()
+            
+            # Convert forex pairs to individual currencies for better news matching
+            tickers_to_search = []
+            if len(symbol) == 6 and symbol.isalpha():
+                # Forex pair - search for both currencies and general forex news
+                base_currency = symbol[:3]
+                quote_currency = symbol[3:]
+                
+                # Add major currency tickers that might have relevant news
+                currency_tickers = {
+                    'USD': ['DXY', 'UUP'],  # Dollar index and USD ETF
+                    'EUR': ['FXE', 'EUO'],  # Euro ETFs
+                    'GBP': ['FXB', 'EWU'],  # Pound ETFs
+                    'JPY': ['FXY', 'EWJ'],  # Yen ETFs
+                    'AUD': ['FXA', 'EWA'],  # Australian dollar ETFs
+                    'CAD': ['FXC', 'EWC']   # Canadian dollar ETFs
+                }
+                
+                for currency in [base_currency, quote_currency]:
+                    if currency in currency_tickers:
+                        tickers_to_search.extend(currency_tickers[currency])
+            
+            elif symbol.upper() in ['BTCUSD', 'ETHUSD', 'BTCEUR', 'ETHEUR']:
+                # Crypto symbols - search for crypto-related tickers
+                tickers_to_search = ['COIN', 'MSTR', 'TSLA']  # Major crypto-related stocks
+            
+            params = {
+                "function": "NEWS_SENTIMENT",
+                "apikey": self.api_key,
+                "limit": min(limit * 2, 50)  # Get more articles to filter relevant ones
+            }
+            
+            # Add tickers if we found relevant ones
+            if tickers_to_search:
+                params["tickers"] = ','.join(tickers_to_search[:5])  # Limit to 5 tickers
+            
+            client = await self._get_client()
+            response = await client.get(self.base_url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Check for API errors
+            if "Error Message" in data:
+                logger.error(f"Alpha Vantage Symbol News API error: {data['Error Message']}")
+                return None
+            
+            if "Note" in data:
+                logger.warning(f"Alpha Vantage Symbol News rate limit: {data['Note']}")
+                return None
+            
+            if "feed" not in data:
+                # Fallback to general financial news
+                return await self.get_news('finance', limit)
+            
+            # Parse and filter news articles
+            formatted_news = []
+            for article in data["feed"]:
+                # Check if article is relevant to our symbol
+                title_lower = article.get('title', '').lower()
+                summary_lower = article.get('summary', '').lower()
+                
+                relevance_score = 0
+                
+                # For forex pairs, check for currency mentions
+                if len(symbol) == 6 and symbol.isalpha():
+                    base_currency = symbol[:3].lower()
+                    quote_currency = symbol[3:].lower()
+                    
+                    currency_keywords = {
+                        'usd': ['dollar', 'usd', 'fed', 'federal reserve'],
+                        'eur': ['euro', 'eur', 'ecb', 'european central bank'],
+                        'gbp': ['pound', 'gbp', 'sterling', 'bank of england', 'boe'],
+                        'jpy': ['yen', 'jpy', 'bank of japan', 'boj'],
+                        'aud': ['australian dollar', 'aud', 'rba'],
+                        'cad': ['canadian dollar', 'cad', 'bank of canada']
+                    }
+                    
+                    for currency in [base_currency, quote_currency]:
+                        if currency in currency_keywords:
+                            keywords = currency_keywords[currency]
+                            for keyword in keywords:
+                                if keyword in title_lower or keyword in summary_lower:
+                                    relevance_score += 1
+                
+                # For crypto, check for crypto mentions
+                elif 'btc' in symbol.lower() or 'eth' in symbol.lower():
+                    crypto_keywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency', 'blockchain']
+                    for keyword in crypto_keywords:
+                        if keyword in title_lower or keyword in summary_lower:
+                            relevance_score += 1
+                
+                # Only include articles with some relevance or high sentiment impact
+                overall_sentiment_score = abs(float(article.get('overall_sentiment_score', 0)))
+                if relevance_score > 0 or overall_sentiment_score > 0.1:
+                    
+                    sentiment_data = {
+                        'label': article.get('overall_sentiment_label', 'Neutral'),
+                        'score': float(article.get('overall_sentiment_score', 0)),
+                        'method': 'alpha_vantage_ai'
+                    }
+                    
+                    formatted_article = {
+                        'id': f"av_{hash(article.get('url', ''))}",
+                        'title': article.get('title', ''),
+                        'summary': article.get('summary', ''),
+                        'content': article.get('summary', ''),
+                        'url': article.get('url', ''),
+                        'source': article.get('source', ''),
+                        'category': 'symbol_specific',
+                        'published_at': article.get('time_published', ''),
+                        'timestamp': self._parse_time_to_timestamp(article.get('time_published', '')),
+                        'image_url': article.get('banner_image', ''),
+                        'related_symbols': [symbol],
+                        'sentiment': sentiment_data,
+                        'relevance_score': relevance_score,
+                        'provider': 'alpha_vantage'
+                    }
+                    formatted_news.append(formatted_article)
+                
+                if len(formatted_news) >= limit:
+                    break
+            
+            logger.info(f"Retrieved {len(formatted_news)} symbol-specific news articles for {symbol} from Alpha Vantage")
+            return formatted_news
+            
+        except httpx.RequestError as e:
+            logger.error(f"Network error retrieving symbol news from Alpha Vantage: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Error retrieving symbol news from Alpha Vantage: {e}")
+            return None
+    
+    def _parse_time_to_timestamp(self, time_string: str) -> int:
+        """Parse Alpha Vantage time format to timestamp"""
+        try:
+            # Alpha Vantage time format: 20231201T143000
+            if 'T' in time_string:
+                dt = datetime.strptime(time_string, '%Y%m%dT%H%M%S')
+                return int(dt.timestamp())
+            return 0
+        except:
+            return 0

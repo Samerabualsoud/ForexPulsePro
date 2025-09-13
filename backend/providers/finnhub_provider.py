@@ -1,6 +1,6 @@
 import asyncio
 import pandas as pd
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 import structlog
 import os
@@ -161,6 +161,128 @@ class FinnhubProvider:
             logger.warning(f"Finnhub forex rates error: {e}")
             
         return None
+    
+    async def get_news(self, category: str = 'general', limit: int = 20) -> Optional[List[Dict[str, Any]]]:
+        """Get financial news articles by category"""
+        if not self.is_available():
+            return None
+            
+        try:
+            # Map categories to Finnhub format
+            category_map = {
+                'general': 'general',
+                'forex': 'forex', 
+                'crypto': 'crypto',
+                'cryptocurrency': 'crypto',
+                'merger': 'merger'
+            }
+            
+            finnhub_category = category_map.get(category.lower(), 'general')
+            
+            # Run in thread pool since finnhub client is synchronous
+            loop = asyncio.get_event_loop()
+            news_data = await loop.run_in_executor(
+                None, self.client.general_news, finnhub_category
+            )
+            
+            if not news_data:
+                return None
+                
+            # Format news articles
+            formatted_news = []
+            for article in news_data[:limit]:
+                formatted_article = {
+                    'id': article.get('id'),
+                    'title': article.get('headline', ''),
+                    'summary': article.get('summary', ''),
+                    'content': article.get('summary', ''),  # Finnhub provides summary as content
+                    'url': article.get('url', ''),
+                    'source': article.get('source', ''),
+                    'category': article.get('category', category),
+                    'published_at': datetime.fromtimestamp(article.get('datetime', 0)).isoformat() if article.get('datetime') else None,
+                    'timestamp': article.get('datetime', 0),
+                    'image_url': article.get('image', ''),
+                    'related_symbols': article.get('related', []),
+                    'provider': 'finnhub'
+                }
+                formatted_news.append(formatted_article)
+            
+            logger.info(f"Retrieved {len(formatted_news)} {category} news articles from Finnhub")
+            return formatted_news
+            
+        except Exception as e:
+            logger.error(f"Finnhub news error for category {category}: {e}")
+            return None
+    
+    async def get_symbol_news(self, symbol: str, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+        """Get news articles related to a specific symbol"""
+        if not self.is_available():
+            return None
+            
+        try:
+            # For forex pairs, we'll get general forex news and filter
+            # For crypto, we can get crypto news
+            if symbol.upper() in ['BTCUSD', 'ETHUSD', 'BTCEUR', 'ETHEUR']:
+                # Get crypto news for crypto symbols
+                return await self.get_news('crypto', limit)
+            elif len(symbol) == 6 and symbol.isalpha():
+                # Get forex news for forex pairs
+                return await self.get_news('forex', limit)
+            else:
+                # For stocks, we could use company news (requires dates)
+                # For now, return general news
+                return await self.get_news('general', limit)
+                
+        except Exception as e:
+            logger.error(f"Finnhub symbol news error for {symbol}: {e}")
+            return None
+    
+    async def get_market_news_with_sentiment(self, limit: int = 20) -> Optional[List[Dict[str, Any]]]:
+        """Get market news with additional metadata for sentiment analysis"""
+        if not self.is_available():
+            return None
+            
+        try:
+            # Get general market news which often includes sentiment indicators
+            news_articles = await self.get_news('general', limit)
+            
+            if not news_articles:
+                return None
+            
+            # Enhance with additional metadata for sentiment analysis
+            for article in news_articles:
+                # Add sentiment indicators based on keywords in title/summary
+                title_lower = article.get('title', '').lower()
+                summary_lower = article.get('summary', '').lower()
+                
+                # Simple keyword-based sentiment scoring
+                positive_keywords = ['rise', 'gain', 'up', 'growth', 'bullish', 'rally', 'surge', 'boost']
+                negative_keywords = ['fall', 'drop', 'down', 'decline', 'bearish', 'crash', 'plunge', 'loss']
+                
+                positive_score = sum(1 for word in positive_keywords if word in title_lower or word in summary_lower)
+                negative_score = sum(1 for word in negative_keywords if word in title_lower or word in summary_lower)
+                
+                if positive_score > negative_score:
+                    sentiment = 'positive'
+                    confidence = min(positive_score / (positive_score + negative_score + 1), 0.8)
+                elif negative_score > positive_score:
+                    sentiment = 'negative' 
+                    confidence = min(negative_score / (positive_score + negative_score + 1), 0.8)
+                else:
+                    sentiment = 'neutral'
+                    confidence = 0.5
+                
+                article['sentiment'] = {
+                    'label': sentiment,
+                    'score': confidence,
+                    'method': 'keyword_based'
+                }
+            
+            return news_articles
+            
+        except Exception as e:
+            logger.error(f"Finnhub market news with sentiment error: {e}")
+            return None
     
     async def test_connection(self) -> bool:
         """Test Finnhub API connection"""

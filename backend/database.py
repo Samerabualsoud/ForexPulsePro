@@ -86,7 +86,7 @@ def create_default_data():
                     'sl_multiplier': 2.0,
                     'tp_mode': 'atr',
                     'tp_multiplier': 3.0,
-                    'min_confidence': 0.6,
+                    'min_confidence': 0.60,  # 60% minimum for forex majors
                     'expiry_bars': 60
                 }
             },
@@ -101,7 +101,7 @@ def create_default_data():
                     'sl_multiplier': 2.0,
                     'tp_mode': 'atr',
                     'tp_multiplier': 3.0,
-                    'min_confidence': 0.65,
+                    'min_confidence': 0.67,  # 67% minimum for crypto (raised from 65%)
                     'expiry_bars': 45
                 }
             },

@@ -464,6 +464,153 @@ class SignalEngine:
             logger.error(f"Error processing strategy {strategy_config.name} for {symbol}: {e}")
             db.rollback()
     
+    async def _process_strategy_with_multi_ai(
+        self, 
+        symbol: str, 
+        data: pd.DataFrame, 
+        strategy_config: Strategy, 
+        db: Session,
+        consensus_recommendations: Optional[Dict] = None
+    ):
+        """Process a single strategy for a symbol with multi-AI consensus enhancement"""
+        try:
+            strategy_name = strategy_config.name
+            if strategy_name not in self.strategies:
+                logger.error(f"Unknown strategy: {strategy_name}")
+                return
+            
+            strategy = self.strategies[strategy_name]
+            
+            # Generate base signal
+            base_signal = strategy.generate_signal(data, strategy_config.config)
+            
+            if base_signal is None:
+                logger.info(f"No signal generated for {symbol} using {strategy_name}")
+                return
+            
+            # Early deduplication and conflict checks (before expensive AI calls)
+            if self._is_duplicate_signal(symbol, base_signal, strategy_name, db):
+                logger.info(f"Duplicate/conflicting signal filtered for {symbol} using {strategy_name}")
+                return
+                
+            # Check cross-strategy consensus
+            if not self._get_cross_strategy_consensus(symbol, base_signal, db):
+                logger.info(f"Cross-strategy consensus check failed for {symbol} using {strategy_name}")
+                return
+            
+            # Run multi-AI consensus analysis
+            consensus = await self.multi_ai_consensus.generate_enhanced_signal_analysis(symbol, data, base_signal)
+            
+            # Derive final action and confidence from multi-AI consensus
+            final_action = base_signal['action']
+            consensus_action = consensus.get('final_action')
+            consensus_level = consensus.get('consensus_level', 0.0)
+            ai_consensus_threshold = 0.75  # 75% consensus required for veto
+            
+            # Handle opposing consensus
+            if consensus_action and consensus_action != final_action:
+                if consensus_level >= ai_consensus_threshold:
+                    logger.info(f"Multi-AI consensus vetoed {final_action} signal for {symbol}: {consensus_action} consensus at {consensus_level:.1%}")
+                    return  # Veto signal
+                else:
+                    logger.info(f"Weak multi-AI opposition for {symbol}: penalizing confidence (consensus: {consensus_level:.1%})")
+                    # Penalize confidence for weak opposition
+                    base_signal['confidence'] *= 0.6
+            
+            # Apply confidence adjustments from multi-AI analysis
+            if 'final_confidence' in consensus:
+                confidence = consensus['final_confidence']
+            else:
+                confidence = base_signal['confidence'] + consensus.get('confidence_adjustment', 0)
+                confidence = max(0.0, min(1.0, confidence))  # Clamp to [0,1]
+            
+            # Apply additional Manus AI confidence adjustments if available
+            if consensus_recommendations and confidence is not None:
+                original_confidence = confidence
+                confidence = self._apply_manus_ai_confidence_adjustment(
+                    confidence, strategy_name, consensus_recommendations
+                )
+                if abs(confidence - original_confidence) > 0.01:
+                    logger.info(f"Manus AI further adjusted confidence for {symbol} {strategy_name}: "
+                               f"{original_confidence:.1%} -> {confidence:.1%}")
+            
+            # Create signal object with enhanced data
+            expires_at = datetime.utcnow() + timedelta(
+                minutes=strategy_config.config.get('expiry_bars', 60)
+            )
+            
+            # Convert numpy types to Python types for database compatibility
+            price = float(base_signal['price']) if base_signal['price'] is not None else None
+            sl = float(base_signal.get('sl')) if base_signal.get('sl') is not None else None
+            tp = float(base_signal.get('tp')) if base_signal.get('tp') is not None else None
+            confidence = float(confidence) if confidence is not None else None
+            
+            signal = Signal(
+                symbol=symbol,
+                action=final_action,
+                price=price,
+                sl=sl,
+                tp=tp,
+                confidence=confidence,
+                strategy=strategy_name,
+                expires_at=expires_at
+            )
+            
+            # Handle risk flags from multi-AI consensus
+            risk_flags = consensus.get('risk_flags', [])
+            if risk_flags:
+                high_severity_flags = [flag for flag in risk_flags if flag.get('severity', 'low') == 'high']
+                if high_severity_flags:
+                    signal.blocked_by_risk = True
+                    signal.risk_reason = f"Multi-AI risk flags: {', '.join([f['type'] for f in high_severity_flags])}"
+                    logger.info(f"Signal blocked by multi-AI risk flags: {signal.risk_reason}")
+                else:
+                    # Apply confidence penalty for lower severity risk flags
+                    signal.confidence = max(0.0, signal.confidence - 0.1)
+                    logger.info(f"Multi-AI risk flags applied confidence penalty: {[f['type'] for f in risk_flags]}")
+            
+            # Apply standard risk management
+            if not signal.blocked_by_risk:
+                risk_manager = RiskManager(db)
+                risk_check = risk_manager.check_signal(signal, data)
+                
+                if not risk_check['allowed']:
+                    signal.blocked_by_risk = True
+                    signal.risk_reason = risk_check['reason']
+                    logger.info(f"Signal blocked by risk management: {risk_check['reason']}")
+                else:
+                    # Automatic trade execution if enabled and confidence threshold met
+                    if self.auto_trade_enabled and signal.confidence >= self.confidence_threshold:
+                        try:
+                            await self._execute_auto_trade(signal, db)
+                        except Exception as e:
+                            logger.error(f"Auto-trade execution failed for signal {signal.id}: {e}")
+            
+            # Save signal to database
+            db.add(signal)
+            db.commit()
+            
+            # Log comprehensive multi-AI analysis results
+            logger.info(f"Multi-AI enhanced signal created for {symbol}: {final_action} @ {price} "
+                       f"(confidence: {signal.confidence:.1%}, consensus: {consensus_level:.1%}, "
+                       f"agents: {consensus.get('participating_agents', 0)})")
+            
+        except Exception as e:
+            logger.error(f"Error processing strategy {strategy_name} for {symbol} with multi-AI: {e}")
+            db.rollback()
+    
+    async def _process_strategy_with_ai_consensus(
+        self, 
+        symbol: str, 
+        data: pd.DataFrame, 
+        strategy_config: Strategy, 
+        db: Session,
+        consensus_recommendations: Optional[Dict] = None
+    ):
+        """Fallback method for legacy AI consensus - delegates to standard processing"""
+        logger.info(f"Using fallback AI consensus processing for {symbol}")
+        await self._process_strategy(symbol, data, strategy_config, db, consensus_recommendations)
+    
     async def _execute_auto_trade(self, signal: Signal, db: Session):
         """Execute automatic trade for high-confidence signals"""
         try:

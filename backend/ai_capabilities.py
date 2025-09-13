@@ -16,9 +16,7 @@ OPENAI_AVAILABLE = False
 OPENAI_ENABLED = False
 OPENAI_API_KEY = None
 
-# Enhanced AI capability flags
-ANTHROPIC_AVAILABLE = False
-ANTHROPIC_ENABLED = False
+# Enhanced AI capability flags  
 PERPLEXITY_AVAILABLE = False
 PERPLEXITY_ENABLED = False
 GEMINI_AVAILABLE = False
@@ -50,26 +48,6 @@ except ImportError as e:
     OPENAI_AVAILABLE = False
     OPENAI_ENABLED = False
 
-# Try to import and validate Anthropic (Claude)
-try:
-    import anthropic
-    from anthropic import Anthropic
-    ANTHROPIC_AVAILABLE = True
-    
-    api_key = os.getenv('ANTHROPIC_API_KEY')
-    if api_key:
-        try:
-            anthropic_client = Anthropic(api_key=api_key)
-            ANTHROPIC_ENABLED = True
-            logger.info("Anthropic Claude integration enabled")
-        except Exception as e:
-            logger.warning(f"Anthropic API key validation failed: {e}")
-    else:
-        logger.info("Anthropic package available but no API key provided (ANTHROPIC_API_KEY)")
-        
-except ImportError as e:
-    logger.info(f"Anthropic package not available: {e}")
-
 # Check Perplexity availability (uses requests, so just check API key)
 PERPLEXITY_API_KEY = os.getenv('PERPLEXITY_API_KEY')
 if PERPLEXITY_API_KEY:
@@ -99,8 +77,8 @@ except ImportError as e:
     logger.info(f"Gemini package not available: {e}")
 
 # Calculate overall AI capabilities
-MULTI_AI_ENABLED = sum([OPENAI_ENABLED, ANTHROPIC_ENABLED, PERPLEXITY_ENABLED, GEMINI_ENABLED]) > 1
-TOTAL_AI_AGENTS = sum([True, ANTHROPIC_ENABLED, PERPLEXITY_ENABLED, GEMINI_ENABLED])  # Manus AI always available
+MULTI_AI_ENABLED = sum([OPENAI_ENABLED, PERPLEXITY_ENABLED, GEMINI_ENABLED]) > 1
+TOTAL_AI_AGENTS = sum([True, PERPLEXITY_ENABLED, GEMINI_ENABLED])  # Manus AI always available
 
 logger.info(f"Multi-AI System Status: {TOTAL_AI_AGENTS} agents available, Multi-AI: {MULTI_AI_ENABLED}")
 
@@ -114,8 +92,6 @@ def get_ai_capabilities() -> Dict[str, Any]:
     return {
         'openai_available': OPENAI_AVAILABLE,
         'openai_enabled': OPENAI_ENABLED,
-        'anthropic_available': ANTHROPIC_AVAILABLE,
-        'anthropic_enabled': ANTHROPIC_ENABLED,
         'perplexity_available': PERPLEXITY_AVAILABLE,
         'perplexity_enabled': PERPLEXITY_ENABLED,
         'gemini_available': GEMINI_AVAILABLE,
@@ -125,13 +101,11 @@ def get_ai_capabilities() -> Dict[str, Any]:
         'dual_ai_mode': OPENAI_ENABLED,  # Legacy compatibility
         'manus_ai_only': not MULTI_AI_ENABLED,
         'capabilities': {
-            'pattern_recognition': ANTHROPIC_ENABLED,
             'market_intelligence': PERPLEXITY_ENABLED,
             'correlation_analysis': GEMINI_ENABLED,
             'strategy_consensus': MULTI_AI_ENABLED,
-            'advanced_backtesting': OPENAI_ENABLED or ANTHROPIC_ENABLED,
+            'advanced_backtesting': OPENAI_ENABLED,
             'chatgpt_optimization': OPENAI_ENABLED,
-            'claude_patterns': ANTHROPIC_ENABLED,
             'perplexity_news': PERPLEXITY_ENABLED,
             'gemini_correlations': GEMINI_ENABLED,
             'fallback_manus_ai': True  # Always available

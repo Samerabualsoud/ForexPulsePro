@@ -8,7 +8,6 @@ import pandas as pd
 from datetime import datetime
 
 from .manus_ai import ManusAI
-from .claude_pattern_agent import ClaudePatternAgent  
 from .perplexity_news_agent import PerplexityNewsAgent
 from .gemini_correlation_agent import GeminiCorrelationAgent
 from ..logs.logger import get_logger
@@ -19,7 +18,6 @@ class MultiAIConsensus:
     """
     Advanced multi-AI consensus system that combines insights from:
     - Manus AI (Primary strategy recommendations)
-    - Claude AI (Pattern recognition)
     - Perplexity AI (Market intelligence)
     - Gemini AI (Cross-asset correlations)
     """
@@ -27,7 +25,6 @@ class MultiAIConsensus:
     def __init__(self):
         # Initialize all AI agents
         self.manus_ai = ManusAI()
-        self.claude_agent = ClaudePatternAgent()
         self.perplexity_agent = PerplexityNewsAgent()
         self.gemini_agent = GeminiCorrelationAgent()
         
@@ -63,9 +60,6 @@ class MultiAIConsensus:
         
         if self.available_agents.get('manus_ai'):
             tasks.append(self._run_manus_analysis(symbol, market_data))
-        
-        if self.available_agents.get('claude_pattern'):
-            tasks.append(self._run_claude_analysis(symbol, market_data))
         
         if self.available_agents.get('perplexity_news') and base_signal:
             tasks.append(self._run_perplexity_analysis(symbol, base_signal.get('action', 'BUY')))
@@ -111,14 +105,6 @@ class MultiAIConsensus:
             logger.error(f"Manus AI analysis failed: {e}")
             return {}
     
-    async def _run_claude_analysis(self, symbol: str, market_data: pd.DataFrame) -> Dict[str, Any]:
-        """Run Claude pattern analysis"""
-        try:
-            analysis = self.claude_agent.analyze_chart_patterns(market_data, symbol)
-            return {'claude_pattern': analysis}
-        except Exception as e:
-            logger.error(f"Claude analysis failed: {e}")
-            return {}
     
     async def _run_perplexity_analysis(self, symbol: str, signal_action: str) -> Dict[str, Any]:
         """Run Perplexity news analysis"""
@@ -165,18 +151,6 @@ class MultiAIConsensus:
                 'weight': 0.3  # Primary weight for strategy recommendations
             }
         
-        # Process Claude pattern insights
-        if 'claude_pattern' in analyses:
-            claude = analyses['claude_pattern']
-            confidence_adj = claude.get('confidence_adjustment', 0.0)
-            confidence_adjustments.append(('claude_pattern', confidence_adj, 0.25))
-            
-            agent_insights['claude_pattern'] = {
-                'patterns': claude.get('detected_patterns', []),
-                'market_structure': claude.get('market_structure', 'unknown'),
-                'trading_bias': claude.get('trading_bias', 'neutral'),
-                'weight': 0.25
-            }
         
         # Process Perplexity news insights
         if 'perplexity_news' in analyses:
@@ -252,14 +226,7 @@ class MultiAIConsensus:
         bearish_signals = 0
         
         for agent, insights in agent_insights.items():
-            if agent == 'claude_pattern':
-                bias = insights.get('trading_bias', 'neutral')
-                if bias == 'bullish':
-                    bullish_signals += 1
-                elif bias == 'bearish':
-                    bearish_signals += 1
-            
-            elif agent == 'perplexity_news':
+            if agent == 'perplexity_news':
                 sentiment = insights.get('sentiment', 'neutral')
                 if sentiment == 'bullish':
                     bullish_signals += 1
@@ -323,7 +290,6 @@ class MultiAIConsensus:
         """Check which AI agents are available"""
         return {
             'manus_ai': True,  # Always available
-            'claude_pattern': self.claude_agent.is_available(),
             'perplexity_news': self.perplexity_agent.is_available(),
             'gemini_correlation': self.gemini_agent.is_available()
         }

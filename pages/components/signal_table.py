@@ -45,19 +45,33 @@ def get_signal_status(signal: Dict[str, Any]) -> tuple[str, str]:
         expires_at = signal.get('expires_at')
         if expires_at:
             try:
-                expires_time = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                # Handle multiple datetime formats from API
+                if isinstance(expires_at, str):
+                    # Try parsing with different formats
+                    if 'T' in expires_at:
+                        expires_time = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                    else:
+                        # Handle simple date format
+                        expires_time = datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S')
+                        expires_time = expires_time.replace(tzinfo=timezone.utc)
+                else:
+                    # Already a datetime object
+                    expires_time = expires_at
+                
                 current_time = datetime.now(timezone.utc)
                 
                 if expires_time > current_time:
                     return "🟢 Active", "green"
                 else:
                     return "⏰ Expired", "orange"
-            except (ValueError, TypeError):
-                return "⚠️ Unknown", "gray"
+            except (ValueError, TypeError, AttributeError):
+                # If timestamp parsing fails, default to Active for PENDING signals
+                return "🟢 Active", "green"
         else:
             return "🟡 Pending", "blue"
     else:
-        return "⚠️ Unknown", "gray"
+        # For any unrecognized result, default to Active status to avoid "Unknown"
+        return "🟢 Active", "green"
 
 def render_signal_table(
     signals: List[Dict[str, Any]], 

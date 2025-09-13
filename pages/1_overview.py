@@ -7,12 +7,36 @@ import requests
 from datetime import datetime, timedelta
 import sys
 from pathlib import Path
+from typing import List, Dict, Any, Optional, TypedDict, Mapping, Sequence
 
 st.set_page_config(page_title="Overview", page_icon="📈", layout="wide")
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+# Type definitions for API responses
+class SignalDTO(TypedDict, total=False):
+    id: int
+    symbol: str
+    action: str
+    price: float
+    confidence: float
+    strategy: str
+    issued_at: str
+    expires_at: str
+    sl: Optional[float]
+    tp: Optional[float]
+
+class RiskStatusDTO(TypedDict, total=False):
+    kill_switch: bool
+    daily_loss_limit: float
+    current_loss: float
+
+class StatsDTO(TypedDict, total=False):
+    total_signals: int
+    active_signals: int
+    win_rate: float
 
 try:
     from utils.auth import require_authentication, render_user_info
@@ -102,9 +126,13 @@ st.markdown("""
 st.markdown('<h1 class="dashboard-title">📈 Trading Signals Dashboard</h1>', unsafe_allow_html=True)
 
 # Helper function for API calls
-def call_api(endpoint, method="GET", data=None):
+def call_api(endpoint: str, method: str = "GET", data: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any] | List[Dict[str, Any]]]:
     """Call backend API with fallback to demo data"""
+    response = None  # Initialize response
     try:
+        if method not in ["GET", "POST"]:
+            raise ValueError(f"Unsupported method: {method}")
+            
         base_url = "http://0.0.0.0:8000"
         url = f"{base_url}{endpoint}"
         
@@ -113,8 +141,12 @@ def call_api(endpoint, method="GET", data=None):
         elif method == "POST":
             response = requests.post(url, json=data, timeout=10)
         
-        if response.status_code == 200:
-            return response.json()
+        if response and response.status_code == 200:
+            result = response.json()
+            # Validate JSON type
+            if isinstance(result, (dict, list)):
+                return result
+            return None
         else:
             raise requests.exceptions.ConnectionError("API not available")
             
@@ -190,14 +222,37 @@ def get_demo_data(endpoint):
     
     return None
 
+# Typed API helper functions
+def get_recent_signals() -> List[SignalDTO]:
+    """Get recent signals with proper typing"""
+    result = call_api("/api/signals/recent?limit=10")
+    if isinstance(result, list):
+        # Filter to only dict entries and validate structure
+        return [s for s in result if isinstance(s, dict)]
+    return []
+
+def get_risk_status() -> RiskStatusDTO:
+    """Get risk status with proper typing"""
+    result = call_api("/api/risk/status")
+    if isinstance(result, dict):
+        return result
+    return {"kill_switch": False, "daily_loss_limit": 0.0, "current_loss": 0.0}
+
+def get_stats() -> StatsDTO:
+    """Get stats with proper typing"""
+    result = call_api("/api/signals/stats")
+    if isinstance(result, dict):
+        return result
+    return {"total_signals": 0, "active_signals": 0, "win_rate": 0.0}
+
 # Load data
 @st.cache_data(ttl=30)
 def load_dashboard_data():
-    """Load all dashboard data"""
+    """Load all dashboard data with proper typing"""
     return {
-        "signals": call_api("/api/signals/recent?limit=10"),
-        "risk_status": call_api("/api/risk/status"),
-        "stats": call_api("/api/signals/stats")
+        "signals": get_recent_signals(),
+        "risk_status": get_risk_status(),
+        "stats": get_stats()
     }
 
 # Auto-refresh setup
@@ -211,9 +266,9 @@ if current_time - st.session_state.last_refresh > 30:  # 30 second refresh
 
 # Load dashboard data
 data = load_dashboard_data()
-signals = data.get("signals", [])
-risk_status = data.get("risk_status", {})
-stats = data.get("stats", {})
+signals: List[SignalDTO] = data.get("signals", [])
+risk_status: RiskStatusDTO = data.get("risk_status", {"kill_switch": False, "daily_loss_limit": 0.0, "current_loss": 0.0})
+stats: StatsDTO = data.get("stats", {"total_signals": 0, "active_signals": 0, "win_rate": 0.0})
 
 # Quick Status Overview
 st.markdown('<div class="section-header">System Status</div>', unsafe_allow_html=True)
@@ -246,16 +301,19 @@ with col4:
 st.markdown("---")
 
 # Separate signals by type
-def separate_signals_by_type(signals):
+def separate_signals_by_type(signals: Sequence[Mapping[str, Any]]):
     """Separate signals into Forex Major, Crypto, and Metals & Oil categories"""
     forex_majors = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD', 
                    'EURJPY', 'GBPJPY', 'EURGBP', 'AUDJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'AUDCAD']
     crypto_pairs = ['BTCUSD', 'ETHUSD', 'BTCEUR', 'ETHEUR', 'BTCGBP', 'ETHGBP', 'LTCUSD', 'ADAUSD', 'DOGUSD', 'SOLUSD', 'AVAXUSD']
     metals_oil = ['XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD', 'XPTUSD', 'XPDUSD', 'WTIUSD', 'XBRUSD', 'XPDUSD', 'XRHHUSD']
     
-    forex_signals = [s for s in signals if s.get('symbol', '').upper() in forex_majors]
-    crypto_signals = [s for s in signals if s.get('symbol', '').upper() in crypto_pairs]
-    metals_oil_signals = [s for s in signals if s.get('symbol', '').upper() in metals_oil]
+    # Filter to only dict items and safely access symbol
+    valid_signals = [s for s in signals if isinstance(s, dict)]
+    
+    forex_signals = [s for s in valid_signals if s.get('symbol', '').upper() in forex_majors]
+    crypto_signals = [s for s in valid_signals if s.get('symbol', '').upper() in crypto_pairs]
+    metals_oil_signals = [s for s in valid_signals if s.get('symbol', '').upper() in metals_oil]
     
     return forex_signals, crypto_signals, metals_oil_signals
 

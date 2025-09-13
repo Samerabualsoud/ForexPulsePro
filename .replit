@@ -57,8 +57,8 @@ localPort = 41129
 externalPort = 3001
 
 [[ports]]
-localPort = 44053
-externalPort = 4200
+localPort = 43953
+externalPort = 5000
 
 [agent]
 integrations = ["python_openai:1.0.0", "python_anthropic:1.0.0", "perplexity_v0:1.0.0", "python_gemini:1.0.0"]

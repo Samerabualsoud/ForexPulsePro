@@ -173,14 +173,15 @@ class ExchangeRateProvider:
                 # Forex markets typically have low volatility (0.1-0.5% daily)
                 daily_progress = (i / len(dates))  # 0 to 1
                 
-                # Gradual trend toward current rate
-                base_rate = current_rate * (0.995 + 0.01 * daily_progress)  # ±0.5% range
-                
-                # Add minute-to-minute noise
-                minute_noise = np.random.normal(0, 0.0002)  # ±0.02% noise
-                
-                # Calculate OHLC with realistic relationships
-                close_price = base_rate * (1 + minute_noise)
+                # CRITICAL FIX: Last bar must match current rate exactly for accurate signals
+                if i == len(dates) - 1:
+                    # Final bar close MUST equal current market price for accurate signals
+                    close_price = current_rate
+                else:
+                    # Historical bars can have variations
+                    base_rate = current_rate * (0.995 + 0.01 * daily_progress)  # ±0.5% range
+                    minute_noise = np.random.normal(0, 0.0002)  # ±0.02% noise
+                    close_price = base_rate * (1 + minute_noise)
                 
                 # Open is previous close (with small gap)
                 if i == 0:

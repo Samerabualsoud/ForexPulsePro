@@ -9,7 +9,39 @@ from typing import Optional, List, Dict, Tuple
 
 from ..models import Signal, Strategy
 # from ..services.sentiment_factor import sentiment_factor_service  # Temporarily disabled
+from ..logs.logger import get_logger
+from ..ai_capabilities import get_ai_capabilities, OPENAI_ENABLED
 from ..services.manus_ai import ManusAI
+
+# Initialize logger first
+logger = get_logger(__name__)
+
+# Check AI capabilities
+ai_capabilities = get_ai_capabilities()
+CHATGPT_AVAILABLE = ai_capabilities['openai_enabled']
+
+# Conditional imports for ChatGPT components
+ChatGPTStrategyOptimizer = None
+AIStrategyConsensus = None
+AdvancedBacktester = None
+
+if CHATGPT_AVAILABLE:
+    try:
+        from ..services.chatgpt_strategy_optimizer import ChatGPTStrategyOptimizer
+        from ..services.ai_strategy_consensus import AIStrategyConsensus
+        from ..services.advanced_backtester import AdvancedBacktester
+        logger.info("ChatGPT integration loaded successfully - dual-AI mode enabled")
+    except ImportError as e:
+        logger.warning(f"ChatGPT integration failed to load: {e}")
+        CHATGPT_AVAILABLE = False
+else:
+    logger.info("ChatGPT integration not available - using Manus AI only")
+    # Import fallback backtester that doesn't use ChatGPT
+    try:
+        from ..services.advanced_backtester import AdvancedBacktester
+        logger.info("Advanced backtester loaded in Manus AI only mode")
+    except ImportError as e:
+        logger.warning(f"Advanced backtester not available: {e}")
 from ..providers.mock import MockDataProvider
 from ..providers.alphavantage import AlphaVantageProvider
 from ..providers.freecurrency import FreeCurrencyAPIProvider
@@ -21,7 +53,6 @@ from ..risk.guards import RiskManager
 from ..regime.detector import regime_detector
 from ..providers.execution.mt5_bridge import MT5BridgeExecutionProvider
 from ..providers.execution.base import OrderRequest, OrderType
-from ..logs.logger import get_logger
 from .strategies.ema_rsi import EMAStragey
 from .strategies.donchian_atr import DonchianATRStrategy
 from .strategies.meanrev_bb import MeanReversionBBStrategy
@@ -29,8 +60,6 @@ from .strategies.macd_strategy import MACDStrategy
 from .strategies.stochastic_strategy import StochasticStrategy
 from .strategies.rsi_divergence import RSIDivergenceStrategy
 from .strategies.fibonacci_strategy import FibonacciStrategy
-
-logger = get_logger(__name__)
 
 def is_forex_market_open() -> bool:
     """
@@ -78,8 +107,40 @@ class SignalEngine:
         
         self.execution_provider = MT5BridgeExecutionProvider()
         
-        # Initialize enhanced Manus AI for professional trading recommendations
+        # Initialize enhanced dual-AI system for collaborative trading recommendations
         self.manus_ai = ManusAI()
+        
+        # Initialize ChatGPT components if available
+        if CHATGPT_AVAILABLE and ChatGPTStrategyOptimizer and AIStrategyConsensus:
+            try:
+                self.chatgpt_optimizer = ChatGPTStrategyOptimizer()
+                self.ai_consensus = AIStrategyConsensus()
+                logger.info("SignalEngine: Dual-AI components initialized successfully")
+            except Exception as e:
+                logger.warning(f"SignalEngine: Failed to initialize ChatGPT components: {e}")
+                self.chatgpt_optimizer = None
+                self.ai_consensus = None
+        else:
+            self.chatgpt_optimizer = None
+            self.ai_consensus = None
+            logger.info("SignalEngine: ChatGPT components not available, using Manus AI only")
+        
+        # Initialize AdvancedBacktester conditionally
+        if AdvancedBacktester:
+            try:
+                self.advanced_backtester = AdvancedBacktester()
+                logger.info("SignalEngine: Advanced backtester initialized successfully")
+            except Exception as e:
+                logger.warning(f"SignalEngine: Failed to initialize advanced backtester: {e}")
+                self.advanced_backtester = None
+        else:
+            self.advanced_backtester = None
+            logger.warning("SignalEngine: Advanced backtester not available")
+        
+        # AI system configuration
+        self.enable_dual_ai = os.getenv('ENABLE_DUAL_AI', 'true').lower() == 'true'
+        self.ai_consensus_threshold = float(os.getenv('AI_CONSENSUS_THRESHOLD', '0.7'))
+        self.enable_ai_backtesting = os.getenv('ENABLE_AI_BACKTESTING', 'true').lower() == 'true'
         
         # Auto-trading configuration
         self.auto_trade_enabled = os.getenv('AUTO_TRADE_ENABLED', 'false').lower() == 'true'
@@ -146,8 +207,12 @@ class SignalEngine:
                 regime_detector.store_regime(symbol, regime_data, db)
                 logger.debug(f"Market regime for {symbol}: {regime_data['regime']} ({regime_data['confidence']:.2f})")
             
-            # Get Manus AI strategy recommendations
-            strategy_recommendations = await self._get_manus_ai_recommendations(symbol, data)
+            # Get dual-AI strategy recommendations using consensus system
+            if self.enable_dual_ai and CHATGPT_AVAILABLE:
+                consensus_recommendations = await self._get_ai_consensus_recommendations(symbol, data, [s.name for s in strategies])
+            else:
+                # Fallback to single Manus AI (when ChatGPT not available or dual AI disabled)
+                consensus_recommendations = await self._get_manus_ai_recommendations(symbol, data)
             
             # Process each strategy
             for strategy_config in strategies:
@@ -156,18 +221,28 @@ class SignalEngine:
                     logger.debug(f"Strategy {strategy_config.name} skipped for {symbol} - unsuitable for {regime_data['regime']} regime")
                     continue
                 
-                # CRITICAL: Check Manus AI strategy guardrails - actively block "avoid" strategies
-                should_block, block_reason = self._should_block_strategy(strategy_config.name, strategy_recommendations)
+                # CRITICAL: Check AI strategy guardrails - actively block "avoid" strategies
+                if CHATGPT_AVAILABLE:
+                    should_block, block_reason = self._should_block_strategy_ai_consensus(strategy_config.name, consensus_recommendations)
+                else:
+                    should_block, block_reason = self._should_block_strategy(strategy_config.name, consensus_recommendations)
                 if should_block:
                     logger.warning(f"Strategy {strategy_config.name} BLOCKED for {symbol}: {block_reason}")
                     continue
                 
-                # Check Manus AI recommendations for strategy prioritization
-                should_prioritize, manus_reason = self._should_prioritize_strategy(strategy_config.name, strategy_recommendations)
+                # Check AI recommendations for strategy prioritization
+                if CHATGPT_AVAILABLE:
+                    should_prioritize, ai_reason = self._should_prioritize_strategy_ai_consensus(strategy_config.name, consensus_recommendations)
+                else:
+                    should_prioritize, ai_reason = self._should_prioritize_strategy(strategy_config.name, consensus_recommendations)
                 if should_prioritize:
-                    logger.info(f"Strategy {strategy_config.name} prioritized for {symbol}: {manus_reason}")
-                    
-                await self._process_strategy(symbol, data, strategy_config, db, strategy_recommendations)
+                    logger.info(f"Strategy {strategy_config.name} prioritized for {symbol}: {ai_reason}")
+                
+                # Process strategy with AI-enhanced analysis
+                if CHATGPT_AVAILABLE:
+                    await self._process_strategy_with_ai_consensus(symbol, data, strategy_config, db, consensus_recommendations)
+                else:
+                    await self._process_strategy(symbol, data, strategy_config, db, consensus_recommendations)
                 
         except Exception as e:
             logger.error(f"Error processing symbol {symbol}: {e}")
@@ -660,4 +735,323 @@ class SignalEngine:
             
         except Exception as e:
             logger.error(f"Error applying Manus AI confidence adjustment: {e}")
+            return original_confidence
+    
+    # ========== NEW DUAL-AI CONSENSUS METHODS ==========
+    
+    def _should_block_strategy_ai_consensus(self, strategy_name: str, consensus_recommendations: Optional[Dict]) -> Tuple[bool, str]:
+        """
+        Check if strategy should be BLOCKED based on AI consensus recommendations
+        Enhanced version that considers both Manus AI and ChatGPT opinions
+        """
+        try:
+            if not consensus_recommendations:
+                return False, "No AI consensus recommendations available - allowing strategy"
+            
+            # Check if we have consensus result
+            if 'consensus_result' in consensus_recommendations:
+                consensus_result = consensus_recommendations['consensus_result']
+                
+                # Check AI consensus confidence threshold
+                if hasattr(consensus_result, 'overall_confidence'):
+                    if consensus_result.overall_confidence < self.ai_consensus_threshold:
+                        return True, f"AI consensus confidence too low ({consensus_result.overall_confidence:.1%}) - blocking strategy"
+                
+                # Check if strategy is in avoid list from either AI
+                if hasattr(consensus_result, 'ai_contributions'):
+                    ai_contributions = consensus_result.ai_contributions
+                    
+                    # Check Manus AI contribution
+                    manus_contrib = ai_contributions.get('manus_ai', {})
+                    if 'avoid_strategies' in manus_contrib:
+                        if strategy_name in manus_contrib['avoid_strategies']:
+                            return True, f"Manus AI (via consensus) recommends avoiding {strategy_name}"
+                    
+                    # Check ChatGPT contribution  
+                    chatgpt_contrib = ai_contributions.get('chatgpt', {})
+                    if 'avoid_strategies' in chatgpt_contrib:
+                        if strategy_name in chatgpt_contrib['avoid_strategies']:
+                            return True, f"ChatGPT (via consensus) recommends avoiding {strategy_name}"
+                
+                # Check conflict areas
+                if hasattr(consensus_result, 'conflict_areas') and 'strategy_selection' in consensus_result.conflict_areas:
+                    # In case of strategy selection conflicts, be more conservative
+                    recommended_strategies = consensus_result.recommended_strategies if hasattr(consensus_result, 'recommended_strategies') else []
+                    strategy_names = [s.get('name', '') for s in recommended_strategies]
+                    
+                    if strategy_name not in strategy_names:
+                        return True, f"Strategy {strategy_name} not recommended due to AI disagreement"
+                
+                return False, f"AI consensus allows strategy {strategy_name}"
+            
+            else:
+                # Fallback to single Manus AI logic
+                return self._should_block_strategy(strategy_name, consensus_recommendations)
+                
+        except Exception as e:
+            logger.error(f"Error checking AI consensus strategy blocking: {e}")
+            return False, "Error in AI consensus strategy blocking - allowing as fallback"
+    
+    def _should_prioritize_strategy_ai_consensus(self, strategy_name: str, consensus_recommendations: Optional[Dict]) -> Tuple[bool, str]:
+        """
+        Check if strategy should be prioritized based on AI consensus
+        Enhanced version considering both AIs
+        """
+        try:
+            if not consensus_recommendations:
+                return False, "No AI consensus recommendations available"
+            
+            # Check if we have consensus result
+            if 'consensus_result' in consensus_recommendations:
+                consensus_result = consensus_recommendations['consensus_result']
+                
+                if hasattr(consensus_result, 'recommended_strategies'):
+                    recommended_strategies = consensus_result.recommended_strategies
+                    
+                    # Check if strategy is in top recommendations
+                    for i, strategy_rec in enumerate(recommended_strategies[:3]):  # Top 3
+                        if strategy_rec.get('name') == strategy_name:
+                            confidence = strategy_rec.get('confidence', 0.5)
+                            consensus_conf = getattr(consensus_result, 'overall_confidence', 0.5)
+                            
+                            # High priority if in top recommendation with good consensus
+                            if i == 0 and confidence >= 0.7 and consensus_conf >= 0.7:
+                                consensus_level = getattr(consensus_result, 'consensus_level', 'unknown')
+                                return True, f"AI consensus top recommendation (confidence: {confidence:.1%}, consensus: {consensus_level})"
+                            
+                            # Medium priority for other top strategies
+                            elif i < 3 and confidence >= 0.6:
+                                return True, f"AI consensus recommendation #{i+1} (confidence: {confidence:.1%})"
+                
+                return False, "Strategy not in top AI consensus recommendations"
+            
+            else:
+                # Fallback to single Manus AI logic
+                return self._should_prioritize_strategy(strategy_name, consensus_recommendations)
+                
+        except Exception as e:
+            logger.error(f"Error checking AI consensus strategy prioritization: {e}")
+            return False, "Error in AI consensus prioritization"
+    
+    async def _enhance_signal_with_ai_consensus(
+        self, 
+        signal_data: Dict, 
+        strategy_name: str, 
+        symbol: str, 
+        market_data: pd.DataFrame,
+        consensus_recommendations: Dict
+    ) -> Optional[Dict]:
+        """
+        Enhance signal using AI consensus validation and refinement
+        """
+        try:
+            if not consensus_recommendations or 'consensus_result' not in consensus_recommendations:
+                return signal_data
+            
+            consensus_result = consensus_recommendations['consensus_result']
+            
+            # Validate signal against AI consensus
+            if not await self._validate_signal_with_ai_consensus(signal_data, strategy_name, consensus_result):
+                logger.info(f"Signal for {symbol} {strategy_name} rejected by AI consensus validation")
+                return None
+            
+            # Enhance signal with AI confidence and metrics
+            enhanced_signal = signal_data.copy()
+            
+            # Add AI consensus metadata
+            enhanced_signal['ai_consensus_confidence'] = getattr(consensus_result, 'overall_confidence', 0.5)
+            enhanced_signal['consensus_level'] = getattr(consensus_result, 'consensus_level', 'unknown')
+            enhanced_signal['ai_reasoning'] = getattr(consensus_result, 'reasoning', '')
+            
+            # Adjust confidence based on AI consensus
+            original_confidence = signal_data.get('confidence', 0.5)
+            ai_confidence_boost = self._calculate_ai_confidence_boost(strategy_name, consensus_result)
+            enhanced_confidence = min(1.0, original_confidence + ai_confidence_boost)
+            enhanced_signal['confidence'] = enhanced_confidence
+            
+            # Add AI-enhanced stop loss and take profit if available
+            ai_risk_params = await self._get_ai_enhanced_risk_parameters(
+                signal_data, symbol, market_data, consensus_result
+            )
+            if ai_risk_params:
+                enhanced_signal.update(ai_risk_params)
+            
+            logger.debug(f"Signal enhanced by AI consensus for {symbol} {strategy_name}: "
+                        f"confidence {original_confidence:.2f} -> {enhanced_confidence:.2f}")
+            
+            return enhanced_signal
+            
+        except Exception as e:
+            logger.error(f"Error enhancing signal with AI consensus: {e}")
+            return signal_data  # Return original signal on error
+    
+    async def _validate_signal_with_ai_consensus(
+        self, 
+        signal_data: Dict, 
+        strategy_name: str, 
+        consensus_result
+    ) -> bool:
+        """
+        Validate signal against AI consensus recommendations
+        """
+        try:
+            # Check if strategy is recommended by consensus
+            if hasattr(consensus_result, 'recommended_strategies'):
+                recommended_strategies = [s.get('name', '') for s in consensus_result.recommended_strategies]
+                if strategy_name not in recommended_strategies:
+                    return False
+            
+            # Check minimum confidence threshold
+            signal_confidence = signal_data.get('confidence', 0.5)
+            consensus_confidence = getattr(consensus_result, 'overall_confidence', 0.5)
+            
+            # Require minimum combined confidence
+            combined_confidence = (signal_confidence + consensus_confidence) / 2
+            if combined_confidence < 0.6:  # 60% minimum combined confidence
+                return False
+            
+            # Check for high disagreement between AIs
+            if hasattr(consensus_result, 'consensus_level'):
+                from ..services.ai_strategy_consensus import ConsensusLevel
+                if consensus_result.consensus_level == ConsensusLevel.DISAGREEMENT:
+                    # Require very high signal confidence to override AI disagreement
+                    if signal_confidence < 0.85:
+                        return False
+            
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Error validating signal with AI consensus: {e}")
+            return True  # Allow signal on validation error
+    
+    def _calculate_ai_confidence_boost(self, strategy_name: str, consensus_result) -> float:
+        """
+        Calculate confidence boost based on AI consensus
+        """
+        try:
+            boost = 0.0
+            
+            if hasattr(consensus_result, 'recommended_strategies'):
+                for strategy_rec in consensus_result.recommended_strategies:
+                    if strategy_rec.get('name') == strategy_name:
+                        # Boost based on consensus confidence and strategy ranking
+                        consensus_conf = getattr(consensus_result, 'overall_confidence', 0.5)
+                        strategy_conf = strategy_rec.get('confidence', 0.5)
+                        
+                        # Higher boost for higher consensus and strategy confidence
+                        boost = min(0.15, (consensus_conf - 0.5) * 0.3 + (strategy_conf - 0.5) * 0.2)
+                        break
+            
+            # Additional boost for high agreement
+            if hasattr(consensus_result, 'agreement_score'):
+                agreement_score = consensus_result.agreement_score
+                if agreement_score > 0.8:
+                    boost += 0.05  # Extra 5% for high agreement
+            
+            return max(0.0, boost)
+            
+        except Exception as e:
+            logger.warning(f"Error calculating AI confidence boost: {e}")
+            return 0.0
+    
+    async def _get_ai_enhanced_risk_parameters(
+        self, 
+        signal_data: Dict, 
+        symbol: str, 
+        market_data: pd.DataFrame,
+        consensus_result
+    ) -> Optional[Dict]:
+        """
+        Get AI-enhanced risk parameters for stop loss and take profit
+        """
+        try:
+            risk_params = {}
+            
+            # Get AI risk guidance from consensus
+            if hasattr(consensus_result, 'ai_contributions'):
+                ai_contributions = consensus_result.ai_contributions
+                
+                # Check if any AI provided specific risk parameters
+                for ai_name, contribution in ai_contributions.items():
+                    if 'risk_parameters' in contribution:
+                        ai_risk = contribution['risk_parameters']
+                        
+                        # Use AI-suggested stop loss if available and reasonable
+                        if 'suggested_sl_pct' in ai_risk:
+                            sl_pct = ai_risk['suggested_sl_pct']
+                            if 0.005 <= sl_pct <= 0.05:  # 0.5% to 5% reasonable range
+                                current_price = signal_data.get('price', 0)
+                                if current_price > 0:
+                                    if signal_data.get('action') == 'BUY':
+                                        risk_params['sl'] = current_price * (1 - sl_pct)
+                                    else:
+                                        risk_params['sl'] = current_price * (1 + sl_pct)
+                        
+                        # Use AI-suggested take profit if available
+                        if 'suggested_tp_pct' in ai_risk:
+                            tp_pct = ai_risk['suggested_tp_pct']
+                            if 0.01 <= tp_pct <= 0.10:  # 1% to 10% reasonable range
+                                current_price = signal_data.get('price', 0)
+                                if current_price > 0:
+                                    if signal_data.get('action') == 'BUY':
+                                        risk_params['tp'] = current_price * (1 + tp_pct)
+                                    else:
+                                        risk_params['tp'] = current_price * (1 - tp_pct)
+            
+            return risk_params if risk_params else None
+            
+        except Exception as e:
+            logger.warning(f"Error getting AI-enhanced risk parameters: {e}")
+            return None
+    
+    def _apply_ai_consensus_confidence_adjustment(
+        self, 
+        original_confidence: float, 
+        strategy_name: str, 
+        consensus_recommendations: Dict
+    ) -> float:
+        """
+        Apply AI consensus-based confidence adjustments
+        """
+        try:
+            if 'consensus_result' not in consensus_recommendations:
+                return self._apply_manus_ai_confidence_adjustment(original_confidence, strategy_name, consensus_recommendations)
+            
+            consensus_result = consensus_recommendations['consensus_result']
+            adjusted_confidence = original_confidence
+            
+            # Boost confidence based on consensus level
+            if hasattr(consensus_result, 'consensus_level'):
+                from ..services.ai_strategy_consensus import ConsensusLevel
+                
+                if consensus_result.consensus_level == ConsensusLevel.HIGH_AGREEMENT:
+                    adjusted_confidence *= 1.10  # 10% boost for high agreement
+                elif consensus_result.consensus_level == ConsensusLevel.MODERATE_AGREEMENT:
+                    adjusted_confidence *= 1.05  # 5% boost for moderate agreement
+                elif consensus_result.consensus_level == ConsensusLevel.DISAGREEMENT:
+                    adjusted_confidence *= 0.85  # 15% reduction for disagreement
+            
+            # Adjust based on overall consensus confidence
+            if hasattr(consensus_result, 'overall_confidence'):
+                consensus_conf = consensus_result.overall_confidence
+                confidence_factor = 0.8 + (consensus_conf * 0.4)  # Factor between 0.8 and 1.2
+                adjusted_confidence *= confidence_factor
+            
+            # Find strategy-specific adjustments
+            if hasattr(consensus_result, 'recommended_strategies'):
+                for strategy_rec in consensus_result.recommended_strategies:
+                    if strategy_rec.get('name') == strategy_name:
+                        strategy_conf = strategy_rec.get('confidence', 0.5)
+                        # Additional boost if strategy has high individual confidence
+                        if strategy_conf > 0.8:
+                            adjusted_confidence *= 1.05
+                        elif strategy_conf < 0.4:
+                            adjusted_confidence *= 0.90
+                        break
+            
+            # Ensure confidence stays within bounds
+            return min(max(adjusted_confidence, 0.1), 1.0)
+            
+        except Exception as e:
+            logger.error(f"Error applying AI consensus confidence adjustment: {e}")
             return original_confidence

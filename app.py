@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for professional styling
+# Clean, consistent CSS styling
 st.markdown("""
 <style>
     /* Main styling */
@@ -20,155 +20,86 @@ st.markdown("""
         padding-bottom: 2rem;
     }
     
-    /* Custom title styling */
+    /* Clean title styling */
     .dashboard-title {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
         font-size: 3rem;
-        font-weight: bold;
+        font-weight: 600;
         text-align: center;
+        color: #2c3e50;
         margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 3px solid #3498db;
     }
     
-    /* Status card styling */
+    /* Simple status cards */
     .status-card {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
         padding: 1.5rem;
-        border-radius: 15px;
-        border: 1px solid #e1e8ed;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         margin-bottom: 1rem;
         text-align: center;
     }
     
-    /* Metric enhancement */
+    /* Clean metric styling */
     [data-testid="metric-container"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
         padding: 1rem;
-        border-radius: 15px;
-        color: white;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
-    [data-testid="metric-container"] > div {
-        color: white;
-    }
-    
-    [data-testid="metric-container"] label {
-        color: rgba(255, 255, 255, 0.8);
-        font-weight: 600;
-    }
-    
-    /* Enhanced Sidebar Styling */
-    .css-1d391kg {
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem 1rem;
-    }
-    
-    .css-1d391kg .css-1v0mbdj {
-        color: white;
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin-bottom: 2rem;
-        text-align: center;
-    }
-    
-    /* Sidebar navigation items */
-    .css-1d391kg .css-pkbazv {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        margin: 0.5rem 0;
-        padding: 0.75rem;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        transition: all 0.3s ease;
-    }
-    
-    .css-1d391kg .css-pkbazv:hover {
-        background: rgba(255, 255, 255, 0.2);
-        transform: translateX(5px);
-    }
-    
-    .css-1d391kg .css-pkbazv a {
-        color: white !important;
-        text-decoration: none;
-        font-weight: 500;
-    }
-    
-    /* Active sidebar item */
-    .css-1d391kg .css-pkbazv.active {
-        background: rgba(255, 255, 255, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.4);
-    }
-    
-    /* Button styling */
+    /* Simple button styling */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #3498db;
         color: white;
         border: none;
-        border-radius: 12px;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: background-color 0.2s;
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        background: #2980b9;
     }
     
-    /* Professional status indicators */
-    .status-indicator {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 8px;
+    /* Section styling */
+    .section-header {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 2rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #3498db;
     }
     
-    .status-online {
-        background: #10b981;
-    }
-    
-    .status-offline {
-        background: #ef4444;
-    }
-    }
-    
-    /* Sidebar styling */
-    .css-1d391kg {
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    /* Quick action section */
+    /* Quick actions section */
     .quick-actions {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
         padding: 2rem;
-        border-radius: 20px;
+        border-radius: 10px;
         margin: 2rem 0;
-        color: white;
         text-align: center;
     }
     
-    /* API info section */
-    .api-section {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    /* Info section */
+    .info-section {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
         padding: 1.5rem;
-        border-radius: 15px;
+        border-radius: 0 8px 8px 0;
         margin: 1rem 0;
     }
     
     /* Footer styling */
     .footer-text {
         text-align: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-weight: bold;
+        color: #2c3e50;
+        font-weight: 600;
         font-size: 1.1rem;
     }
 </style>
@@ -271,7 +202,7 @@ if "api_endpoint" in query_params:
 
 # Main dashboard
 st.markdown('<h1 class="dashboard-title">📊 Forex Signal Dashboard</h1>', unsafe_allow_html=True)
-st.markdown("### *Professional Trading Signal Generation & Risk Management*")
+st.markdown("### *Clean, Simple Trading Signal Management*")
 st.markdown("---")
 
 # Sidebar navigation
@@ -302,35 +233,40 @@ with col3:
         delta="REST API available"
     )
 
-# Quick access buttons
+# Quick access section
+st.markdown('<div class="section-header">⚡ Quick Start</div>', unsafe_allow_html=True)
+
 st.markdown('<div class="quick-actions">', unsafe_allow_html=True)
-st.markdown("### 🚀 Quick Actions")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("📈 View Signals", use_container_width=True):
-        st.info("Navigate to 'Overview' in the sidebar to view live signals →")
+    if st.button("📈 View Live Signals", use_container_width=True):
+        st.info("Navigate to 'Overview' in the sidebar to view current trading signals →")
 
 with col2:
     if st.button("⚙️ Configure Strategies", use_container_width=True):
-        st.info("Navigate to 'Strategies' in the sidebar to configure trading strategies →")
+        st.info("Navigate to 'Strategies' in the sidebar to enable/disable trading strategies →")
 
 with col3:
-    if st.button("🛡️ Risk Management", use_container_width=True):
-        st.info("Navigate to 'Risk' in the sidebar to manage risk settings →")
+    if st.button("🛡️ Risk Settings", use_container_width=True):
+        st.info("Navigate to 'Risk' in the sidebar to manage daily limits and safety controls →")
         
 st.markdown('</div>', unsafe_allow_html=True)
 
-# API Information
-st.markdown('<div class="api-section">', unsafe_allow_html=True)
-st.markdown("### 🔗 API Endpoints")
-st.code("""
-🏥 Health Check: GET http://localhost:8000/api/health
-📊 Latest Signals: GET http://localhost:8000/api/signals/latest  
-📈 Recent Signals: GET http://localhost:8000/api/signals/recent
-📉 Metrics: GET http://localhost:8000/metrics
-🛡️ Risk Status: GET http://localhost:8000/api/risk/status
-""", language="bash")
+# System Information
+st.markdown('<div class="section-header">🔗 System Information</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="info-section">', unsafe_allow_html=True)
+st.markdown("""
+**API Endpoints Available:**
+- Health Check: `GET /api/health`
+- Latest Signals: `GET /api/signals/latest`
+- Recent Signals: `GET /api/signals/recent`
+- Risk Status: `GET /api/risk/status`
+- System Metrics: `GET /metrics`
+
+**Server Status:** Backend API running on port 8000
+""")
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")

@@ -1,20 +1,14 @@
 """
-Overview Page - Main dashboard with signal overview and quick actions
+Overview Page - Clean and simple trading signals dashboard
 """
 import streamlit as st
 import pandas as pd
 import requests
 from datetime import datetime, timedelta
-import plotly.graph_objects as go
-import plotly.express as px
 import sys
 from pathlib import Path
 
 st.set_page_config(page_title="Overview", page_icon="📈", layout="wide")
-
-# Add authentication
-import os
-import sys
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -22,149 +16,95 @@ sys.path.insert(0, str(project_root))
 
 try:
     from utils.auth import require_authentication, render_user_info
-    from utils.cache import get_cached_signals, get_cached_market_data, get_cached_performance_stats
-    from components.advanced_charts import chart_builder
-    from pages.components.news_feed import render_news_summary_widget, render_market_sentiment_widget
-    from pages.components.sentiment_indicator import render_sentiment_summary
-    
+    from pages.components.signal_table import render_signal_table, get_signal_status
     # Require authentication for this page
     user_info = require_authentication()
     render_user_info()
     imports_successful = True
-    news_components_available = True
 except ImportError as e:
-    st.warning("⚠️ Authentication or components modules not found - running in demo mode")
+    st.warning("⚠️ Authentication modules not found - running in demo mode")
     user_info = {"username": "demo", "role": "admin"}
     imports_successful = False
-    news_components_available = False
+    from pages.components.signal_table import render_signal_table, get_signal_status
 
-# Enhanced CSS styling for signals page
+# Clean, simple CSS styling
 st.markdown("""
 <style>
-    /* Professional title styling */
-    .signals-title {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+    /* Clean title styling */
+    .dashboard-title {
         font-size: 2.5rem;
-        font-weight: bold;
+        font-weight: 600;
         text-align: center;
+        color: #2c3e50;
         margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 3px solid #3498db;
     }
     
-    /* Enhanced metrics styling */
+    /* Simple metric cards */
     [data-testid="metric-container"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        padding: 1.2rem;
-        border-radius: 15px;
-        color: white;
-        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
-        transition: transform 0.2s ease;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
-    [data-testid="metric-container"]:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-    }
-    
-    [data-testid="metric-container"] > div {
-        color: white;
-    }
-    
-    [data-testid="metric-container"] label {
-        color: rgba(255, 255, 255, 0.9);
-        font-weight: 600;
-        font-size: 0.95rem;
-    }
-    
-    /* Signals table styling */
-    .signals-section {
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-        padding: 2rem;
-        border-radius: 20px;
-        margin: 1rem 0;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    }
-    
-    .signals-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+    /* Clean section headers */
+    .section-header {
         font-size: 1.5rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 2rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #3498db;
     }
     
-    /* Status indicators */
-    .status-section {
-        background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
-        padding: 1.5rem;
-        border-radius: 15px;
-        margin: 1rem 0;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    }
-    
-    .status-header {
-        color: #2d3436;
-        font-weight: bold;
-        font-size: 1.3rem;
-        margin-bottom: 1rem;
-    }
-    
-    /* Enhanced dataframe styling */
+    /* Simple table styling */
     .stDataFrame {
-        border-radius: 15px;
+        border-radius: 8px;
         overflow: hidden;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e9ecef;
     }
     
-    /* Button styling */
+    /* Clean button styling */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #3498db;
         color: white;
         border: none;
-        border-radius: 10px;
-        padding: 0.6rem 1.2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: background-color 0.2s;
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        background: #2980b9;
     }
     
-    /* Activity section styling */
-    .activity-section {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        padding: 1.5rem;
-        border-radius: 15px;
+    /* Status indicators */
+    .status-good { color: #27ae60; font-weight: 600; }
+    .status-warning { color: #f39c12; font-weight: 600; }
+    .status-bad { color: #e74c3c; font-weight: 600; }
+    
+    /* Clean info boxes */
+    .info-box {
+        background: #f8f9fa;
+        border-left: 4px solid #3498db;
+        padding: 1rem;
         margin: 1rem 0;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    }
-    
-    .activity-header {
-        color: #2d3436;
-        font-weight: bold;
-        font-size: 1.3rem;
-        margin-bottom: 1rem;
+        border-radius: 0 8px 8px 0;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="signals-title">📈 Live Trading Signals</h1>', unsafe_allow_html=True)
+# Main title
+st.markdown('<h1 class="dashboard-title">📈 Trading Signals Dashboard</h1>', unsafe_allow_html=True)
 
-# Helper function to call backend API with fallback for production
+# Helper function for API calls
 def call_api(endpoint, method="GET", data=None):
-    """Call backend API with development/production environment detection"""
-    import os
-    
+    """Call backend API with fallback to demo data"""
     try:
-        # Try local backend API (development environment)
         base_url = "http://0.0.0.0:8000"
         url = f"{base_url}{endpoint}"
         
@@ -176,746 +116,239 @@ def call_api(endpoint, method="GET", data=None):
         if response.status_code == 200:
             return response.json()
         else:
-            # If localhost fails, try alternative approaches
-            raise requests.exceptions.ConnectionError("Localhost not available")
+            raise requests.exceptions.ConnectionError("API not available")
             
-    except requests.exceptions.RequestException as e:
-        # Fallback for production environment - return mock data or handle differently
-        st.warning("⚠️ **Backend API unavailable** - Running in demo mode with sample data")
-        st.info("🧪 **Demo Mode Notice**: Signals shown are for testing purposes only and should not be used for actual trading decisions.")
-        return get_fallback_data(endpoint)
+    except requests.exceptions.RequestException:
+        st.info("🔄 Running in demo mode - using sample data")
+        return get_demo_data(endpoint)
 
-def is_forex_market_open() -> bool:
-    """Check if Forex market is currently open"""
+def is_forex_market_open():
+    """Simple market hours check"""
     now = datetime.utcnow()
     weekday = now.weekday()  # Monday = 0, Sunday = 6
     
-    # Market closed on weekends (Saturday = 5, Sunday = 6)
-    if weekday == 5:  # Saturday
+    # Market closed on weekends
+    if weekday >= 5:  # Saturday = 5, Sunday = 6
         return False
-    elif weekday == 6:  # Sunday
-        return False
-    elif weekday == 0:  # Monday - open from 00:00 UTC
-        return True
     elif weekday == 4:  # Friday - close at 22:00 UTC
         return now.hour < 22
-    else:  # Tuesday, Wednesday, Thursday - fully open
+    else:
         return True
 
-def get_fallback_data(endpoint):
-    """Provide fallback data when backend API is unavailable"""
-    from datetime import datetime, timedelta
+def get_demo_data(endpoint):
+    """Provide simple demo data with FIXED signal structure matching Signal model"""
     import random
     
     if "/api/signals/recent" in endpoint:
-        # Check if market is open - don't generate signals when market is closed
         if not is_forex_market_open():
-            return []  # Return empty list when market is closed
+            return []
         
-        # Generate sample signals for demo (TESTING ONLY)
-        sample_signals = []
+        # Demo signals with proper structure matching Signal model
+        signals = []
+        symbols = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD"]
+        strategies = ["ema_rsi", "donchian_atr", "meanrev_bb", "macd_strategy"]
         current_time = datetime.now()
         
-        symbols = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD"]
-        strategies = ["ema_rsi", "stochastic", "fibonacci", "macd", "bollinger"]
-        actions = ["BUY", "SELL"]
-        results = ["WIN", "LOSS", "PENDING"]
-        
-        for i in range(10):
-            signal_time = current_time - timedelta(minutes=random.randint(1, 120))
-            expire_time = signal_time + timedelta(minutes=30)
+        for i in range(8):  # Fewer signals for cleaner view
+            signal_time = current_time - timedelta(minutes=random.randint(5, 60))
+            expires_time = signal_time + timedelta(hours=random.randint(1, 4))
             
-            sample_signals.append({
+            signals.append({
                 "id": 100 + i,
                 "symbol": random.choice(symbols),
-                "action": random.choice(actions),
+                "action": random.choice(["BUY", "SELL"]),
                 "price": round(random.uniform(1.0, 150.0), 5),
                 "sl": round(random.uniform(1.0, 150.0), 5),
                 "tp": round(random.uniform(1.0, 150.0), 5),
-                "confidence": random.uniform(0.6, 0.95),
+                "confidence": random.uniform(0.65, 0.95),
                 "strategy": random.choice(strategies),
-                "result": random.choice(results),
                 "issued_at": signal_time.isoformat() + "Z",
-                "expires_at": expire_time.isoformat() + "Z",
-                "blocked_by_risk": random.choice([True, False]),
-                "risk_reason": "Demo mode - testing data only" if random.choice([True, False]) else None
+                "expires_at": expires_time.isoformat() + "Z",
+                "result": random.choice(["PENDING", "PENDING", "PENDING", "WIN", "LOSS", "EXPIRED"]),
+                "sent_to_whatsapp": random.choice([True, False, True]),
+                "blocked_by_risk": random.choice([False, False, False, True])
             })
         
-        return sample_signals
-        
+        return signals
+    
     elif "/api/risk/status" in endpoint:
         return {
             "kill_switch_enabled": False,
             "daily_loss_limit": 1000,
-            "current_daily_loss": random.randint(0, 300),
-            "volatility_guard_enabled": True,
-            "signal_quality_threshold": 0.7
+            "current_daily_loss": random.randint(50, 200),
+            "signals_today": random.randint(5, 15)
         }
-        
-    elif "/api/signals/success-rate" in endpoint:
+    
+    elif "/api/signals/stats" in endpoint:
         return {
-            "success_rate": random.randint(60, 85),
-            "total_signals": random.randint(50, 200),
-            "successful_signals": random.randint(30, 120),
-            "losing_signals": random.randint(10, 40),
-            "expired_signals": random.randint(5, 20),
-            "total_pips": round(random.uniform(100, 500), 1),
-            "avg_pips_per_trade": round(random.uniform(5, 25), 1)
+            "success_rate": random.randint(65, 85),
+            "total_signals_today": random.randint(8, 20),
+            "active_signals": random.randint(2, 6),
+            "buy_signals_today": random.randint(3, 12),
+            "sell_signals_today": random.randint(3, 12)
         }
-    
-    elif "/api/news/feed" in endpoint:
-        # Generate sample news articles for overview
-        sample_news = []
-        current_time = datetime.now()
-        
-        news_titles = [
-            "Federal Reserve Signals Interest Rate Changes",
-            "EUR/USD Reaches Key Support Level", 
-            "Asian Markets Show Mixed Results",
-            "Gold Prices Surge on Economic Uncertainty",
-            "Bitcoin Trading Volume Increases"
-        ]
-        
-        sources = ["Reuters", "Bloomberg", "MarketWatch"]
-        symbols = ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD"]
-        
-        for i, title in enumerate(news_titles[:3]):  # Only 3 for overview
-            published_time = current_time - timedelta(hours=random.randint(1, 24))
-            sentiment_score = random.uniform(-0.6, 0.6)
-            
-            sample_news.append({
-                "id": 2000 + i,
-                "title": title,
-                "summary": f"Sample news summary for {title}...",
-                "source": random.choice(sources),
-                "url": f"https://example.com/news/{2000 + i}",
-                "published_at": published_time.isoformat() + "Z",
-                "symbols": random.sample(symbols, random.randint(1, 2)),
-                "sentiment_score": sentiment_score,
-                "sentiment_confidence": random.uniform(0.7, 0.9)
-            })
-        
-        return sample_news
-    
-    elif "/api/news/sentiment-summary" in endpoint:
-        # Generate sentiment summary for overview
-        symbols = ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD"]
-        sentiment_data = []
-        
-        for symbol in symbols[:3]:  # Only 3 for overview
-            sentiment_data.append({
-                "symbol": symbol,
-                "sentiment": random.uniform(-0.5, 0.5),
-                "confidence": random.uniform(0.75, 0.9),
-                "article_count": random.randint(5, 15)
-            })
-        
-        return sentiment_data
     
     return None
 
 # Load data
-@st.cache_data(ttl=30)  # Cache for 30 seconds
-def load_recent_signals():
-    """Load recent signals from API"""
-    return call_api("/api/signals/recent?limit=20")
-
-@st.cache_data(ttl=30)  # Cache for 30 seconds
-def load_risk_status():
-    """Load risk status from API"""
-    return call_api("/api/risk/status")
-
-@st.cache_data(ttl=30)  # Cache for 30 seconds
-def load_success_rate():
-    """Load success rate statistics from API"""
-    return call_api("/api/signals/success-rate?days=30")
-
-@st.cache_data(ttl=60)  # Cache for 60 seconds
-def load_news_feed():
-    """Load recent news from API"""
-    return call_api("/api/news/feed?limit=5")
-
-@st.cache_data(ttl=60)  # Cache for 60 seconds  
-def load_market_sentiment():
-    """Load market sentiment summary from API"""
-    return call_api("/api/news/sentiment-summary")
+@st.cache_data(ttl=30)
+def load_dashboard_data():
+    """Load all dashboard data"""
+    return {
+        "signals": call_api("/api/signals/recent?limit=10"),
+        "risk_status": call_api("/api/risk/status"),
+        "stats": call_api("/api/signals/stats")
+    }
 
 # Auto-refresh setup
-import time
-
-# Add auto-refresh every 30 seconds
 if 'last_refresh' not in st.session_state:
-    st.session_state.last_refresh = time.time()
+    st.session_state.last_refresh = 0
 
-# Check if 30 seconds have passed
-current_time = time.time()
-if current_time - st.session_state.last_refresh > 30:
+current_time = datetime.now().timestamp()
+if current_time - st.session_state.last_refresh > 30:  # 30 second refresh
     st.cache_data.clear()
     st.session_state.last_refresh = current_time
-    st.rerun()
 
-# Load data
-recent_signals = load_recent_signals()
-risk_status = load_risk_status()
-success_rate = load_success_rate()
-news_articles = load_news_feed() if news_components_available else []
-market_sentiment = load_market_sentiment() if news_components_available else []
+# Load dashboard data
+data = load_dashboard_data()
+signals = data.get("signals", [])
+risk_status = data.get("risk_status", {})
+stats = data.get("stats", {})
 
-# Top metrics row
+# Quick Status Overview
+st.markdown('<div class="section-header">System Status</div>', unsafe_allow_html=True)
+
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    if risk_status:
-        kill_switch_status = "🔴 ON" if risk_status.get('kill_switch_enabled') else "🟢 OFF"
-        st.metric(
-            "Kill Switch", 
-            kill_switch_status,
-            delta="BLOCKED" if risk_status.get('kill_switch_enabled') else "ACTIVE"
-        )
-    else:
-        st.metric("Kill Switch", "❓ Unknown")
+    kill_switch = risk_status.get('kill_switch_enabled', False)
+    status = "🔴 STOPPED" if kill_switch else "🟢 ACTIVE"
+    st.metric("Trading Status", status)
 
 with col2:
-    if recent_signals:
-        last_signal_time = "Never"
-        if recent_signals and len(recent_signals) > 0:
-            last_issued = recent_signals[0].get('issued_at')
-            if last_issued:
-                dt = datetime.fromisoformat(last_issued.replace('Z', '+00:00'))
-                last_signal_time = dt.strftime("%H:%M UTC")
-        
-        st.metric("Last Signal", last_signal_time)
-    else:
-        st.metric("Last Signal", "❓ Unknown")
+    market_open = is_forex_market_open()
+    market_status = "🟢 OPEN" if market_open else "🔴 CLOSED"
+    st.metric("Market Status", market_status)
 
 with col3:
-    if recent_signals:
-        today_count = 0
-        today = datetime.now().date()
-        for signal in recent_signals:
-            signal_date = datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).date()
-            if signal_date == today:
-                today_count += 1
-        
-        st.metric("Today's Signals", today_count)
+    # Use FIXED metrics calculation from actual signals data
+    if signals:
+        active_count = sum(1 for s in signals if get_signal_status(s)[0].startswith('🟢'))
+        st.metric("Active Signals", active_count)
     else:
-        st.metric("Today's Signals", "❓")
+        today_signals = stats.get('total_signals_today', 0)
+        st.metric("Today's Signals", today_signals)
 
 with col4:
-    if success_rate:
-        success_pct = success_rate.get('success_rate', 0)
-        total_signals = success_rate.get('total_signals', 0)
-        
-        st.metric(
-            "Success Rate (30d)", 
-            f"{success_pct}%",
-            delta=f"{total_signals} signals"
-        )
-    else:
-        st.metric("Success Rate", "❓")
+    success_rate = stats.get('success_rate', 0)
+    st.metric("Success Rate", f"{success_rate}%")
 
 st.markdown("---")
 
-# Main content area
-col1, col2 = st.columns([2, 1])
+# Main signals table using FIXED component
+st.markdown('<div class="section-header">📊 Live Trading Signals</div>', unsafe_allow_html=True)
 
-with col1:
+if signals and len(signals) > 0:
+    # Use the FIXED signal table component with restored actions
+    render_signal_table(signals, title="", show_details=False, max_rows=10)
     
-    if recent_signals and len(recent_signals) > 0:
-        # Convert to DataFrame for display
-        df_data = []
-        current_time = datetime.now()
-        
-        for signal in recent_signals:
-            # Calculate signal timing
-            issued_at = datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).replace(tzinfo=None)
-            expires_at = datetime.fromisoformat(signal['expires_at'].replace('Z', '+00:00')).replace(tzinfo=None)
-            
-            # Calculate validity status
-            time_to_expiry = expires_at - current_time
-            if time_to_expiry.total_seconds() <= 0:
-                validity = "EXPIRED"
-            elif time_to_expiry.total_seconds() <= 300:  # Less than 5 minutes
-                minutes = int(time_to_expiry.total_seconds() / 60)
-                validity = f"{minutes}m LEFT" if minutes > 0 else "EXPIRING"
-            else:
-                minutes = int(time_to_expiry.total_seconds() / 60)
-                validity = f"ACTIVE ({minutes}m)"
-            
-            # Calculate execution urgency with advanced logic
-            signal_result = signal.get('result', 'PENDING')
-            is_blocked = signal.get('blocked_by_risk', False)
-            signal_age_minutes = (current_time - issued_at).total_seconds() / 60
-            confidence = signal.get('confidence', 0)
-            strategy = signal.get('strategy', '')
-            
-            # Base case: expired or blocked signals
-            if signal_result == 'EXPIRED' or time_to_expiry.total_seconds() <= 0:
-                urgency = "EXPIRED"
-            elif is_blocked:
-                urgency = "EXPIRED"
-            elif signal_result != 'PENDING':
-                urgency = "EXPIRED"  # Already executed (WIN/LOSS)
-            else:
-                # Advanced urgency calculation for active signals
-                urgency_score = 0
-                
-                # Time factor (0-40 points): More urgent as expiration approaches
-                time_remaining_minutes = time_to_expiry.total_seconds() / 60
-                if time_remaining_minutes <= 2:
-                    urgency_score += 40  # Critical time pressure
-                elif time_remaining_minutes <= 5:
-                    urgency_score += 35  # High time pressure
-                elif time_remaining_minutes <= 10:
-                    urgency_score += 25  # Medium time pressure
-                elif time_remaining_minutes <= 30:
-                    urgency_score += 15  # Some time pressure
-                else:
-                    urgency_score += 5   # Low time pressure
-                
-                # Confidence factor (0-25 points): Higher confidence = higher urgency
-                if confidence >= 0.85:
-                    urgency_score += 25  # Very high confidence
-                elif confidence >= 0.75:
-                    urgency_score += 20  # High confidence
-                elif confidence >= 0.65:
-                    urgency_score += 15  # Medium confidence
-                elif confidence >= 0.55:
-                    urgency_score += 10  # Low confidence
-                else:
-                    urgency_score += 0   # Very low confidence
-                
-                # Freshness factor (0-20 points): Fresher signals are more urgent
-                if signal_age_minutes <= 1:
-                    urgency_score += 20  # Very fresh
-                elif signal_age_minutes <= 3:
-                    urgency_score += 15  # Fresh
-                elif signal_age_minutes <= 5:
-                    urgency_score += 10  # Moderately fresh
-                elif signal_age_minutes <= 10:
-                    urgency_score += 5   # Getting old
-                else:
-                    urgency_score += 0   # Old signal
-                
-                # Strategy factor (0-15 points): Some strategies are more time-sensitive
-                time_sensitive_strategies = ['EMAStrategy', 'MACDStrategy', 'RSIStrategy']
-                moderate_strategies = ['DonchianATRStrategy', 'BollingerBandsStrategy']
-                
-                if strategy in time_sensitive_strategies:
-                    urgency_score += 15  # Very time-sensitive
-                elif strategy in moderate_strategies:
-                    urgency_score += 10  # Moderately time-sensitive
-                else:
-                    urgency_score += 5   # Standard time-sensitivity
-                
-                # Determine urgency level based on total score (0-100)
-                if urgency_score >= 80:
-                    urgency = "CRITICAL"  # 🔴 Immediate action required
-                elif urgency_score >= 65:
-                    urgency = "HIGH"      # 🟠 Act quickly
-                elif urgency_score >= 45:
-                    urgency = "MEDIUM"    # 🟡 Act soon
-                elif urgency_score >= 25:
-                    urgency = "LOW"       # 🟢 Can wait
-                else:
-                    urgency = "MINIMAL"   # ⚪ Low priority
-                
-            df_data.append({
-                'Time': issued_at.strftime("%H:%M:%S"),
-                'Symbol': signal.get('symbol', 'N/A'),
-                'Action': signal.get('action', 'N/A'),
-                'Price': f"{signal.get('price', 0):.5f}",
-                'Validity': validity,
-                'Urgency': urgency,
-                'SL': f"{signal.get('sl', 0):.5f}" if signal.get('sl') else 'N/A',
-                'TP': f"{signal.get('tp', 0):.5f}" if signal.get('tp') else 'N/A',
-                'Confidence': f"{signal.get('confidence', 0):.0%}",
-                'Strategy': signal.get('strategy', 'N/A'),
-                'Result': signal.get('result', 'PENDING'),
-                'Blocked': "🚫" if signal.get('blocked_by_risk') else "✅"
-            })
-        
-        df = pd.DataFrame(df_data)
-        
-        # Enhanced styling for the signals table
-        def style_signal_table(val):
-            if val == 'BUY':
-                return 'background-color: #28a745; color: white; font-weight: bold; padding: 8px; border-radius: 8px;'
-            elif val == 'SELL':
-                return 'background-color: #dc3545; color: white; font-weight: bold; padding: 8px; border-radius: 8px;'
-            return ''
-        
-        def style_result(val):
-            if val == 'WIN':
-                return 'background-color: #20c997; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
-            elif val == 'LOSS':
-                return 'background-color: #e74c3c; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
-            elif val == 'PENDING':
-                return 'background-color: #ffc107; color: #212529; font-weight: bold; padding: 5px; border-radius: 5px;'
-            return ''
-        
-        def style_blocked(val):
-            if val == '🚫':
-                return 'background-color: #6c757d; padding: 5px; border-radius: 5px;'
-            elif val == '✅':
-                return 'background-color: #28a745; padding: 5px; border-radius: 5px;'
-            return ''
-            
-        def style_validity(val):
-            if 'EXPIRED' in val or 'EXPIRING' in val:
-                return 'background-color: #dc3545; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
-            elif 'LEFT' in val and int(val.split('m')[0]) <= 5:
-                return 'background-color: #fd7e14; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
-            elif 'ACTIVE' in val:
-                return 'background-color: #28a745; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
-            return ''
-            
-        def style_urgency(val):
-            if val == 'CRITICAL':
-                return 'background-color: #dc3545; color: white; font-weight: bold; padding: 8px; border-radius: 8px; box-shadow: 0 0 10px #dc3545;'
-            elif val == 'HIGH':
-                return 'background-color: #fd7e14; color: white; font-weight: bold; padding: 6px; border-radius: 6px;'
-            elif val == 'MEDIUM':
-                return 'background-color: #ffc107; color: #212529; font-weight: bold; padding: 5px; border-radius: 5px;'
-            elif val == 'LOW':
-                return 'background-color: #20c997; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
-            elif val == 'MINIMAL':
-                return 'background-color: #e9ecef; color: #495057; font-weight: bold; padding: 5px; border-radius: 5px;'
-            elif val == 'EXPIRED':
-                return 'background-color: #6c757d; color: white; font-weight: bold; padding: 5px; border-radius: 5px;'
-            # Legacy support for old urgency values
-            elif val == 'NOW':
-                return 'background-color: #dc3545; color: white; font-weight: bold; padding: 8px; border-radius: 8px; box-shadow: 0 0 10px #dc3545;'
-            elif val == 'PENDING':
-                return 'background-color: #ffc107; color: #212529; font-weight: bold; padding: 5px; border-radius: 5px;'
-            return ''
-        
-        styled_df = df.style.map(style_signal_table, subset=['Action']) \
-                           .map(style_result, subset=['Result']) \
-                           .map(style_blocked, subset=['Blocked']) \
-                           .map(style_validity, subset=['Validity']) \
-                           .map(style_urgency, subset=['Urgency'])
-                           
-        st.markdown('<div class="signals-section">', unsafe_allow_html=True)
-        st.markdown('<h3 class="signals-header">🎯 Recent Signals</h3>', unsafe_allow_html=True)
-        st.dataframe(styled_df, use_container_width=True, hide_index=True, height=400)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Quick action buttons for recent signals
-        st.markdown('<h3 class="signals-header">🚀 Quick Actions</h3>', unsafe_allow_html=True)
-        
-        # Signal management actions
-        if st.button("🔄 Refresh Signal Data", use_container_width=True):
-            st.cache_data.clear()
-            st.success("✅ Signal data refreshed!")
-            st.rerun()
+    # FIXED action buttons with proper metrics
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
     
-    else:
-        st.info("No recent signals found. The system may be starting up or no signals have been generated yet.")
-        
+    with col1:
         if st.button("🔄 Refresh", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-
-with col2:
-    st.markdown('<div class="status-section">', unsafe_allow_html=True)
-    st.markdown('<h3 class="status-header">🛡️ System Status</h3>', unsafe_allow_html=True)
     
-    # Risk status
-    if risk_status:
-        st.metric("Daily Loss Limit", f"${risk_status.get('daily_loss_limit', 0):.0f}")
-        st.metric("Volatility Guard", "🟢 ON" if risk_status.get('volatility_guard_enabled') else "🔴 OFF")
-        
-        # Progress bar for daily loss
+    with col2:
+        # Use FIXED status calculation
+        active_count = sum(1 for s in signals if get_signal_status(s)[0].startswith('🟢'))
+        st.metric("Active Signals", active_count)
+    
+    with col3:
+        buy_count = sum(1 for s in signals if s.get('action') == 'BUY')
+        st.metric("Buy Signals", buy_count)
+    
+    with col4:
+        sell_count = sum(1 for s in signals if s.get('action') == 'SELL')
+        st.metric("Sell Signals", sell_count)
+
+else:
+    # Market closed or no signals message
+    if not is_forex_market_open():
+        st.markdown("""
+        <div class="info-box">
+            <h4>🌙 Market is Currently Closed</h4>
+            <p>The Forex market is closed on weekends. Trading signals will resume when the market opens.</p>
+            <p><strong>Market Hours:</strong> Sunday 22:00 UTC - Friday 22:00 UTC</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="info-box">
+            <h4>📊 No Active Signals</h4>
+            <p>No trading signals are currently available. The system is monitoring the market and will generate signals when conditions are met.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    if st.button("🔄 Check for New Signals", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+
+# Risk Management Summary
+st.markdown("---")
+st.markdown('<div class="section-header">🛡️ Risk Management</div>', unsafe_allow_html=True)
+
+if risk_status:
+    col1, col2 = st.columns(2)
+    
+    with col1:
         daily_loss = risk_status.get('current_daily_loss', 0)
         loss_limit = risk_status.get('daily_loss_limit', 1000)
+        remaining = loss_limit - daily_loss
+        
+        st.metric("Daily Loss Limit", f"${loss_limit:.0f}")
+        st.metric("Remaining Budget", f"${remaining:.0f}")
+        
+        # Simple progress bar
         if loss_limit > 0:
             progress = min(daily_loss / loss_limit, 1.0)
             st.progress(progress)
-            st.caption(f"Daily Loss: ${daily_loss:.0f} / ${loss_limit:.0f}")
+            st.caption(f"Used: ${daily_loss:.0f} of ${loss_limit:.0f}")
     
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Symbol performance today
-    st.markdown('<div class="activity-section">', unsafe_allow_html=True)
-    st.markdown('<h3 class="activity-header">📊 Today\'s Activity</h3>', unsafe_allow_html=True)
-    
-    if recent_signals:
-        symbol_counts = {}
-        today = datetime.now().date()
+    with col2:
+        st.metric("Kill Switch", "🔴 ON" if risk_status.get('kill_switch_enabled') else "🟢 OFF")
         
-        for signal in recent_signals:
-            signal_date = datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).date()
-            if signal_date == today:
-                symbol = signal.get('symbol', 'Unknown')
-                symbol_counts[symbol] = symbol_counts.get(symbol, 0) + 1
-        
-        if symbol_counts:
-            for symbol, count in symbol_counts.items():
-                st.metric(f"{symbol} Signals", count)
+        # Simple risk status indicator
+        if daily_loss / loss_limit > 0.8:
+            st.error("⚠️ High risk exposure - approaching daily limit")
+        elif daily_loss / loss_limit > 0.6:
+            st.warning("⚠️ Moderate risk exposure")
         else:
-            st.info("No signals today")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Performance Chart
-    st.markdown('<div class="activity-section">', unsafe_allow_html=True)
-    st.markdown('<h3 class="activity-header">📈 Performance Chart</h3>', unsafe_allow_html=True)
-    
-    if success_rate and success_rate.get('total_signals', 0) > 0:
-        # Create performance pie chart
-        labels = ['Successful', 'Losses', 'Expired/Pending']
-        values = [
-            success_rate.get('successful_signals', 0),
-            success_rate.get('losing_signals', 0), 
-            success_rate.get('expired_signals', 0) + max(0, success_rate.get('total_signals', 0) - success_rate.get('successful_signals', 0) - success_rate.get('losing_signals', 0))
-        ]
-        colors = ['#28a745', '#dc3545', '#ffc107']
-        
-        fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=0.4)])
-        fig.update_traces(marker=dict(colors=colors, line=dict(color='white', width=2)))
-        fig.update_layout(
-            title="Signal Performance Distribution",
-            showlegend=True,
-            height=350,
-            margin=dict(t=50, b=0, l=0, r=0),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='#2d3436')
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Performance metrics
-        col_a, col_b, col_c = st.columns(3)
-        with col_a:
-            st.metric("Total Pips", f"{success_rate.get('total_pips', 0):.1f}")
-        with col_b:
-            st.metric("Avg Per Trade", f"{success_rate.get('avg_pips_per_trade', 0):.1f}")
-        with col_c:
-            success_pct = success_rate.get('success_rate', 0)
-            delta_color = "normal" if success_pct >= 60 else "inverse"
-            st.metric("Win Rate", f"{success_pct}%", delta=f"{'🔥' if success_pct >= 70 else '📈' if success_pct >= 60 else '⚠️'}")
-    else:
-        st.info("📊 Performance data will appear once signals are evaluated")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Recent activity feed
-    st.markdown('<div class="activity-section">', unsafe_allow_html=True)
-    st.markdown('<h3 class="activity-header">⚡ Recent Activity</h3>', unsafe_allow_html=True)
-    
-    if recent_signals and len(recent_signals) >= 5:
-        for i in range(5):
-            signal = recent_signals[i]
-            time_str = datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00')).strftime("%H:%M")
-            action_emoji = "🟢" if signal['action'] == 'BUY' else "🔴"
-            result_emoji = {"WIN": "✅", "LOSS": "❌", "PENDING": "⏳"}.get(signal.get('result', 'PENDING'), "⏳")
-            
-            with st.container():
-                col_time, col_signal, col_result = st.columns([1, 2, 1])
-                with col_time:
-                    st.write(f"**{time_str}**")
-                with col_signal:
-                    st.write(f"{action_emoji} **{signal.get('symbol', 'N/A')}** {signal.get('action', 'N/A')} @ {signal.get('price', 0):.5f}")
-                with col_result:
-                    st.write(f"{result_emoji} {signal.get('result', 'PENDING')}")
-                    
-                st.markdown("---")
-    else:
-        st.info("No recent activity - signals will appear here as they are generated")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-# Sidebar with News Feed and Lot Calculator
-with st.sidebar:
-    # News Feed Widget
-    if news_components_available and news_articles:
-        render_news_summary_widget(news_articles, max_items=3)
-    elif news_articles:
-        # Fallback news display when components aren't available
-        st.markdown("""
-        <div style="
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 1rem;
-            border-radius: 15px;
-            margin: 1rem 0;
-            color: white;
-        ">
-            <h3 style="margin: 0 0 1rem 0; color: white;">📰 Latest News</h3>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        for article in news_articles[:3]:
-            with st.expander(f"📰 {article.get('title', 'No Title')[:50]}..."):
-                st.write(f"**Source:** {article.get('source', 'Unknown')}")
-                published_time = "Unknown"
-                if article.get('published_at'):
-                    try:
-                        dt = datetime.fromisoformat(article['published_at'].replace('Z', '+00:00'))
-                        published_time = dt.strftime("%m/%d %H:%M")
-                    except:
-                        published_time = str(article['published_at'])[:16]
-                st.write(f"**Published:** {published_time}")
-                st.write(f"**Summary:** {article.get('summary', 'No summary')[:100]}...")
-                
-                # Simple sentiment display
-                sentiment = article.get('sentiment_score', 0)
-                if sentiment > 0.1:
-                    st.success(f"😊 Positive Sentiment: {sentiment:.2f}")
-                elif sentiment < -0.1:
-                    st.error(f"😞 Negative Sentiment: {sentiment:.2f}")
-                else:
-                    st.info(f"😐 Neutral Sentiment: {sentiment:.2f}")
-    
-    # Market Sentiment Widget  
-    if news_components_available and market_sentiment:
-        render_market_sentiment_widget(market_sentiment)
-    elif market_sentiment:
-        # Fallback sentiment display
-        st.markdown("""
-        <div style="
-            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-            padding: 1rem;
-            border-radius: 15px;
-            margin: 1rem 0;
-            color: #2d3436;
-        ">
-            <h3 style="margin: 0 0 1rem 0; color: #2d3436;">📊 Market Sentiment</h3>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        for item in market_sentiment:
-            symbol = item.get('symbol', 'Unknown')
-            sentiment = item.get('sentiment', 0)
-            confidence = item.get('confidence', 0)
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric(symbol, f"{sentiment:.3f}")
-            with col2:
-                st.metric("Confidence", f"{confidence:.1%}")
-    
-    # View full news page button
-    if st.button("📰 View All News", use_container_width=True):
-        st.switch_page("pages/7_news.py")
-    st.markdown("---")
-    st.markdown("### 💰 Lot Size Calculator")
-    
-    with st.container():
-        # Account settings
-        account_size = st.number_input(
-            "Account Balance ($)",
-            min_value=100.0,
-            max_value=1000000.0,
-            value=10000.0,
-            step=100.0,
-            help="Your total trading account balance"
-        )
-        
-        risk_percent = st.slider(
-            "Risk per Trade (%)",
-            min_value=0.5,
-            max_value=5.0,
-            value=2.0,
-            step=0.1,
-            help="Percentage of account to risk per trade (recommended: 1-3%)"
-        )
-        
-        stop_loss_pips = st.number_input(
-            "Stop Loss (pips)",
-            min_value=5,
-            max_value=200,
-            value=20,
-            step=1,
-            help="Stop loss distance in pips"
-        )
-        
-        # Currency pair selection for pip value
-        currency_pair = st.selectbox(
-            "Currency Pair",
-            ["EURUSD", "GBPUSD", "AUDUSD", "NZDUSD", "USDCAD", "USDCHF", "USDJPY"],
-            help="Select currency pair to calculate pip value"
-        )
-        
-        # Calculate lot size
-        if st.button("📊 Calculate Lot Size", use_container_width=True):
-            # Risk amount in dollars
-            risk_amount = account_size * (risk_percent / 100)
-            
-            # Pip value calculation (simplified)
-            if currency_pair in ["EURUSD", "GBPUSD", "AUDUSD", "NZDUSD"]:
-                pip_value_per_lot = 10  # $10 per pip for 1 standard lot
-            elif currency_pair in ["USDCAD", "USDCHF"]:
-                pip_value_per_lot = 10  # Approximately $10 per pip
-            elif currency_pair == "USDJPY":
-                pip_value_per_lot = 9.09  # Approximately $9.09 per pip (varies with rate)
-            else:
-                pip_value_per_lot = 10  # Default
-            
-            # Calculate lot size
-            # Lot Size = Risk Amount / (Stop Loss Pips × Pip Value per Lot)
-            lot_size = risk_amount / (stop_loss_pips * pip_value_per_lot)
-            
-            # Display results
-            st.success("📈 **Position Size Results:**")
-            
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.metric("Risk Amount", f"${risk_amount:.2f}")
-                st.metric("Standard Lots", f"{lot_size:.2f}")
-            
-            with col_b:
-                st.metric("Mini Lots", f"{lot_size * 10:.1f}")
-                st.metric("Micro Lots", f"{lot_size * 100:.0f}")
-            
-            # Position size recommendations
-            if lot_size >= 1.0:
-                st.info(f"💡 **Recommendation:** Trade {lot_size:.2f} standard lots")
-            elif lot_size >= 0.1:
-                mini_lots = lot_size * 10
-                st.info(f"💡 **Recommendation:** Trade {mini_lots:.1f} mini lots (0.{mini_lots:.0f})")
-            else:
-                micro_lots = lot_size * 100
-                st.info(f"💡 **Recommendation:** Trade {micro_lots:.0f} micro lots (0.0{micro_lots:.0f})")
-            
-            # Risk warning
-            if risk_percent > 3.0:
-                st.warning("⚠️ **High Risk:** Consider reducing risk percentage below 3%")
-            elif risk_percent < 1.0:
-                st.info("ℹ️ **Conservative:** Very low risk approach")
-    
-    # Position sizing tips
-    with st.expander("📚 Position Sizing Tips"):
-        st.markdown("""
-        **Risk Management Guidelines:**
-        - **Conservative:** 1% risk per trade
-        - **Moderate:** 2% risk per trade  
-        - **Aggressive:** 3% risk per trade
-        - **Never exceed:** 5% risk per trade
-        
-        **Lot Size Types:**
-        - **Standard Lot:** 100,000 units
-        - **Mini Lot:** 10,000 units (0.1)
-        - **Micro Lot:** 1,000 units (0.01)
-        
-        **Formula:**
-        `Lot Size = Risk Amount ÷ (Stop Loss Pips × Pip Value)`
-        """)
-        
-    st.markdown("---")
-    
-# Footer with enhanced styling
+            st.success("✅ Low risk exposure")
+
+# Quick Navigation
 st.markdown("---")
-st.markdown('<div class="footer-section">', unsafe_allow_html=True)
+st.markdown('<div class="section-header">⚡ Quick Actions</div>', unsafe_allow_html=True)
+
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("🔄 Auto-refresh", "30s", delta="Active")
+    if st.button("⚙️ Configure Strategies", use_container_width=True):
+        st.switch_page("pages/2_strategies.py")
 
 with col2:
-    st.metric("📊 Signal Engine", "Running", delta="7 Strategies")
+    if st.button("🛡️ Risk Settings", use_container_width=True):
+        st.switch_page("pages/3_risk.py")
 
 with col3:
-    st.metric("📅 Last Updated", datetime.now().strftime('%H:%M:%S'), delta="Live Data")
+    if st.button("📰 Market News", use_container_width=True):
+        st.switch_page("pages/7_news.py")
 
-st.markdown('</div>', unsafe_allow_html=True)
+# Footer
+st.markdown("---")
+st.markdown(f"""
+<div style="text-align: center; color: #7f8c8d; font-size: 0.9rem;">
+    Last updated: {datetime.now().strftime('%H:%M:%S')} | Auto-refresh every 30 seconds
+</div>
+""", unsafe_allow_html=True)

@@ -123,6 +123,50 @@ async def get_recent_signals(
     signals = query.order_by(Signal.issued_at.desc()).limit(limit).all()
     return [SignalResponse.from_orm(signal) for signal in signals]
 
+@app.post("/api/signals/{signal_id}/test")
+async def test_signal(
+    signal_id: int,
+    db: Session = Depends(get_db)
+):
+    """Test signal formatting and validation"""
+    signal = db.query(Signal).filter(Signal.id == signal_id).first()
+    if not signal:
+        raise HTTPException(status_code=404, detail="Signal not found")
+    
+    # Format signal text for testing
+    signal_text = f"{signal.symbol} {signal.action} @ {signal.price:.5f} | SL {signal.sl or 'N/A'} | TP {signal.tp or 'N/A'} | conf {signal.confidence:.2f}"
+    
+    logger.info(f"Signal {signal_id} test message generated: {signal_text}")
+    
+    return {
+        "status": "success",
+        "signal_id": signal_id,
+        "test_message": signal_text,
+        "formatted_at": datetime.utcnow().isoformat()
+    }
+
+@app.post("/api/signals/{signal_id}/resend")
+async def resend_signal(
+    signal_id: int,
+    db: Session = Depends(get_db)
+):
+    """Resend signal (placeholder for WhatsApp integration)"""
+    signal = db.query(Signal).filter(Signal.id == signal_id).first()
+    if not signal:
+        raise HTTPException(status_code=404, detail="Signal not found")
+    
+    logger.info(f"Signal {signal_id} resend requested for {signal.symbol} {signal.action}")
+    
+    # In a real implementation, this would trigger WhatsApp/Telegram send
+    # For now, we'll just mark it as a successful operation
+    
+    return {
+        "status": "success",
+        "signal_id": signal_id,
+        "message": f"Signal {signal_id} marked for resend",
+        "resent_at": datetime.utcnow().isoformat()
+    }
+
 
 @app.post("/api/risk/killswitch")
 async def toggle_killswitch(

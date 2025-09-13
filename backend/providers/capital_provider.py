@@ -25,9 +25,8 @@ class CapitalProvider(BaseDataProvider):
     def __init__(self):
         super().__init__()
         self.name = "Capital.com"
-        self.base_url = os.getenv('CAPITAL_DEMO_MODE', 'true').lower() == 'true' and \
-                       "https://demo-api-capital.backend-capital.com" or \
-                       "https://api-capital.backend-capital.com"
+        # Use production Capital.com API for real live market data
+        self.base_url = "https://api-capital.backend-capital.com"
         
         # API credentials from environment
         self.api_key = os.getenv('CAPITAL_API_KEY')

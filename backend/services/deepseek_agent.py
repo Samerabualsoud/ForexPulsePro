@@ -202,12 +202,28 @@ Provide JSON response:
                 'max_tokens': 1000
             }
             
-            response = requests.post(
-                f"{self.client['base_url']}/chat/completions",
-                headers=headers,
-                json=data,
-                timeout=10  # Reduced from 30s to 10s for better reliability
-            )
+            # Retry logic for better reliability
+            max_retries = 2
+            response = None
+            for attempt in range(max_retries + 1):
+                try:
+                    response = requests.post(
+                        f"{self.client['base_url']}/chat/completions",
+                        headers=headers,
+                        json=data,
+                        timeout=15  # Increased from 10s to 15s
+                    )
+                    break  # Success, exit retry loop
+                except Exception as e:
+                    if attempt == max_retries:
+                        logger.error(f"DeepSeek API failed after {max_retries + 1} attempts: {e}")
+                        return None
+                    logger.warning(f"DeepSeek API retry {attempt + 1}/{max_retries}: {e}")
+                    import time
+                    time.sleep(1)  # Brief delay before retry
+            
+            if response is None:
+                return None
             
             if response.status_code == 200:
                 result = response.json()

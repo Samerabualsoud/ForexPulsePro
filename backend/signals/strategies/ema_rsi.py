@@ -35,7 +35,7 @@ class EMAStragey:
             min_confidence = config.get('min_confidence', 0.35)  # Lower minimum
             
             # Calculate indicators
-            close_prices = data['close'].values
+            close_prices = np.asarray(data['close'].values, dtype=np.float64)
             ema_fast_values = ta.EMA(close_prices, timeperiod=ema_fast)
             ema_slow_values = ta.EMA(close_prices, timeperiod=ema_slow)
             rsi_values = ta.RSI(close_prices, timeperiod=rsi_period)

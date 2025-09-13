@@ -139,6 +139,9 @@ class MultiAIConsensus:
     async def _run_deepseek_analysis(self, symbol: str, market_data: pd.DataFrame, current_price: float) -> Dict[str, Any]:
         """Run DeepSeek sentiment and reasoning analysis"""
         try:
+            if self.deepseek_agent is None:
+                logger.warning("DeepSeek agent not available")
+                return {}
             analysis = await self.deepseek_agent.analyze_market_sentiment(symbol, market_data, current_price)
             return {'deepseek_reasoning': analysis}
         except Exception as e:

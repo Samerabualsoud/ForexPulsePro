@@ -1,7 +1,7 @@
 """
 Comprehensive Prometheus Metrics for Forex Signal Dashboard
 """
-from prometheus_client import Counter, Histogram, Gauge, Info, Enum
+from prometheus_client import Counter, Histogram, Gauge, Info, Enum, CollectorRegistry, REGISTRY
 import time
 import psutil
 from datetime import datetime
@@ -13,7 +13,18 @@ logger = get_logger(__name__)
 class PrometheusMetrics:
     """Central metrics collection for the Forex Signal Dashboard"""
     
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(PrometheusMetrics, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self):
+        if hasattr(self, '_initialized'):
+            return
+        self._initialized = True
+        
         # ============================
         # SIGNAL GENERATION METRICS
         # ============================

@@ -253,9 +253,10 @@ class SignalEngine:
             
             # Get AI strategy recommendations using enhanced multi-AI system
             if self.enable_multi_ai and self.multi_ai_consensus:
-                consensus_recommendations = await self._get_multi_ai_recommendations(symbol, data, [s.name for s in strategies])
+                consensus_recommendations = await self._get_multi_ai_recommendations(symbol, data, [str(s.name) for s in strategies])
             elif self.enable_dual_ai and CHATGPT_AVAILABLE:
-                consensus_recommendations = await self._get_ai_consensus_recommendations(symbol, data, [s.name for s in strategies])
+                # Fallback to Manus AI for legacy ChatGPT mode
+                consensus_recommendations = await self._get_manus_ai_recommendations(symbol, data)
             else:
                 # Fallback to single Manus AI
                 consensus_recommendations = await self._get_manus_ai_recommendations(symbol, data)
@@ -263,24 +264,24 @@ class SignalEngine:
             # Process each strategy
             for strategy_config in strategies:
                 # Check if strategy is suitable for current regime
-                if not regime_detector.is_regime_suitable_for_strategy(regime_data['regime'], strategy_config.name):
+                if not regime_detector.is_regime_suitable_for_strategy(regime_data['regime'], str(strategy_config.name)):
                     logger.debug(f"Strategy {strategy_config.name} skipped for {symbol} - unsuitable for {regime_data['regime']} regime")
                     continue
                 
                 # CRITICAL: Check AI strategy guardrails - actively block "avoid" strategies
                 if CHATGPT_AVAILABLE:
-                    should_block, block_reason = self._should_block_strategy_ai_consensus(strategy_config.name, consensus_recommendations)
+                    should_block, block_reason = self._should_block_strategy_ai_consensus(str(strategy_config.name), consensus_recommendations)
                 else:
-                    should_block, block_reason = self._should_block_strategy(strategy_config.name, consensus_recommendations)
+                    should_block, block_reason = self._should_block_strategy(str(strategy_config.name), consensus_recommendations)
                 if should_block:
                     logger.warning(f"Strategy {strategy_config.name} BLOCKED for {symbol}: {block_reason}")
                     continue
                 
                 # Check AI recommendations for strategy prioritization
                 if CHATGPT_AVAILABLE:
-                    should_prioritize, ai_reason = self._should_prioritize_strategy_ai_consensus(strategy_config.name, consensus_recommendations)
+                    should_prioritize, ai_reason = self._should_prioritize_strategy_ai_consensus(str(strategy_config.name), consensus_recommendations)
                 else:
-                    should_prioritize, ai_reason = self._should_prioritize_strategy(strategy_config.name, consensus_recommendations)
+                    should_prioritize, ai_reason = self._should_prioritize_strategy(str(strategy_config.name), consensus_recommendations)
                 if should_prioritize:
                     logger.info(f"Strategy {strategy_config.name} prioritized for {symbol}: {ai_reason}")
                 
@@ -442,13 +443,13 @@ class SignalEngine:
             risk_check = risk_manager.check_signal(signal, data)
             
             if not risk_check['allowed']:
-                signal.blocked_by_risk = True
-                signal.risk_reason = risk_check['reason']
+                signal.blocked_by_risk = True  # type: ignore[assignment]
+                signal.risk_reason = risk_check['reason']  # type: ignore[assignment]
                 logger.info(f"Signal blocked by risk management: {risk_check['reason']}")
             else:
                 
                 # Automatic trade execution if enabled and confidence threshold met
-                if self.auto_trade_enabled and signal.confidence >= self.confidence_threshold:
+                if self.auto_trade_enabled and signal.confidence >= self.confidence_threshold:  # type: ignore[operator]
                     try:
                         await self._execute_auto_trade(signal, db)
                     except Exception as e:
@@ -499,7 +500,10 @@ class SignalEngine:
                 return
             
             # Run multi-AI consensus analysis
-            consensus = await self.multi_ai_consensus.generate_enhanced_signal_analysis(symbol, data, base_signal)
+            if self.multi_ai_consensus is not None:
+                consensus = await self.multi_ai_consensus.generate_enhanced_signal_analysis(symbol, data, base_signal)
+            else:
+                consensus = {'final_confidence': base_signal.get('confidence', 0.5), 'consensus_level': 0.0}
             
             # Derive final action and confidence from multi-AI consensus
             final_action = base_signal['action']
@@ -561,26 +565,26 @@ class SignalEngine:
             if risk_flags:
                 high_severity_flags = [flag for flag in risk_flags if flag.get('severity', 'low') == 'high']
                 if high_severity_flags:
-                    signal.blocked_by_risk = True
-                    signal.risk_reason = f"Multi-AI risk flags: {', '.join([f['type'] for f in high_severity_flags])}"
+                    signal.blocked_by_risk = True  # type: ignore[assignment]
+                    signal.risk_reason = f"Multi-AI risk flags: {', '.join([f['type'] for f in high_severity_flags])}"  # type: ignore[assignment]
                     logger.info(f"Signal blocked by multi-AI risk flags: {signal.risk_reason}")
                 else:
                     # Apply confidence penalty for lower severity risk flags
-                    signal.confidence = max(0.0, signal.confidence - 0.1)
+                    signal.confidence = max(0.0, signal.confidence - 0.1)  # type: ignore[assignment]
                     logger.info(f"Multi-AI risk flags applied confidence penalty: {[f['type'] for f in risk_flags]}")
             
             # Apply standard risk management
-            if not signal.blocked_by_risk:
+            if not signal.blocked_by_risk:  # type: ignore[truthy-bool]
                 risk_manager = RiskManager(db)
                 risk_check = risk_manager.check_signal(signal, data)
                 
                 if not risk_check['allowed']:
-                    signal.blocked_by_risk = True
-                    signal.risk_reason = risk_check['reason']
+                    signal.blocked_by_risk = True  # type: ignore[assignment]
+                    signal.risk_reason = risk_check['reason']  # type: ignore[assignment]
                     logger.info(f"Signal blocked by risk management: {risk_check['reason']}")
                 else:
                     # Automatic trade execution if enabled and confidence threshold met
-                    if self.auto_trade_enabled and signal.confidence >= self.confidence_threshold:
+                    if self.auto_trade_enabled and signal.confidence >= self.confidence_threshold:  # type: ignore[operator]
                         try:
                             await self._execute_auto_trade(signal, db)
                         except Exception as e:
@@ -596,6 +600,7 @@ class SignalEngine:
                        f"agents: {consensus.get('participating_agents', 0)})")
             
         except Exception as e:
+            strategy_name = getattr(strategy_config, 'name', 'unknown') if 'strategy_config' in locals() else 'unknown'
             logger.error(f"Error processing strategy {strategy_name} for {symbol} with multi-AI: {e}")
             db.rollback()
     
@@ -614,7 +619,7 @@ class SignalEngine:
     async def _execute_auto_trade(self, signal: Signal, db: Session):
         """Execute automatic trade for high-confidence signals"""
         try:
-            logger.info(f"Executing auto-trade for signal {signal.id}: {signal.action} {signal.symbol} @ {signal.price} (confidence: {signal.confidence:.1%})")
+            logger.info(f"Executing auto-trade for signal {signal.id}: {signal.action} {signal.symbol} @ {signal.price} (confidence: {signal.confidence:.1%})")  # type: ignore[misc]
             
             # Determine order type
             if signal.action == 'BUY':
@@ -622,18 +627,18 @@ class SignalEngine:
             elif signal.action == 'SELL':
                 order_type = OrderType.MARKET_SELL
             else:
-                raise ValueError(f"Unknown signal action: {signal.action}")
+                raise ValueError(f"Unknown signal action: {signal.action}")  # type: ignore[misc]
             
             # Create order request
             order_request = OrderRequest(
-                symbol=signal.symbol,
+                symbol=signal.symbol,  # type: ignore[arg-type]
                 order_type=order_type,
                 volume=self.default_lot_size,
                 price=None,  # Market order
-                stop_loss=signal.sl,
-                take_profit=signal.tp,
+                stop_loss=signal.sl,  # type: ignore[arg-type]
+                take_profit=signal.tp,  # type: ignore[arg-type]
                 comment=f"AutoTrade-{signal.id}-{signal.strategy}",
-                magic_number=234000 + signal.id  # Unique magic number
+                magic_number=234000 + signal.id  # type: ignore[operator]  # Unique magic number
             )
             
             # Execute order through MT5 bridge
@@ -641,26 +646,26 @@ class SignalEngine:
             
             if execution_result.success:
                 # Update signal with execution details
-                signal.auto_traded = True
-                signal.broker_ticket = execution_result.ticket
-                signal.executed_price = execution_result.executed_price
-                signal.executed_volume = execution_result.executed_volume
-                signal.execution_slippage = execution_result.slippage
-                signal.execution_time = execution_result.execution_time
+                signal.auto_traded = True  # type: ignore[assignment]
+                signal.broker_ticket = execution_result.ticket  # type: ignore[assignment]
+                signal.executed_price = execution_result.executed_price  # type: ignore[assignment]
+                signal.executed_volume = execution_result.executed_volume  # type: ignore[assignment]
+                signal.execution_slippage = execution_result.slippage  # type: ignore[assignment]
+                signal.execution_time = execution_result.execution_time  # type: ignore[assignment]
                 
                 logger.info(f"Auto-trade executed successfully - Ticket: {execution_result.ticket}, Price: {execution_result.executed_price}")
                 
             else:
                 # Log execution failure
-                signal.auto_trade_failed = True
-                signal.execution_error = execution_result.message
+                signal.auto_trade_failed = True  # type: ignore[assignment]
+                signal.execution_error = execution_result.message  # type: ignore[assignment]
                 
                 logger.error(f"Auto-trade execution failed: {execution_result.message}")
                 
         except Exception as e:
             # Update signal with failure info
-            signal.auto_trade_failed = True
-            signal.execution_error = str(e)
+            signal.auto_trade_failed = True  # type: ignore[assignment]
+            signal.execution_error = str(e)  # type: ignore[assignment]
             
             logger.error(f"Auto-trade execution error: {e}")
             raise
@@ -679,14 +684,14 @@ class SignalEngine:
             
             if recent_signal:
                 # If recent signal has same action, it's a duplicate
-                if recent_signal.action == signal_data['action']:
+                if str(recent_signal.action) == signal_data['action']:  # type: ignore[operator]
                     logger.debug(f"Duplicate signal blocked for {symbol}: same action within cooldown")
                     return True
                     
                 # If recent signal has opposite action, check confidence levels
-                if recent_signal.action != signal_data['action']:
+                if str(recent_signal.action) != signal_data['action']:  # type: ignore[operator]
                     # Only allow opposite signal if new signal has significantly higher confidence
-                    confidence_threshold = recent_signal.confidence + 0.15  # 15% higher confidence required
+                    confidence_threshold = float(recent_signal.confidence) + 0.15  # type: ignore[operator]  # 15% higher confidence required
                     if signal_data['confidence'] < confidence_threshold:
                         logger.debug(f"Conflicting signal blocked for {symbol}: insufficient confidence {signal_data['confidence']:.2f} vs required {confidence_threshold:.2f}")
                         return True
@@ -707,15 +712,15 @@ class SignalEngine:
             recent_signals = db.query(Signal).filter(
                 Signal.symbol == symbol,
                 Signal.issued_at > now - timedelta(minutes=recent_minutes),
-                Signal.blocked_by_risk == False
+                Signal.blocked_by_risk.is_(False)  # type: ignore[attr-defined]
             ).all()
             
             if not recent_signals:
                 return True  # No recent signals, allow
                 
             # Count signals by action
-            buy_count = sum(1 for s in recent_signals if s.action == 'BUY')
-            sell_count = sum(1 for s in recent_signals if s.action == 'SELL')
+            buy_count = sum(1 for s in recent_signals if str(s.action) == 'BUY')
+            sell_count = sum(1 for s in recent_signals if str(s.action) == 'SELL')
             
             # Current signal action
             current_action = signal_data['action']
@@ -889,10 +894,6 @@ class SignalEngine:
             
             return False, "Strategy not in top Manus AI recommendations"
         
-        except Exception as e:
-            logger.error(f"Error checking strategy prioritization: {e}")
-            return False, "Error in strategy prioritization"
-            
         except Exception as e:
             logger.error(f"Error checking strategy prioritization: {e}")
             return False, "Error in strategy prioritization"

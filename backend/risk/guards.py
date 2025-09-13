@@ -47,14 +47,14 @@ class RiskManager:
                     'reason': 'Global kill switch is enabled'
                 }
             
-            # Check daily loss limit
+            # Check daily loss limit - more lenient approach
             daily_loss_exceeded = not self._check_daily_loss_limit()
             if daily_loss_exceeded:
-                # When daily loss limit is reached, only allow high-confidence signals (90%+)
-                if signal.confidence < 0.90:
+                # When daily loss limit is reached, only allow high-confidence signals (75%+)
+                if signal.confidence < 0.75:
                     return {
                         'allowed': False,
-                        'reason': 'Daily loss limit reached - only high confidence signals (90%+) allowed'
+                        'reason': 'Daily loss limit reached - only high confidence signals (75%+) allowed'
                     }
                 else:
                     # Allow high-confidence signals even when daily loss limit is reached

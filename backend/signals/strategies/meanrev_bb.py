@@ -27,9 +27,9 @@ class MeanReversionBBStrategy:
             bb_period = config.get('bb_period', 20)
             bb_std = config.get('bb_std', 2.0)
             adx_period = config.get('adx_period', 14)
-            adx_threshold = config.get('adx_threshold', 25)
-            zscore_threshold = config.get('zscore_threshold', 2.0)
-            min_confidence = config.get('min_confidence', 0.7)
+            adx_threshold = config.get('adx_threshold', 15)  # Lower ADX requirement
+            zscore_threshold = config.get('zscore_threshold', 1.5)  # More lenient
+            min_confidence = config.get('min_confidence', 0.4)  # Much lower minimum
             
             if len(data) < max(bb_period, adx_period) + 5:
                 return None

@@ -30,9 +30,9 @@ class EMAStragey:
             ema_fast = config.get('ema_fast', 12)
             ema_slow = config.get('ema_slow', 26)
             rsi_period = config.get('rsi_period', 14)
-            rsi_buy_threshold = config.get('rsi_buy_threshold', 50)
-            rsi_sell_threshold = config.get('rsi_sell_threshold', 50)
-            min_confidence = config.get('min_confidence', 0.5)
+            rsi_buy_threshold = config.get('rsi_buy_threshold', 45)  # More lenient
+            rsi_sell_threshold = config.get('rsi_sell_threshold', 55)  # More lenient
+            min_confidence = config.get('min_confidence', 0.35)  # Lower minimum
             
             # Calculate indicators
             close_prices = data['close'].values
@@ -57,21 +57,21 @@ class EMAStragey:
             action = None
             confidence = 0.0
             
-            # Bullish crossover
-            if (prev_ema_fast <= prev_ema_slow and 
-                current_ema_fast > current_ema_slow and 
-                current_rsi > rsi_buy_threshold):
+            # Bullish crossover - more flexible conditions
+            if (current_ema_fast > current_ema_slow and 
+                current_rsi > rsi_buy_threshold and
+                current_ema_fast > prev_ema_fast):  # Upward momentum
                 action = "BUY"
                 
-                # Calculate confidence based on RSI strength and EMA separation
-                rsi_strength = min((current_rsi - 50) / 50, 1.0)  # 0 to 1
-                ema_separation = (current_ema_fast - current_ema_slow) / current_price
-                confidence = min(0.5 + rsi_strength * 0.3 + abs(ema_separation) * 10000, 1.0)
+                # Simplified confidence calculation
+                rsi_strength = max(0, (current_rsi - 45) / 55)  # 0 to 1
+                ema_momentum = max(0, (current_ema_fast - prev_ema_fast) / current_price * 1000)
+                confidence = min(0.4 + rsi_strength * 0.3 + ema_momentum * 0.3, 0.95)
             
-            # Bearish crossover
-            elif (prev_ema_fast >= prev_ema_slow and 
-                  current_ema_fast < current_ema_slow and 
-                  current_rsi < rsi_sell_threshold):
+            # Bearish crossover - more flexible conditions
+            elif (current_ema_fast < current_ema_slow and 
+                  current_rsi < rsi_sell_threshold and
+                  current_ema_fast < prev_ema_fast):  # Downward momentum
                 action = "SELL"
                 
                 # Calculate confidence

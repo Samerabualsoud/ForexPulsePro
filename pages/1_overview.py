@@ -160,8 +160,8 @@ def call_api(endpoint, method="GET", data=None):
     import os
     
     try:
-        # Try localhost first (development environment)
-        base_url = "http://localhost:8000"
+        # Try local backend API (development environment)
+        base_url = "http://0.0.0.0:8000"
         url = f"{base_url}{endpoint}"
         
         if method == "GET":

@@ -31,6 +31,26 @@ from .strategies.fibonacci_strategy import FibonacciStrategy
 
 logger = get_logger(__name__)
 
+def is_forex_market_open() -> bool:
+    """
+    Check if Forex market is currently open
+    Forex markets operate Monday 00:00 UTC to Friday 22:00 UTC
+    """
+    now = datetime.utcnow()
+    weekday = now.weekday()  # Monday = 0, Sunday = 6
+    
+    # Market closed on weekends (Saturday = 5, Sunday = 6)
+    if weekday == 5:  # Saturday
+        return False
+    elif weekday == 6:  # Sunday
+        return False
+    elif weekday == 0:  # Monday - open from 00:00 UTC
+        return True
+    elif weekday == 4:  # Friday - close at 22:00 UTC
+        return now.hour < 22
+    else:  # Tuesday, Wednesday, Thursday - fully open
+        return True
+
 class SignalEngine:
     """Main signal generation engine"""
     
@@ -66,6 +86,11 @@ class SignalEngine:
     async def process_symbol(self, symbol: str, db: Session):
         """Process signals for a single symbol"""
         try:
+            # Check if market is open before processing
+            if not is_forex_market_open():
+                logger.info(f"Forex market closed - skipping signal generation for {symbol}")
+                return
+                
             logger.debug(f"Processing signals for {symbol}")
             
             # Get initial OHLC data

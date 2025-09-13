@@ -15,7 +15,7 @@ st.title("📋 System Logs")
 def call_api(endpoint, method="GET", data=None, token=None):
     """Call backend API"""
     try:
-        base_url = "http://localhost:8000"
+        base_url = "http://0.0.0.0:8000"
         url = f"{base_url}{endpoint}"
         
         headers = {}

@@ -16,7 +16,7 @@ st.title("🛡️ Risk Management")
 def call_api(endpoint, method="GET", data=None, token=None):
     """Call backend API with development/production environment detection"""
     try:
-        base_url = "http://localhost:8000"
+        base_url = "http://0.0.0.0:8000"
         url = f"{base_url}{endpoint}"
         
         headers = {}

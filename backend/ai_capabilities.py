@@ -21,6 +21,8 @@ PERPLEXITY_AVAILABLE = False
 PERPLEXITY_ENABLED = False
 GEMINI_AVAILABLE = False
 GEMINI_ENABLED = False
+DEEPSEEK_AVAILABLE = False
+DEEPSEEK_ENABLED = False
 
 # Try to import OpenAI package
 try:
@@ -76,9 +78,24 @@ try:
 except ImportError as e:
     logger.info(f"Gemini package not available: {e}")
 
+# Check DeepSeek availability (uses requests with OpenAI-compatible API)
+DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+if DEEPSEEK_API_KEY:
+    try:
+        import requests
+        DEEPSEEK_AVAILABLE = True
+        DEEPSEEK_ENABLED = True
+        logger.info("DeepSeek integration enabled with API key")
+    except ImportError:
+        logger.warning("DeepSeek requires requests library")
+        DEEPSEEK_AVAILABLE = False
+        DEEPSEEK_ENABLED = False
+else:
+    logger.info("DeepSeek API key not provided (DEEPSEEK_API_KEY)")
+
 # Calculate overall AI capabilities
-MULTI_AI_ENABLED = sum([OPENAI_ENABLED, PERPLEXITY_ENABLED, GEMINI_ENABLED]) > 1
-TOTAL_AI_AGENTS = sum([True, PERPLEXITY_ENABLED, GEMINI_ENABLED])  # Manus AI always available
+MULTI_AI_ENABLED = sum([OPENAI_ENABLED, PERPLEXITY_ENABLED, GEMINI_ENABLED, DEEPSEEK_ENABLED]) > 1
+TOTAL_AI_AGENTS = sum([True, PERPLEXITY_ENABLED, GEMINI_ENABLED, DEEPSEEK_ENABLED])  # Manus AI always available
 
 logger.info(f"Multi-AI System Status: {TOTAL_AI_AGENTS} agents available, Multi-AI: {MULTI_AI_ENABLED}")
 
@@ -96,6 +113,8 @@ def get_ai_capabilities() -> Dict[str, Any]:
         'perplexity_enabled': PERPLEXITY_ENABLED,
         'gemini_available': GEMINI_AVAILABLE,
         'gemini_enabled': GEMINI_ENABLED,
+        'deepseek_available': DEEPSEEK_AVAILABLE,
+        'deepseek_enabled': DEEPSEEK_ENABLED,
         'multi_ai_enabled': MULTI_AI_ENABLED,
         'total_ai_agents': TOTAL_AI_AGENTS,
         'dual_ai_mode': OPENAI_ENABLED,  # Legacy compatibility
@@ -103,11 +122,13 @@ def get_ai_capabilities() -> Dict[str, Any]:
         'capabilities': {
             'market_intelligence': PERPLEXITY_ENABLED,
             'correlation_analysis': GEMINI_ENABLED,
+            'deepseek_analysis': DEEPSEEK_ENABLED,
             'strategy_consensus': MULTI_AI_ENABLED,
             'advanced_backtesting': OPENAI_ENABLED,
             'chatgpt_optimization': OPENAI_ENABLED,
             'perplexity_news': PERPLEXITY_ENABLED,
             'gemini_correlations': GEMINI_ENABLED,
+            'deepseek_reasoning': DEEPSEEK_ENABLED,
             'fallback_manus_ai': True  # Always available
         }
     }
@@ -129,11 +150,41 @@ def create_openai_client() -> Optional[Any]:
         logger.error(f"Failed to create OpenAI client: {e}")
         return None
 
+def create_deepseek_client() -> Optional[Any]:
+    """
+    Create DeepSeek client if available and enabled
+    
+    Returns:
+        Simple requests-based client for DeepSeek API or None if not available
+    """
+    if not DEEPSEEK_ENABLED:
+        return None
+    
+    try:
+        import requests
+        # Return a simple client config dict for DeepSeek API
+        return {
+            'api_key': DEEPSEEK_API_KEY,
+            'base_url': 'https://api.deepseek.com/v1',
+            'requests': requests
+        }
+    except Exception as e:
+        logger.error(f"Failed to create DeepSeek client: {e}")
+        return None
+
 def log_ai_status():
     """Log the current AI capability status"""
     capabilities = get_ai_capabilities()
     
-    if capabilities['dual_ai_mode']:
+    if capabilities['multi_ai_enabled']:
+        active_agents = []
+        if OPENAI_ENABLED: active_agents.append("ChatGPT")
+        if PERPLEXITY_ENABLED: active_agents.append("Perplexity")
+        if GEMINI_ENABLED: active_agents.append("Gemini")
+        if DEEPSEEK_ENABLED: active_agents.append("DeepSeek")
+        
+        logger.info(f"Multi-AI mode active: Manus AI + {', '.join(active_agents)}")
+    elif capabilities['dual_ai_mode']:
         logger.info("Dual-AI mode active: Manus AI + ChatGPT consensus")
     else:
         if not OPENAI_AVAILABLE:

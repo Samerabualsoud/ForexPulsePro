@@ -12,6 +12,13 @@ from .perplexity_news_agent import PerplexityNewsAgent
 from .gemini_correlation_agent import GeminiCorrelationAgent
 from ..logs.logger import get_logger
 
+# Optional DeepSeek import with fallback
+try:
+    from .deepseek_agent import DeepSeekAgent
+except Exception as e:
+    DeepSeekAgent = None
+    logger.warning(f"DeepSeek disabled: import failed: {e}")
+
 logger = get_logger(__name__)
 
 class MultiAIConsensus:
@@ -20,6 +27,7 @@ class MultiAIConsensus:
     - Manus AI (Primary strategy recommendations)
     - Perplexity AI (Market intelligence)
     - Gemini AI (Cross-asset correlations)
+    - DeepSeek AI (Advanced reasoning and sentiment analysis)
     """
     
     def __init__(self):
@@ -27,6 +35,7 @@ class MultiAIConsensus:
         self.manus_ai = ManusAI()
         self.perplexity_agent = PerplexityNewsAgent()
         self.gemini_agent = GeminiCorrelationAgent()
+        self.deepseek_agent = DeepSeekAgent() if DeepSeekAgent else None
         
         # Track agent availability
         self.available_agents = self._check_agent_availability()
@@ -66,6 +75,10 @@ class MultiAIConsensus:
         
         if self.available_agents.get('gemini_correlation') and base_signal:
             tasks.append(self._run_gemini_analysis(symbol, base_signal.get('action', 'BUY')))
+        
+        if self.available_agents.get('deepseek_reasoning'):
+            current_price = market_data['close'].iloc[-1] if len(market_data) > 0 else 0
+            tasks.append(self._run_deepseek_analysis(symbol, market_data, current_price))
         
         # Execute all analyses concurrently
         if tasks:
@@ -122,6 +135,15 @@ class MultiAIConsensus:
             return {'gemini_correlation': analysis}
         except Exception as e:
             logger.error(f"Gemini analysis failed: {e}")
+            return {}
+    
+    async def _run_deepseek_analysis(self, symbol: str, market_data: pd.DataFrame, current_price: float) -> Dict[str, Any]:
+        """Run DeepSeek sentiment and reasoning analysis"""
+        try:
+            analysis = await self.deepseek_agent.analyze_market_sentiment(symbol, market_data, current_price)
+            return {'deepseek_reasoning': analysis}
+        except Exception as e:
+            logger.error(f"DeepSeek analysis failed: {e}")
             return {}
     
     def _generate_consensus(self, analyses: Dict[str, Any], base_signal: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -291,7 +313,8 @@ class MultiAIConsensus:
         return {
             'manus_ai': True,  # Always available
             'perplexity_news': self.perplexity_agent.is_available(),
-            'gemini_correlation': self.gemini_agent.is_available()
+            'gemini_correlation': self.gemini_agent.is_available(),
+            'deepseek_reasoning': bool(self.deepseek_agent and self.deepseek_agent.is_available())
         }
     
     def get_agent_status(self) -> Dict[str, Any]:

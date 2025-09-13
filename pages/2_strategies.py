@@ -217,7 +217,7 @@ st.markdown("""
 for strategy in strategies:
     strategy_id = strategy['id']
     name = strategy['name']
-    description = strategy['description']
+    description = strategy.get('description', 'No description available')
     enabled = strategy.get('enabled', False)
     performance = strategy.get('performance', {})
     risk_level = strategy.get('risk_level', 'Medium')

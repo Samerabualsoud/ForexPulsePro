@@ -251,11 +251,7 @@ security_issues = []
 if jwt_secret == "your-secret-key-change-in-production":
     security_issues.append("Default JWT secret is being used")
 
-if not whatsapp_token:
-    security_issues.append("WhatsApp token not configured")
-
-if not all_configured:
-    security_issues.append("Incomplete WhatsApp configuration")
+# WhatsApp integration removed - no longer checking WhatsApp tokens
 
 if security_issues:
     st.error("🚨 Security Issues Detected:")

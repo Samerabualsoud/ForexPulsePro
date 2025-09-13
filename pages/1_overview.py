@@ -109,9 +109,9 @@ def call_api(endpoint, method="GET", data=None):
         url = f"{base_url}{endpoint}"
         
         if method == "GET":
-            response = requests.get(url, timeout=5)
+            response = requests.get(url, timeout=10)
         elif method == "POST":
-            response = requests.post(url, json=data, timeout=5)
+            response = requests.post(url, json=data, timeout=10)
         
         if response.status_code == 200:
             return response.json()

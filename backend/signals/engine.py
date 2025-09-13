@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 
 from ..models import Signal, Strategy
+from ..services.sentiment_factor import sentiment_factor_service
 from ..providers.mock import MockDataProvider
 from ..providers.alphavantage import AlphaVantageProvider
 from ..providers.freecurrency import FreeCurrencyAPIProvider
@@ -239,6 +240,33 @@ class SignalEngine:
                 strategy=strategy_name,
                 expires_at=expires_at
             )
+            
+            # Apply sentiment analysis to enhance signal confidence
+            try:
+                sentiment_data = await sentiment_factor_service.get_sentiment_factor(symbol, db)
+                
+                # Store sentiment information in signal
+                signal.sentiment_score = sentiment_data['sentiment_score']
+                signal.sentiment_impact = sentiment_data['sentiment_impact']
+                signal.sentiment_reason = sentiment_data['reasoning']
+                
+                # Apply sentiment impact to confidence (with bounds checking)
+                original_confidence = signal.confidence
+                adjusted_confidence = signal.confidence + sentiment_data['sentiment_impact']
+                signal.confidence = max(0.0, min(1.0, adjusted_confidence))  # Clamp between 0 and 1
+                
+                # Log sentiment impact
+                if sentiment_data['sentiment_impact'] != 0:
+                    logger.info(f"Sentiment adjusted confidence for {symbol} {signal.action} signal: "
+                              f"{original_confidence:.3f} -> {signal.confidence:.3f} "
+                              f"(impact: {sentiment_data['sentiment_impact']:+.3f}) - {sentiment_data['sentiment_label']}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to apply sentiment factor for {symbol}: {e}")
+                # Set default sentiment values if analysis fails
+                signal.sentiment_score = 0.0
+                signal.sentiment_impact = 0.0
+                signal.sentiment_reason = f"Sentiment analysis failed: {str(e)}"
             
             # Apply risk management
             risk_manager = RiskManager(db)

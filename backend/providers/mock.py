@@ -6,7 +6,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any, List
 
 from .base import BaseDataProvider
 from ..logs.logger import get_logger
@@ -153,6 +153,16 @@ class MockDataProvider(BaseDataProvider):
         except Exception as e:
             logger.error(f"Error getting latest price for {symbol}: {e}")
             return None
+    
+    async def get_news(self, category: str = 'general', limit: int = 20) -> Optional[List[Dict[str, Any]]]:
+        """MockDataProvider doesn't provide news - returns empty list"""
+        logger.info(f"MockDataProvider: No news available (provider for OHLC data only)")
+        return []
+    
+    async def get_symbol_news(self, symbol: str, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+        """MockDataProvider doesn't provide symbol-specific news - returns empty list"""
+        logger.info(f"MockDataProvider: No symbol news available for {symbol} (provider for OHLC data only)")
+        return []
     
     def add_new_bar(self, symbol: str):
         """Add a new bar to simulate real-time data"""

@@ -547,12 +547,18 @@ class NewsCollector:
             Sentiment summary dictionary
         """
         try:
-            # Get articles in timeframe
-            articles = self.get_news_articles(
-                db, symbol=symbol, days=days, limit=1000, include_sentiment=True
-            )
+            # Get articles in timeframe with comprehensive error handling
+            try:
+                articles = self.get_news_articles(
+                    db, symbol=symbol, days=days, limit=1000, include_sentiment=True
+                )
+            except Exception as e:
+                self.logger.error(f"Failed to retrieve articles for sentiment summary: {e}")
+                articles = []
             
+            # Return stable fallback response when no articles available
             if not articles:
+                self.logger.warning(f"No articles found for sentiment summary - symbol: {symbol}, days: {days}")
                 return {
                     'overall_sentiment': 'NEUTRAL',
                     'overall_score': 0.0,
@@ -563,7 +569,8 @@ class NewsCollector:
                     'neutral_articles': 0,
                     'timeframe': f"{days}d",
                     'by_symbol': {},
-                    'by_source': {}
+                    'by_source': {},
+                    'data_source': 'fallback'
                 }
             
             # Aggregate sentiment data

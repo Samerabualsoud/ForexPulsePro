@@ -5,10 +5,11 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple
 
 from ..models import Signal, Strategy
 # from ..services.sentiment_factor import sentiment_factor_service  # Temporarily disabled
+from ..services.manus_ai import ManusAI
 from ..providers.mock import MockDataProvider
 from ..providers.alphavantage import AlphaVantageProvider
 from ..providers.freecurrency import FreeCurrencyAPIProvider
@@ -77,6 +78,9 @@ class SignalEngine:
         
         self.execution_provider = MT5BridgeExecutionProvider()
         
+        # Initialize enhanced Manus AI for professional trading recommendations
+        self.manus_ai = ManusAI()
+        
         # Auto-trading configuration
         self.auto_trade_enabled = os.getenv('AUTO_TRADE_ENABLED', 'false').lower() == 'true'
         self.confidence_threshold = float(os.getenv('AUTO_TRADE_CONFIDENCE_THRESHOLD', '0.85'))
@@ -125,14 +129,28 @@ class SignalEngine:
                 regime_detector.store_regime(symbol, regime_data, db)
                 logger.debug(f"Market regime for {symbol}: {regime_data['regime']} ({regime_data['confidence']:.2f})")
             
+            # Get Manus AI strategy recommendations
+            strategy_recommendations = await self._get_manus_ai_recommendations(symbol, data)
+            
             # Process each strategy
             for strategy_config in strategies:
                 # Check if strategy is suitable for current regime
                 if not regime_detector.is_regime_suitable_for_strategy(regime_data['regime'], strategy_config.name):
                     logger.debug(f"Strategy {strategy_config.name} skipped for {symbol} - unsuitable for {regime_data['regime']} regime")
                     continue
+                
+                # CRITICAL: Check Manus AI strategy guardrails - actively block "avoid" strategies
+                should_block, block_reason = self._should_block_strategy(strategy_config.name, strategy_recommendations)
+                if should_block:
+                    logger.warning(f"Strategy {strategy_config.name} BLOCKED for {symbol}: {block_reason}")
+                    continue
+                
+                # Check Manus AI recommendations for strategy prioritization
+                should_prioritize, manus_reason = self._should_prioritize_strategy(strategy_config.name, strategy_recommendations)
+                if should_prioritize:
+                    logger.info(f"Strategy {strategy_config.name} prioritized for {symbol}: {manus_reason}")
                     
-                await self._process_strategy(symbol, data, strategy_config, db)
+                await self._process_strategy(symbol, data, strategy_config, db, strategy_recommendations)
                 
         except Exception as e:
             logger.error(f"Error processing symbol {symbol}: {e}")
@@ -191,7 +209,8 @@ class SignalEngine:
         symbol: str, 
         data: pd.DataFrame, 
         strategy_config: Strategy, 
-        db: Session
+        db: Session,
+        manus_recommendations: Optional[Dict] = None
     ):
         """Process a single strategy for a symbol"""
         try:
@@ -229,6 +248,16 @@ class SignalEngine:
             sl = float(signal_data.get('sl')) if signal_data.get('sl') is not None else None
             tp = float(signal_data.get('tp')) if signal_data.get('tp') is not None else None
             confidence = float(signal_data['confidence']) if signal_data['confidence'] is not None else None
+            
+            # Apply Manus AI confidence adjustments
+            if manus_recommendations and confidence is not None:
+                original_confidence = confidence
+                confidence = self._apply_manus_ai_confidence_adjustment(
+                    confidence, strategy_name, manus_recommendations
+                )
+                if abs(confidence - original_confidence) > 0.01:  # Log significant changes
+                    logger.info(f"Manus AI adjusted confidence for {symbol} {strategy_name}: "
+                               f"{original_confidence:.1%} -> {confidence:.1%}")
             
             signal = Signal(
                 symbol=symbol,
@@ -416,3 +445,202 @@ class SignalEngine:
         except Exception as e:
             logger.error(f"Error checking cross-strategy consensus: {e}")
             return True  # Allow on error
+    
+    async def _get_manus_ai_recommendations(self, symbol: str, market_data: pd.DataFrame) -> Optional[Dict]:
+        """Get professional strategy recommendations from enhanced Manus AI"""
+        try:
+            # Use Manus AI to get intelligent strategy recommendations
+            recommendations = self.manus_ai.suggest_strategies(symbol, market_data)
+            
+            if recommendations.get('status') == 'success':
+                logger.info(f"Manus AI recommendations for {symbol}: "
+                           f"regime={recommendations['market_analysis']['regime']}, "
+                           f"top_strategies={[s['name'] for s in recommendations['recommended_strategies'][:3]]}")
+                return recommendations
+            else:
+                logger.debug(f"Manus AI recommendations unavailable for {symbol}, using fallback")
+                return None
+                
+        except Exception as e:
+            logger.warning(f"Error getting Manus AI recommendations for {symbol}: {e}")
+            return None
+    
+    def _should_block_strategy(self, strategy_name: str, manus_recommendations: Optional[Dict]) -> Tuple[bool, str]:
+        """
+        CRITICAL: Check if strategy should be BLOCKED based on Manus AI "avoid" recommendations
+        
+        This method enforces strategy guardrails by actively blocking strategies that Manus AI
+        recommends to avoid for the current market conditions.
+        
+        Returns:
+            Tuple of (should_block, reason)
+        """
+        try:
+            if not manus_recommendations or manus_recommendations.get('status') != 'success':
+                return False, "No Manus AI recommendations available - allowing strategy"
+            
+            market_analysis = manus_recommendations.get('market_analysis', {})
+            regime = market_analysis.get('regime', 'UNKNOWN')
+            regime_confidence = market_analysis.get('regime_confidence', 0.0)
+            
+            # Define confidence threshold for enforcing blocks
+            # Only block when we're confident about the market regime
+            confidence_threshold = 0.65  # 65% confidence threshold
+            
+            if regime_confidence < confidence_threshold:
+                return False, f"Regime confidence too low ({regime_confidence:.1%}) - allowing strategy"
+            
+            # Get the regime-specific strategy mapping from Manus AI
+            strategy_mapping = {
+                'TRENDING': {
+                    'avoid': ['meanrev_bb', 'stochastic'],
+                    'reasoning': 'Trending markets favor breakout and momentum strategies'
+                },
+                'STRONG_TRENDING': {
+                    'avoid': ['meanrev_bb', 'stochastic', 'rsi_divergence'],
+                    'reasoning': 'Strong trends require momentum strategies with wider stops'
+                },
+                'RANGING': {
+                    'avoid': ['donchian_atr', 'fibonacci'],
+                    'reasoning': 'Range-bound markets favor mean reversion strategies'
+                },
+                'HIGH_VOLATILITY': {
+                    'avoid': ['donchian_atr'],
+                    'reasoning': 'High volatility requires precision timing strategies'
+                }
+            }
+            
+            # Check if current strategy should be blocked for this regime
+            if regime in strategy_mapping:
+                avoid_strategies = strategy_mapping[regime]['avoid']
+                reasoning = strategy_mapping[regime]['reasoning']
+                
+                if strategy_name in avoid_strategies:
+                    return True, f"Manus AI blocks {strategy_name} for {regime} regime (confidence: {regime_confidence:.1%}) - {reasoning}"
+            
+            # Additional check: look for explicit avoid recommendations in the response
+            recommended_strategies = manus_recommendations.get('recommended_strategies', [])
+            for rec in recommended_strategies:
+                if (rec['name'] == strategy_name and 
+                    rec.get('recommended') == False and 
+                    rec.get('confidence', 0) < 0.3):  # Very low confidence = avoid
+                    return True, f"Manus AI explicitly recommends avoiding {strategy_name} (confidence: {rec.get('confidence', 0):.1%})"
+            
+            return False, f"Strategy {strategy_name} allowed for {regime} regime"
+            
+        except Exception as e:
+            logger.error(f"Error checking strategy blocking: {e}")
+            return False, "Error in strategy blocking check - allowing strategy as fallback"
+    
+    def _should_prioritize_strategy(self, strategy_name: str, manus_recommendations: Optional[Dict]) -> Tuple[bool, str]:
+        """
+        Check if strategy should be prioritized based on Manus AI recommendations
+        
+        Returns:
+            Tuple of (should_prioritize, reason)
+        """
+        try:
+            if not manus_recommendations or manus_recommendations.get('status') != 'success':
+                return False, "No Manus AI recommendations available"
+            
+            recommended_strategies = manus_recommendations.get('recommended_strategies', [])
+            
+            # Check if this strategy is in the top recommendations
+            for rec in recommended_strategies[:3]:  # Top 3 strategies
+                if rec['name'] == strategy_name and rec.get('recommended', False):
+                    confidence = rec.get('confidence', 0)
+                    priority = rec.get('priority', 'tertiary')
+                    
+                    if priority == 'primary' and confidence >= 0.7:
+                        return True, f"Manus AI primary recommendation (confidence: {confidence:.1%})"
+                    elif priority == 'secondary' and confidence >= 0.6:
+                        return True, f"Manus AI secondary recommendation (confidence: {confidence:.1%})"
+            
+            return False, "Strategy not in top Manus AI recommendations"
+        
+        except Exception as e:
+            logger.error(f"Error checking strategy prioritization: {e}")
+            return False, "Error in strategy prioritization"
+            
+        except Exception as e:
+            logger.error(f"Error checking strategy prioritization: {e}")
+            return False, "Error in strategy prioritization"
+    
+    def _apply_manus_ai_confidence_adjustment(
+        self, 
+        original_confidence: float, 
+        strategy_name: str, 
+        manus_recommendations: Dict
+    ) -> float:
+        """
+        Apply Manus AI-based confidence adjustments to signal confidence
+        
+        Args:
+            original_confidence: Original strategy confidence (0.0 to 1.0)
+            strategy_name: Name of the strategy generating the signal
+            manus_recommendations: Manus AI recommendations dict
+            
+        Returns:
+            Adjusted confidence (0.0 to 1.0)
+        """
+        try:
+            if manus_recommendations.get('status') != 'success':
+                return original_confidence
+            
+            adjusted_confidence = original_confidence
+            recommended_strategies = manus_recommendations.get('recommended_strategies', [])
+            
+            # Find the strategy in recommendations
+            strategy_rec = None
+            for rec in recommended_strategies:
+                if rec['name'] == strategy_name:
+                    strategy_rec = rec
+                    break
+            
+            if not strategy_rec:
+                # Strategy not in recommendations - small confidence reduction
+                adjusted_confidence *= 0.95
+                logger.debug(f"Strategy {strategy_name} not in Manus AI recommendations - small confidence reduction")
+                return min(max(adjusted_confidence, 0.1), 1.0)
+            
+            # Apply adjustments based on Manus AI analysis
+            manus_confidence = strategy_rec.get('confidence', 0.5)
+            priority = strategy_rec.get('priority', 'tertiary')
+            recommended = strategy_rec.get('recommended', False)
+            
+            # Priority-based adjustments
+            if priority == 'primary' and recommended:
+                adjustment_factor = 1.1  # 10% boost for primary strategies
+            elif priority == 'secondary' and recommended:
+                adjustment_factor = 1.05  # 5% boost for secondary strategies
+            elif not recommended:
+                adjustment_factor = 0.85  # 15% reduction for non-recommended strategies
+            else:
+                adjustment_factor = 1.0  # No adjustment for tertiary recommended
+            
+            # Confidence alignment adjustment
+            confidence_diff = abs(manus_confidence - original_confidence)
+            if confidence_diff > 0.2:  # Large difference
+                # Move original confidence towards Manus AI confidence
+                blend_factor = 0.3  # 30% towards Manus AI assessment
+                adjusted_confidence = original_confidence * (1 - blend_factor) + manus_confidence * blend_factor
+            
+            # Apply the priority adjustment
+            adjusted_confidence *= adjustment_factor
+            
+            # Market condition adjustments from Manus AI analysis
+            market_analysis = manus_recommendations.get('market_analysis', {})
+            volatility_level = market_analysis.get('volatility_level', 'medium')
+            
+            if volatility_level == 'high':
+                adjusted_confidence *= 0.9  # Reduce confidence in high volatility
+                logger.debug(f"High volatility detected - reducing confidence for {strategy_name}")
+            
+            # Ensure confidence stays within bounds
+            adjusted_confidence = min(max(adjusted_confidence, 0.1), 1.0)
+            
+            return adjusted_confidence
+            
+        except Exception as e:
+            logger.error(f"Error applying Manus AI confidence adjustment: {e}")
+            return original_confidence

@@ -6,7 +6,7 @@ Provides real-time and historical market data for forex, stocks, and crypto incl
 import os
 import requests
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import pandas as pd
 import time
@@ -226,3 +226,37 @@ class PolygonProvider(BaseDataProvider):
             return data.get('status') == 'OK'
         except:
             return False
+    
+    async def get_news(self, category: str = 'general', limit: int = 20) -> Optional[List[Dict[str, Any]]]:
+        """
+        Get financial news articles
+        
+        Note: Polygon.io provider is primarily for price data.
+        News functionality should be handled by dedicated news providers.
+        
+        Args:
+            category: News category ('general', 'forex', 'crypto', etc.)
+            limit: Number of articles to retrieve
+            
+        Returns:
+            Empty list - this provider doesn't handle news
+        """
+        logger.info(f"Polygon.io provider: News requests should use dedicated news providers")
+        return []
+    
+    async def get_symbol_news(self, symbol: str, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+        """
+        Get news articles related to a specific symbol/ticker
+        
+        Note: Polygon.io provider is primarily for price data.
+        News functionality should be handled by dedicated news providers.
+        
+        Args:
+            symbol: Symbol to get news for (e.g., 'EURUSD', 'BTCUSD')
+            limit: Number of articles to retrieve
+            
+        Returns:
+            Empty list - this provider doesn't handle news
+        """
+        logger.info(f"Polygon.io provider: Symbol news requests for {symbol} should use dedicated news providers")
+        return []

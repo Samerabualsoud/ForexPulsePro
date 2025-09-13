@@ -148,32 +148,112 @@ def render_sentiment_gauge(
     
     st.plotly_chart(fig, use_container_width=True)
 
+def normalize_sentiment_data(sentiment_data: Any) -> List[Dict[str, Any]]:
+    """
+    Normalize sentiment data to ensure consistent format
+    
+    Args:
+        sentiment_data: Raw sentiment data (could be list, dict, string, or None)
+        
+    Returns:
+        List of properly formatted sentiment dictionaries
+    """
+    if not sentiment_data:
+        return []
+    
+    # If it's already a list, check each item
+    if isinstance(sentiment_data, list):
+        normalized_items = []
+        for i, item in enumerate(sentiment_data):
+            if isinstance(item, dict):
+                # Already a dictionary, ensure it has required keys
+                normalized_item = {
+                    'symbol': item.get('symbol', f'Item {i+1}'),
+                    'sentiment': float(item.get('sentiment', 0)) if item.get('sentiment') is not None else 0.0,
+                    'confidence': float(item.get('confidence', 0)) if item.get('confidence') is not None else 0.0,
+                    'article_count': int(item.get('article_count', 0)) if item.get('article_count') is not None else 0
+                }
+                normalized_items.append(normalized_item)
+            elif isinstance(item, str):
+                # String item, convert to basic sentiment entry
+                normalized_items.append({
+                    'symbol': item,
+                    'sentiment': 0.0,
+                    'confidence': 0.0,
+                    'article_count': 0
+                })
+            elif isinstance(item, (int, float)):
+                # Numeric item, treat as sentiment value
+                normalized_items.append({
+                    'symbol': f'Item {i+1}',
+                    'sentiment': float(item),
+                    'confidence': 0.0,
+                    'article_count': 0
+                })
+            else:
+                # Unknown type, create default entry
+                normalized_items.append({
+                    'symbol': f'Item {i+1}',
+                    'sentiment': 0.0,
+                    'confidence': 0.0,
+                    'article_count': 0
+                })
+        return normalized_items
+    
+    # If it's a single dictionary, wrap in list
+    elif isinstance(sentiment_data, dict):
+        return normalize_sentiment_data([sentiment_data])
+    
+    # If it's a string, create a single entry
+    elif isinstance(sentiment_data, str):
+        return [{
+            'symbol': sentiment_data,
+            'sentiment': 0.0,
+            'confidence': 0.0,
+            'article_count': 0
+        }]
+    
+    # For any other type, return empty list
+    else:
+        return []
+
 def render_sentiment_summary(
-    sentiment_data: List[Dict[str, Any]],
+    sentiment_data: Any,
     title: str = "Market Sentiment Overview"
 ) -> None:
     """
     Render a summary of sentiment data across multiple sources/symbols
     
     Args:
-        sentiment_data: List of sentiment dictionaries with 'symbol', 'sentiment', 'confidence'
+        sentiment_data: Sentiment data (any format - will be normalized)
         title: Title for the summary section
     """
     
-    if not sentiment_data:
+    # Normalize the data to ensure consistent format
+    normalized_data = normalize_sentiment_data(sentiment_data)
+    
+    if not normalized_data:
         st.info("No sentiment data available")
         return
     
     st.subheader(f"📊 {title}")
     
-    # Calculate overall metrics
-    total_items = len(sentiment_data)
-    avg_sentiment = sum(item.get('sentiment', 0) for item in sentiment_data) / total_items
-    avg_confidence = sum(item.get('confidence', 0) for item in sentiment_data) / total_items
+    # Calculate overall metrics with safe access
+    total_items = len(normalized_data)
+    try:
+        avg_sentiment = sum(item.get('sentiment', 0) for item in normalized_data) / total_items
+        avg_confidence = sum(item.get('confidence', 0) for item in normalized_data) / total_items
+    except (TypeError, ZeroDivisionError):
+        avg_sentiment = 0.0
+        avg_confidence = 0.0
     
-    positive_count = len([item for item in sentiment_data if item.get('sentiment', 0) > 0.1])
-    negative_count = len([item for item in sentiment_data if item.get('sentiment', 0) < -0.1])
-    neutral_count = total_items - positive_count - negative_count
+    # Calculate sentiment distribution with safe access
+    try:
+        positive_count = len([item for item in normalized_data if item.get('sentiment', 0) > 0.1])
+        negative_count = len([item for item in normalized_data if item.get('sentiment', 0) < -0.1])
+        neutral_count = total_items - positive_count - negative_count
+    except (TypeError, AttributeError):
+        positive_count = negative_count = neutral_count = 0
     
     # Display overall metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -200,12 +280,13 @@ def render_sentiment_summary(
     # Individual sentiment indicators
     st.subheader("📈 By Symbol/Source")
     
-    # Create columns for sentiment indicators
-    cols = st.columns(min(4, len(sentiment_data)))
+    # Create columns for sentiment indicators - use normalized_data
+    cols = st.columns(min(4, len(normalized_data)))
     
-    for i, item in enumerate(sentiment_data):
+    for i, item in enumerate(normalized_data):
         col_idx = i % len(cols)
         with cols[col_idx]:
+            # Safe access to normalized data
             symbol = item.get('symbol', f'Item {i+1}')
             sentiment = item.get('sentiment', 0)
             confidence = item.get('confidence', 0)

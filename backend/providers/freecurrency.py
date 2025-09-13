@@ -7,7 +7,7 @@ import numpy as np
 import httpx
 import asyncio
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, List, Any
 from pathlib import Path
 import os
 import time
@@ -287,3 +287,37 @@ class FreeCurrencyAPIProvider(BaseDataProvider):
         except Exception as e:
             logger.error(f"Error getting latest price for {symbol}: {e}")
             return None
+    
+    async def get_news(self, category: str = 'general', limit: int = 20) -> Optional[List[Dict[str, Any]]]:
+        """
+        Get financial news articles
+        
+        Note: FreeCurrencyAPI provider is for currency exchange rates only.
+        News functionality should be handled by dedicated news providers.
+        
+        Args:
+            category: News category ('general', 'forex', 'crypto', etc.)
+            limit: Number of articles to retrieve
+            
+        Returns:
+            Empty list - this provider doesn't handle news
+        """
+        logger.info(f"FreeCurrencyAPI provider: News requests should use dedicated news providers")
+        return []
+    
+    async def get_symbol_news(self, symbol: str, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+        """
+        Get news articles related to a specific symbol/ticker
+        
+        Note: FreeCurrencyAPI provider is for currency exchange rates only.
+        News functionality should be handled by dedicated news providers.
+        
+        Args:
+            symbol: Symbol to get news for (e.g., 'EURUSD', 'BTCUSD')
+            limit: Number of articles to retrieve
+            
+        Returns:
+            Empty list - this provider doesn't handle news
+        """
+        logger.info(f"FreeCurrencyAPI provider: Symbol news requests for {symbol} should use dedicated news providers")
+        return []

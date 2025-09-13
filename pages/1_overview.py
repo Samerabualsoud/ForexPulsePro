@@ -133,7 +133,7 @@ def call_api(endpoint: str, method: str = "GET", data: Optional[Dict[str, Any]] 
         if method not in ["GET", "POST"]:
             raise ValueError(f"Unsupported method: {method}")
             
-        base_url = "http://0.0.0.0:8000"
+        base_url = "http://localhost:8000"
         url = f"{base_url}{endpoint}"
         
         if method == "GET":
@@ -177,7 +177,7 @@ def get_demo_data(endpoint):
         
         # Demo signals with proper structure matching Signal model
         signals = []
-        symbols = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD"]
+        symbols = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "BTCUSD", "ETHUSD", "LTCUSD", "ADAUSD", "SOLUSD"]
         strategies = ["ema_rsi", "donchian_atr", "meanrev_bb", "macd_strategy"]
         current_time = datetime.now()
         

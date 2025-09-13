@@ -16,7 +16,6 @@ from ..providers.finnhub_provider import FinnhubProvider
 from ..providers.exchangerate_provider import ExchangeRateProvider
 from ..providers.polygon_provider import PolygonProvider
 from ..risk.guards import RiskManager
-from ..services.whatsapp import WhatsAppService
 from ..regime.detector import regime_detector
 from ..providers.execution.mt5_bridge import MT5BridgeExecutionProvider
 from ..providers.execution.base import OrderRequest, OrderType
@@ -75,7 +74,6 @@ class SignalEngine:
             'fibonacci': FibonacciStrategy()
         }
         
-        self.whatsapp_service = WhatsAppService()
         self.execution_provider = MT5BridgeExecutionProvider()
         
         # Auto-trading configuration
@@ -251,13 +249,6 @@ class SignalEngine:
                 signal.risk_reason = risk_check['reason']
                 logger.info(f"Signal blocked by risk management: {risk_check['reason']}")
             else:
-                # Send to WhatsApp if not blocked
-                try:
-                    await self.whatsapp_service.send_signal(signal)
-                    signal.sent_to_whatsapp = True
-                    logger.info(f"Signal sent to WhatsApp for {symbol}")
-                except Exception as e:
-                    logger.error(f"Failed to send WhatsApp message: {e}")
                 
                 # Automatic trade execution if enabled and confidence threshold met
                 if self.auto_trade_enabled and signal.confidence >= self.confidence_threshold:

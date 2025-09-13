@@ -12,7 +12,6 @@ from .auth import verify_token, create_access_token
 from .models import Signal, User, Strategy
 from .schemas import SignalResponse, SignalCreate, UserCreate, StrategyUpdate, LoginRequest, KillSwitchRequest, RiskConfigUpdate
 from .database import get_db, SessionLocal
-from .services.whatsapp import WhatsAppService
 from .risk.guards import RiskManager
 from .logs.logger import get_logger
 from .services.signal_evaluator import evaluator
@@ -119,51 +118,6 @@ async def get_recent_signals(
     signals = query.order_by(Signal.issued_at.desc()).limit(limit).all()
     return [SignalResponse.from_orm(signal) for signal in signals]
 
-@app.post("/api/signals/resend")
-async def resend_signal(
-    signal_id: int,
-    token: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
-):
-    """Resend a signal to WhatsApp (Admin only)"""
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    signal = db.query(Signal).filter(Signal.id == signal_id).first()
-    if not signal:
-        raise HTTPException(status_code=404, detail="Signal not found")
-    
-    whatsapp_service = WhatsAppService()
-    start_time = time.time()
-    try:
-        result = await whatsapp_service.send_signal(signal)
-        delivery_time = time.time() - start_time
-        metrics.record_whatsapp_message("sent", "signal", delivery_time)
-        logger.info(f"Signal {signal_id} resent successfully")
-        return {"status": "sent", "message_id": result.get("message_id")}
-    except Exception as e:
-        metrics.record_whatsapp_error("send_failure", str(e)[:50])
-        logger.error(f"Failed to resend signal {signal_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/whatsapp/test")
-async def test_whatsapp(
-    token: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
-):
-    """Test WhatsApp connectivity (Admin only)"""
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    whatsapp_service = WhatsAppService()
-    try:
-        result = await whatsapp_service.send_test_message()
-        return {"status": "success", "result": result}
-    except Exception as e:
-        logger.error(f"WhatsApp test failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/risk/killswitch")
 async def toggle_killswitch(

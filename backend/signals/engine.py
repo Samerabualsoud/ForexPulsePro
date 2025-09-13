@@ -135,8 +135,10 @@ class SignalEngine:
             ).all()
             
             if not strategies:
-                logger.debug(f"No enabled strategies for {symbol}")
+                logger.info(f"No enabled strategies for {symbol}")
                 return
+            
+            logger.info(f"Found {len(strategies)} enabled strategies for {symbol}: {[s.name for s in strategies]}")
             
             # Detect market regime first
             regime_data = regime_detector.detect_regime(data, symbol)
@@ -240,17 +242,17 @@ class SignalEngine:
             signal_data = strategy.generate_signal(data, strategy_config.config)
             
             if signal_data is None:
-                logger.debug(f"No signal generated for {symbol} using {strategy_name}")
+                logger.info(f"No signal generated for {symbol} using {strategy_name}")
                 return
             
             # Check for signal deduplication and conflicts
             if self._is_duplicate_signal(symbol, signal_data, strategy_name, db):
-                logger.debug(f"Duplicate/conflicting signal filtered for {symbol} using {strategy_name}")
+                logger.info(f"Duplicate/conflicting signal filtered for {symbol} using {strategy_name}")
                 return
                 
             # Check cross-strategy consensus
             if not self._get_cross_strategy_consensus(symbol, signal_data, db):
-                logger.debug(f"Cross-strategy consensus check failed for {symbol} using {strategy_name}")
+                logger.info(f"Cross-strategy consensus check failed for {symbol} using {strategy_name}")
                 return
             
             # Create signal object

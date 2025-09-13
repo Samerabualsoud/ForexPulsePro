@@ -273,6 +273,26 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
     token = create_access_token({"username": user.username, "role": user.role})
     return {"access_token": token, "token_type": "bearer", "role": user.role}
 
+@app.get("/api/signals/stats")
+async def get_signal_stats(db: Session = Depends(get_db)):
+    """Get basic signal statistics"""
+    try:
+        total_signals = db.query(Signal).count()
+        active_signals = db.query(Signal).filter(Signal.result == None).count()
+        winning_signals = db.query(Signal).filter(Signal.result == 'WIN').count()
+        losing_signals = db.query(Signal).filter(Signal.result == 'LOSS').count()
+        
+        return {
+            "total": total_signals,
+            "active": active_signals,
+            "winning": winning_signals,
+            "losing": losing_signals,
+            "win_rate": (winning_signals / (winning_signals + losing_signals) * 100) if (winning_signals + losing_signals) > 0 else 0
+        }
+    except Exception as e:
+        logger.error(f"Error getting signal stats: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get signal statistics")
+
 @app.get("/api/signals/success-rate")
 async def get_success_rate(
     days: int = 30,

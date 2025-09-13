@@ -68,10 +68,7 @@ class Signal(Base):
     evaluated_at = Column(DateTime, default=None)   # When outcome was determined
     pips_result = Column(Float, default=None)       # Actual pips gained/lost
     
-    # Sentiment analysis fields
-    sentiment_score = Column(Float, default=0.0)     # Sentiment score from -1 to 1
-    sentiment_impact = Column(Float, default=0.0)    # Impact on confidence (-1 to 1)
-    sentiment_reason = Column(Text, nullable=True)   # Human readable sentiment explanation
+    # Sentiment analysis fields removed temporarily to fix schema mismatch
     
     def to_dict(self):
         return {
@@ -98,10 +95,7 @@ class Signal(Base):
             "executed_price": self.executed_price,
             "executed_volume": self.executed_volume,
             "execution_slippage": self.execution_slippage,
-            "execution_time": self.execution_time.isoformat() if self.execution_time else None,
-            "sentiment_score": self.sentiment_score,
-            "sentiment_impact": self.sentiment_impact,
-            "sentiment_reason": self.sentiment_reason
+            "execution_time": self.execution_time.isoformat() if self.execution_time else None
         }
 
 class Strategy(Base):

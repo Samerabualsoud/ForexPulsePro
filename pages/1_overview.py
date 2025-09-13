@@ -182,7 +182,25 @@ def call_api(endpoint, method="GET", data=None):
     except requests.exceptions.RequestException as e:
         # Fallback for production environment - return mock data or handle differently
         st.warning("⚠️ **Backend API unavailable** - Running in demo mode with sample data")
+        st.info("🧪 **Demo Mode Notice**: Signals shown are for testing purposes only and should not be used for actual trading decisions.")
         return get_fallback_data(endpoint)
+
+def is_forex_market_open() -> bool:
+    """Check if Forex market is currently open"""
+    now = datetime.utcnow()
+    weekday = now.weekday()  # Monday = 0, Sunday = 6
+    
+    # Market closed on weekends (Saturday = 5, Sunday = 6)
+    if weekday == 5:  # Saturday
+        return False
+    elif weekday == 6:  # Sunday
+        return False
+    elif weekday == 0:  # Monday - open from 00:00 UTC
+        return True
+    elif weekday == 4:  # Friday - close at 22:00 UTC
+        return now.hour < 22
+    else:  # Tuesday, Wednesday, Thursday - fully open
+        return True
 
 def get_fallback_data(endpoint):
     """Provide fallback data when backend API is unavailable"""
@@ -190,7 +208,11 @@ def get_fallback_data(endpoint):
     import random
     
     if "/api/signals/recent" in endpoint:
-        # Generate sample signals for demo
+        # Check if market is open - don't generate signals when market is closed
+        if not is_forex_market_open():
+            return []  # Return empty list when market is closed
+        
+        # Generate sample signals for demo (TESTING ONLY)
         sample_signals = []
         current_time = datetime.now()
         
@@ -216,7 +238,7 @@ def get_fallback_data(endpoint):
                 "issued_at": signal_time.isoformat() + "Z",
                 "expires_at": expire_time.isoformat() + "Z",
                 "blocked_by_risk": random.choice([True, False]),
-                "risk_reason": "Demo mode" if random.choice([True, False]) else None
+                "risk_reason": "Demo mode - testing data only" if random.choice([True, False]) else None
             })
         
         return sample_signals

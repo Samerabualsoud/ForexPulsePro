@@ -24,12 +24,33 @@ class SignalScheduler:
     def start(self):
         """Start the scheduler"""
         try:
-            # Add job to generate signals every 5 minutes (reduced frequency to prevent noise)
+            # AI-optimized signal frequencies by asset class
+            # Forex: Every 15 minutes (optimal for trend detection and reduced noise)
+            # Crypto: Every 5 minutes (higher volatility requires faster signals)
+            # Metals/Oil: Every 30 minutes (longer-term trends, less noise)
             self.scheduler.add_job(
                 func=self._run_signal_generation,
-                trigger=IntervalTrigger(minutes=5),
+                trigger=IntervalTrigger(minutes=15),  # AI-recommended for forex
                 id='signal_generation',
                 name='Generate Forex Signals',
+                replace_existing=True
+            )
+            
+            # Add high-frequency crypto signal generation
+            self.scheduler.add_job(
+                func=self._run_crypto_signal_generation,
+                trigger=IntervalTrigger(minutes=5),  # AI-recommended for crypto
+                id='crypto_signal_generation', 
+                name='Generate Crypto Signals',
+                replace_existing=True
+            )
+            
+            # Add low-frequency metals/oil signal generation
+            self.scheduler.add_job(
+                func=self._run_metals_signal_generation,
+                trigger=IntervalTrigger(minutes=30),  # AI-recommended for metals/oil
+                id='metals_signal_generation',
+                name='Generate Metals/Oil Signals', 
                 replace_existing=True
             )
             
@@ -82,6 +103,32 @@ class SignalScheduler:
         thread = threading.Thread(target=run_async)
         thread.start()
     
+    def _run_crypto_signal_generation(self):
+        """Run crypto signal generation with AI-optimized 5-minute frequency"""
+        def run_async():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(self._generate_crypto_signals())
+            finally:
+                loop.close()
+        
+        thread = threading.Thread(target=run_async)
+        thread.start()
+    
+    def _run_metals_signal_generation(self):
+        """Run metals/oil signal generation with AI-optimized 30-minute frequency"""
+        def run_async():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(self._generate_metals_signals())
+            finally:
+                loop.close()
+        
+        thread = threading.Thread(target=run_async)
+        thread.start()
+    
     async def _generate_signals(self):
         """Generate signals for all symbols"""
         db = self.SessionLocal()
@@ -99,6 +146,48 @@ class SignalScheduler:
             
         except Exception as e:
             logger.error(f"Signal generation failed: {e}")
+        finally:
+            db.close()
+    
+    async def _generate_crypto_signals(self):
+        """Generate signals specifically for crypto pairs with high-frequency analysis"""
+        db = self.SessionLocal()
+        try:
+            # AI-recommended crypto pairs with 5-minute frequency for volatility capture
+            crypto_symbols = ['BTCUSD', 'ETHUSD', 'BTCEUR', 'ETHEUR', 'LTCUSD', 'ADAUSD', 'SOLUSD']
+            
+            for symbol in crypto_symbols:
+                try:
+                    await self.signal_engine.process_symbol(symbol, db)
+                    logger.debug(f"Processed crypto signals for {symbol}")
+                except Exception as e:
+                    logger.error(f"Error processing crypto {symbol}: {e}")
+            
+            logger.info(f"Crypto signal generation completed at {datetime.utcnow()}")
+            
+        except Exception as e:
+            logger.error(f"Crypto signal generation failed: {e}")
+        finally:
+            db.close()
+    
+    async def _generate_metals_signals(self):
+        """Generate signals for metals and oil with low-frequency trend analysis"""
+        db = self.SessionLocal()
+        try:
+            # AI-recommended metals/oil pairs with 30-minute frequency for trend stability
+            metals_oil_symbols = ['XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD', 'XPTUSD', 'XPDUSD']
+            
+            for symbol in metals_oil_symbols:
+                try:
+                    await self.signal_engine.process_symbol(symbol, db)
+                    logger.debug(f"Processed metals/oil signals for {symbol}")
+                except Exception as e:
+                    logger.error(f"Error processing metals/oil {symbol}: {e}")
+            
+            logger.info(f"Metals/Oil signal generation completed at {datetime.utcnow()}")
+            
+        except Exception as e:
+            logger.error(f"Metals/Oil signal generation failed: {e}")
         finally:
             db.close()
     

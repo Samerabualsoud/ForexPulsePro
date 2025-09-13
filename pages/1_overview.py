@@ -255,14 +255,8 @@ def load_dashboard_data():
         "stats": get_stats()
     }
 
-# Auto-refresh setup
-if 'last_refresh' not in st.session_state:
-    st.session_state.last_refresh = 0
-
-current_time = datetime.now().timestamp()
-if current_time - st.session_state.last_refresh > 30:  # 30 second refresh
-    st.cache_data.clear()
-    st.session_state.last_refresh = current_time
+# Force refresh to fix status display issue
+st.cache_data.clear()  # Clear cache to ensure fresh data with result field
 
 # Load dashboard data
 data = load_dashboard_data()

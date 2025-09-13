@@ -4,7 +4,7 @@ from .finnhub_provider import FinnhubProvider
 from .exchangerate_provider import ExchangeRateProvider
 from .freecurrency import FreeCurrencyAPIProvider
 from .mt5_data import MT5DataProvider
-from .capital_provider import CapitalProvider
+from .polygon_provider import PolygonProvider
 
 __all__ = [
     'MockDataProvider',
@@ -13,5 +13,5 @@ __all__ = [
     'ExchangeRateProvider',
     'FreeCurrencyAPIProvider',
     'MT5DataProvider',
-    'CapitalProvider'
+    'PolygonProvider'
 ]

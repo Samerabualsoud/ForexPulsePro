@@ -21,15 +21,20 @@ try:
     from utils.auth import require_authentication, render_user_info
     from utils.cache import get_cached_performance_stats, get_cached_market_data
     from components.advanced_charts import chart_builder
+    from backend.services.manus_ai import ManusAI
     
     # Require authentication 
     user_info = require_authentication()
     render_user_info()
+    
+    # Initialize Manus AI for analysis
+    manus_ai = ManusAI()
     imports_available = True
 except ImportError as e:
     st.warning(f"⚠️ Import error: {e} - running in demo mode")
     user_info = {"username": "demo", "role": "admin"}
     chart_builder = None
+    manus_ai = None
     imports_available = False
 
 # Professional Analytics Page Styling
@@ -160,6 +165,280 @@ with col4:
         f"{avg_sharpe:.2f}",
         delta=f"{np.random.uniform(-0.1, 0.3):.2f}"
     )
+
+# Manus AI Analysis Section
+st.markdown("---")
+st.markdown('<div class="analytics-section">', unsafe_allow_html=True)
+st.markdown("### 🤖 **Manus AI Market Analysis**")
+
+if manus_ai and manus_ai.is_available():
+    ai_status = "🟢 **Manus AI Active** - Real-time AI analysis"
+    
+    # Generate AI analysis of current market conditions
+    market_data = {
+        "current_metrics": {
+            "total_trades": total_trades,
+            "win_rate": weighted_win_rate,
+            "total_pnl": total_pnl,
+            "sharpe_ratio": avg_sharpe
+        },
+        "strategy_performance": all_strategies,
+        "market_pairs": ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD"]
+    }
+    
+    try:
+        analysis = manus_ai.analyze_market_conditions(market_data)
+        
+        # Check if we got real AI analysis or fallback
+        if analysis.get('status') == 'fallback':
+            ai_status = "🟡 **Manus AI Demo Mode** - Using fallback analysis"
+            
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### 🎯 **AI Market Insights**")
+            insights = analysis.get('analysis', {})
+            st.write(f"**Trend Analysis**: {insights.get('trend', 'Analyzing market trends...')}")
+            st.write(f"**Volatility Assessment**: {insights.get('volatility', 'Calculating volatility metrics...')}")
+            st.write(f"**Risk Factors**: {insights.get('risk_factors', 'Identifying key risk factors...')}")
+            
+        with col2:
+            st.markdown("#### 💡 **AI Recommendations**")
+            recommendations = analysis.get('recommendations', 'Generating personalized recommendations...')
+            st.write(recommendations)
+            
+    except Exception as e:
+        ai_status = "🔴 **Manus AI Offline** - Connection failed"
+        st.warning(f"⚠️ Manus AI analysis temporarily unavailable: {e}")
+        
+else:
+    ai_status = "🟡 **Manus AI Demo Mode** - Using traditional analysis"
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("#### 🎯 **Traditional Market Analysis**")
+        st.write("**Trend Analysis**: Current market shows mixed signals across major pairs")
+        st.write("**Volatility Assessment**: Moderate volatility levels detected")
+        st.write("**Risk Factors**: Standard forex risk factors in play")
+        
+    with col2:
+        st.markdown("#### 💡 **Standard Recommendations**")
+        st.write("• Maintain diversified strategy allocation")
+        st.write("• Monitor risk management parameters")
+        st.write("• Consider market volatility in position sizing")
+
+st.markdown(f"**Status**: {ai_status}")
+st.markdown('</div>', unsafe_allow_html=True)
+
+# AI Strategy Portfolio Optimization
+st.markdown('<div class="analytics-section">', unsafe_allow_html=True)
+st.markdown("### 🎯 **AI Strategy Portfolio Optimization**")
+
+if manus_ai and manus_ai.is_available():
+    try:
+        # Prepare strategy data for optimization
+        strategy_optimization_data = {
+            "strategies": all_strategies,
+            "current_portfolio": {
+                "total_capital": 10000,  # Demo capital
+                "risk_tolerance": "moderate",
+                "performance_metrics": {
+                    "total_trades": total_trades,
+                    "win_rate": weighted_win_rate,
+                    "total_pnl": total_pnl,
+                    "sharpe_ratio": avg_sharpe
+                }
+            }
+        }
+        
+        optimization_result = manus_ai.optimize_strategy_portfolio(strategy_optimization_data)
+        optimization = optimization_result.get('optimization', {})
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### 🧠 **AI-Recommended Allocations**")
+            
+            allocations = optimization.get('recommended_allocations', {})
+            if allocations:
+                # Create allocation chart
+                allocation_df = pd.DataFrame(list(allocations.items()), columns=['Strategy', 'Allocation'])
+                allocation_df['Allocation %'] = (allocation_df['Allocation'] * 100).round(1)
+                
+                # Display as metrics
+                for strategy, allocation in allocations.items():
+                    st.metric(
+                        f"{strategy.title().replace('_', ' ')}",
+                        f"{allocation:.1%}",
+                        delta=f"{'↑' if allocation > 1/len(allocations) else '↓'} {'Overweight' if allocation > 1/len(allocations) else 'Underweight'}"
+                    )
+            else:
+                st.write("Calculating optimal allocations...")
+                
+        with col2:
+            st.markdown("#### 💡 **AI Optimization Insights**")
+            
+            reasoning = optimization.get('reasoning', 'Analyzing strategy performance...')
+            expected_sharpe = optimization.get('expected_sharpe', 0)
+            diversification_score = optimization.get('diversification_score', 0)
+            risk_level = optimization.get('risk_level', 'moderate')
+            
+            st.write(f"**Strategy**: {reasoning}")
+            st.write(f"**Expected Sharpe**: {expected_sharpe:.2f}")
+            st.write(f"**Diversification Score**: {diversification_score:.1%}")
+            st.write(f"**Risk Level**: {risk_level.title()}")
+            
+            # Show optimization benefits
+            st.markdown("**📈 Expected Benefits:**")
+            benefits = [
+                "• Improved risk-adjusted returns",
+                "• Better diversification across strategies", 
+                "• Reduced correlation risk",
+                "• Optimized capital allocation"
+            ]
+            for benefit in benefits:
+                st.write(benefit)
+                
+    except Exception as e:
+        st.warning(f"⚠️ AI optimization temporarily unavailable: {e}")
+        
+        # Fallback optimization display
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### 📊 **Traditional Allocation**")
+            st.write("Equal-weight allocation across all strategies")
+            equal_weight = 1.0 / len(all_strategies)
+            for strategy in all_strategies:
+                st.metric(f"{strategy.title().replace('_', ' ')}", f"{equal_weight:.1%}")
+                
+        with col2:
+            st.markdown("#### 💡 **Standard Recommendations**")
+            st.write("• Diversify across multiple strategies")
+            st.write("• Monitor individual strategy performance")
+            st.write("• Rebalance monthly based on performance")
+            st.write("• Limit single strategy allocation to 40%")
+            
+else:
+    # Demo mode optimization
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("#### 📊 **Demo Optimization**")
+        st.write("*AI optimization would analyze your strategies and recommend optimal allocations*")
+        
+        # Show sample optimized allocations
+        sample_allocations = {
+            'ema_rsi': 0.25,
+            'donchian_atr': 0.20,
+            'meanrev_bb': 0.15,
+            'momentum': 0.18,
+            'breakout': 0.12,
+            'scalping': 0.10
+        }
+        
+        for strategy, allocation in sample_allocations.items():
+            if strategy in all_strategies:
+                st.metric(f"{strategy.title().replace('_', ' ')}", f"{allocation:.1%}")
+                
+    with col2:
+        st.markdown("#### 🤖 **AI Would Provide:**")
+        st.write("• **Performance-based weighting** - Higher allocation to top performers")
+        st.write("• **Risk-adjusted optimization** - Balance returns vs. drawdown")
+        st.write("• **Correlation analysis** - Reduce strategy overlap")
+        st.write("• **Market regime adaptation** - Adjust for current conditions")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# AI Table Design Optimization
+st.markdown('<div class="analytics-section">', unsafe_allow_html=True)
+st.markdown("### 📋 **AI Table Design Optimization**")
+
+if manus_ai and manus_ai.is_available():
+    try:
+        # Get table design recommendations
+        table_context = {
+            "data_type": "strategy_performance",
+            "user_role": "professional_trader",
+            "data_complexity": "high",
+            "current_columns": list(strategy_df.columns),
+            "primary_use_cases": ["performance_analysis", "allocation_decisions", "risk_assessment"]
+        }
+        
+        design_result = manus_ai.design_optimal_table(table_context)
+        design = design_result.get('design', {})
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### 🎨 **AI Design Recommendations**")
+            
+            layout = design.get('layout', {})
+            column_order = layout.get('column_order', [])
+            formatting = layout.get('formatting', {})
+            
+            if column_order:
+                st.write("**📋 Optimal Column Order:**")
+                for i, col in enumerate(column_order[:6], 1):  # Show first 6
+                    st.write(f"{i}. {col.replace('_', ' ').title()}")
+                    
+                st.write("\n**🎨 Formatting Guidelines:**")
+                for field, format_type in formatting.items():
+                    st.write(f"• **{field.replace('_', ' ').title()}**: {format_type.replace('_', ' ').title()}")
+            else:
+                st.write("Analyzing optimal table design...")
+                
+        with col2:
+            st.markdown("#### 🏆 **Best Practices Applied**")
+            
+            best_practices = design.get('best_practices', [])
+            if best_practices:
+                for practice in best_practices:
+                    st.write(f"• {practice}")
+            else:
+                # Fallback best practices
+                st.write("• **Visual Hierarchy**: Most important data in leftmost columns")
+                st.write("• **Color Coding**: Performance metrics use red/green indicators")
+                st.write("• **Scannable Layout**: Consistent spacing and alignment")
+                st.write("• **Action-Oriented**: Easy identification of top/bottom performers")
+                
+            # Show accessibility features
+            accessibility = design.get('accessibility', {})
+            if accessibility:
+                st.markdown("**♿ Accessibility Features:**")
+                for feature, value in accessibility.items():
+                    st.write(f"• **{feature.replace('_', ' ').title()}**: {value}")
+                    
+    except Exception as e:
+        st.warning(f"⚠️ AI table design temporarily unavailable: {e}")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### 📊 **Standard Design**")
+            st.write("Using traditional table layout principles")
+            st.write("• Strategy name as primary identifier")
+            st.write("• Performance metrics in logical order")
+            st.write("• Color coding for quick identification")
+            
+        with col2:
+            st.markdown("#### 💡 **Applied Principles**")
+            st.write("• Clear visual hierarchy")
+            st.write("• Consistent formatting")
+            st.write("• Professional color scheme")
+            st.write("• Mobile-responsive design")
+else:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("#### 🤖 **AI Would Optimize:**")
+        st.write("*AI would analyze your table usage patterns and recommend optimal layouts*")
+        st.write("• **Column Priority**: Most important data first")
+        st.write("• **Visual Cues**: Smart color coding and indicators")
+        st.write("• **Cognitive Load**: Minimize information overload")
+        st.write("• **Workflow Integration**: Support trading decisions")
+        
+    with col2:
+        st.markdown("#### 📊 **Current Table Benefits:**")
+        st.write("• Clear performance metrics display")
+        st.write("• Sortable columns for analysis")
+        st.write("• Professional trading interface")
+        st.write("• Responsive design for all devices")
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 

@@ -14,7 +14,7 @@ from ..providers.freecurrency import FreeCurrencyAPIProvider
 from ..providers.mt5_data import MT5DataProvider
 from ..providers.finnhub_provider import FinnhubProvider
 from ..providers.exchangerate_provider import ExchangeRateProvider
-from ..providers.capital_provider import CapitalProvider
+from ..providers.polygon_provider import PolygonProvider
 from ..risk.guards import RiskManager
 from ..services.whatsapp import WhatsAppService
 from ..regime.detector import regime_detector
@@ -35,8 +35,8 @@ class SignalEngine:
     """Main signal generation engine"""
     
     def __init__(self):
-        # Initialize data providers (priority order: Capital.com -> ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)
-        self.capital_provider = CapitalProvider()
+        # Initialize data providers (priority order: Polygon.io -> ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)
+        self.polygon_provider = PolygonProvider()
         self.exchangerate_provider = ExchangeRateProvider()
         self.finnhub_provider = FinnhubProvider()
         self.mt5_provider = MT5DataProvider()
@@ -114,12 +114,15 @@ class SignalEngine:
             logger.error(f"Error processing symbol {symbol}: {e}")
     
     async def _get_market_data(self, symbol: str) -> Optional[pd.DataFrame]:
-        """Get market data from available providers (priority: Capital.com -> ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)"""
-        # Try Capital.com first for professional market data (free with demo account)
-        if self.capital_provider.is_available():
-            data = self.capital_provider.get_historical_data(symbol, timeframe="1H", limit=200)
+        """Get market data from available providers (priority: Polygon.io -> ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)"""
+        # Try Polygon.io first for real live market data
+        if self.polygon_provider.is_available():
+            # Convert timeframe format for Polygon.io
+            timeframe_mapping = {'1H': 'H1', '4H': 'H4', '1D': 'D1', '1M': 'M1', '5M': 'M5'}
+            converted_tf = timeframe_mapping.get("1H", 'H1')
+            data = await self.polygon_provider.get_ohlc_data(symbol, timeframe=converted_tf, limit=200)
             if data is not None:
-                logger.info(f"Using Capital.com professional market data for {symbol}")
+                logger.info(f"Using Polygon.io real live market data for {symbol}")
                 return data
         
         # Try ExchangeRate.host for free unlimited forex data

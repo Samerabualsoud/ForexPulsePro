@@ -62,6 +62,47 @@ st.markdown("""
         font-weight: 600;
     }
     
+    /* Enhanced Sidebar Styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem 1rem;
+    }
+    
+    .css-1d391kg .css-1v0mbdj {
+        color: white;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    
+    /* Sidebar navigation items */
+    .css-1d391kg .css-pkbazv {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        margin: 0.5rem 0;
+        padding: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .css-1d391kg .css-pkbazv:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateX(5px);
+    }
+    
+    .css-1d391kg .css-pkbazv a {
+        color: white !important;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    /* Active sidebar item */
+    .css-1d391kg .css-pkbazv.active {
+        background: rgba(255, 255, 255, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+    
     /* Button styling */
     .stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -77,6 +118,24 @@ st.markdown("""
     .stButton > button:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Professional status indicators */
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-online {
+        background: #10b981;
+    }
+    
+    .status-offline {
+        background: #ef4444;
+    }
     }
     
     /* Sidebar styling */

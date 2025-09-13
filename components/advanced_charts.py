@@ -358,8 +358,7 @@ class ProfessionalChartBuilder:
                 textfont={"size": 12},
                 hoverongaps=False,
                 colorbar=dict(
-                    title="Win Rate %",
-                    titleside="right"
+                    title="Win Rate %"
                 )
             ))
             

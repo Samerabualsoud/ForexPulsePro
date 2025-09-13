@@ -11,20 +11,23 @@ from pathlib import Path
 st.set_page_config(page_title="Analytics", page_icon="📊", layout="wide")
 
 # Add imports
-sys.path.append(str(Path(__file__).parent.parent / "utils"))
-sys.path.append(str(Path(__file__).parent.parent / "components"))
+import os
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 try:
-    from auth import require_authentication, render_user_info
-    from cache import get_cached_performance_stats, get_cached_market_data
-    from advanced_charts import chart_builder
+    from utils.auth import require_authentication, render_user_info
+    from utils.cache import get_cached_performance_stats, get_cached_market_data
+    from components.advanced_charts import chart_builder
     
     # Require authentication 
     user_info = require_authentication()
     render_user_info()
     imports_available = True
-except ImportError:
-    st.warning("⚠️ Modules not found - running in demo mode")
+except ImportError as e:
+    st.warning(f"⚠️ Import error: {e} - running in demo mode")
     user_info = {"username": "demo", "role": "admin"}
     chart_builder = None
     imports_available = False

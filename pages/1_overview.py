@@ -13,19 +13,26 @@ from pathlib import Path
 st.set_page_config(page_title="Overview", page_icon="📈", layout="wide")
 
 # Add authentication
-sys.path.append(str(Path(__file__).parent.parent / "utils"))
-sys.path.append(str(Path(__file__).parent.parent / "components"))
+import os
+import sys
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 try:
-    from auth import require_authentication, render_user_info
-    from cache import get_cached_signals, get_cached_market_data, get_cached_performance_stats
-    from advanced_charts import chart_builder
+    from utils.auth import require_authentication, render_user_info
+    from utils.cache import get_cached_signals, get_cached_market_data, get_cached_performance_stats
+    from components.advanced_charts import chart_builder
     
     # Require authentication for this page
     user_info = require_authentication()
     render_user_info()
-except ImportError:
+    imports_successful = True
+except ImportError as e:
     st.warning("⚠️ Authentication or components modules not found - running in demo mode")
     user_info = {"username": "demo", "role": "admin"}
+    imports_successful = False
 
 # Enhanced CSS styling for signals page
 st.markdown("""

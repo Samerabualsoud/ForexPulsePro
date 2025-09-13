@@ -144,7 +144,7 @@ Provide the time (UTC if possible) and expected impact level (high/medium/low).
             "stream": False
         }
         
-        response = requests.post(self.base_url, headers=headers, json=data, timeout=30)
+        response = requests.post(self.base_url, headers=headers, json=data, timeout=12)
         response.raise_for_status()
         
         return response.json()

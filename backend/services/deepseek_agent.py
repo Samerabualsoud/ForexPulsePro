@@ -206,7 +206,7 @@ Provide JSON response:
                 f"{self.client['base_url']}/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=30
+                timeout=10  # Reduced from 30s to 10s for better reliability
             )
             
             if response.status_code == 200:

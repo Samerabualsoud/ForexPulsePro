@@ -63,7 +63,7 @@ class ExchangeRateProvider:
                 
                 # Cryptocurrency Pairs (current market prices Sep 2025)
                 'BTCUSD': 115918.0,  # Bitcoin current market price
-                'ETHUSD': 3456.78,   # Ethereum typical range 2.5k-4.5k
+                'ETHUSD': 4639.0,    # Ethereum current market price ~4638-4640
             }
             
             # Get base rate and add small random variation (±0.05%)

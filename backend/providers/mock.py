@@ -26,7 +26,8 @@ class MockDataProvider(BaseDataProvider):
         symbols = [
             'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 
             'USDCHF', 'NZDUSD', 'EURGBP', 'EURJPY', 'GBPJPY',
-            'AUDJPY', 'CHFJPY', 'EURCHF', 'GBPAUD', 'AUDCAD'
+            'AUDJPY', 'CHFJPY', 'EURCHF', 'GBPAUD', 'AUDCAD',
+            'BTCUSD'  # Bitcoin support added
         ]
         
         for symbol in symbols:
@@ -43,7 +44,8 @@ class MockDataProvider(BaseDataProvider):
             'AUDUSD': 0.6420, 'USDCAD': 1.4350, 'USDCHF': 0.8950,
             'NZDUSD': 0.5680, 'EURGBP': 0.8580, 'EURJPY': 162.30,
             'GBPJPY': 189.20, 'AUDJPY': 96.00, 'CHFJPY': 167.10,
-            'EURCHF': 0.9710, 'GBPAUD': 1.9700, 'AUDCAD': 0.9210
+            'EURCHF': 0.9710, 'GBPAUD': 1.9700, 'AUDCAD': 0.9210,
+            'BTCUSD': 42000.00  # Bitcoin realistic price level
         }
         
         base_price = base_prices.get(symbol, 1.0000)

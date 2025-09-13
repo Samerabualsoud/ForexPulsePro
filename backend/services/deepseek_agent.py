@@ -175,6 +175,9 @@ Provide JSON response:
         Returns:
             Parsed JSON response or None if failed
         """
+        if not self.client:
+            return None
+            
         try:
             requests = self.client['requests']
             

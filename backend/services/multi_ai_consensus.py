@@ -12,14 +12,14 @@ from .perplexity_news_agent import PerplexityNewsAgent
 from .gemini_correlation_agent import GeminiCorrelationAgent
 from ..logs.logger import get_logger
 
+logger = get_logger(__name__)
+
 # Optional DeepSeek import with fallback
 try:
     from .deepseek_agent import DeepSeekAgent
 except Exception as e:
     DeepSeekAgent = None
     logger.warning(f"DeepSeek disabled: import failed: {e}")
-
-logger = get_logger(__name__)
 
 class MultiAIConsensus:
     """
@@ -88,7 +88,7 @@ class MultiAIConsensus:
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     logger.error(f"AI analysis task {i} failed: {result}")
-                else:
+                elif isinstance(result, dict) and result:
                     analyses.update(result)
         
         # Generate consensus analysis
@@ -101,16 +101,15 @@ class MultiAIConsensus:
     async def _run_manus_analysis(self, symbol: str, market_data: pd.DataFrame) -> Dict[str, Any]:
         """Run Manus AI analysis"""
         try:
-            # Get Manus AI regime and strategy recommendations
-            regime_data = self.manus_ai.detect_market_regime(market_data, symbol)
-            strategy_recommendations = self.manus_ai.get_strategy_recommendations(symbol, regime_data)
+            # Get Manus AI strategy recommendations using the correct method
+            strategy_analysis = self.manus_ai.suggest_strategies(symbol, market_data)
             
             return {
                 'manus_ai': {
-                    'regime': regime_data.get('regime', 'UNKNOWN'),
-                    'regime_confidence': regime_data.get('confidence', 0.5),
-                    'recommended_strategies': strategy_recommendations.get('strategies', []),
-                    'market_condition': strategy_recommendations.get('market_condition', 'neutral'),
+                    'regime': strategy_analysis.get('regime', 'UNKNOWN'),
+                    'regime_confidence': strategy_analysis.get('confidence', 0.5),
+                    'recommended_strategies': strategy_analysis.get('strategies', []),
+                    'market_condition': strategy_analysis.get('market_condition', 'neutral'),
                     'agent': 'manus_ai'
                 }
             }

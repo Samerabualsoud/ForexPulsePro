@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Any
 
 from ..models import Signal, Strategy
 # from ..services.sentiment_factor import sentiment_factor_service  # Temporarily disabled
@@ -16,15 +16,27 @@ from ..services.manus_ai import ManusAI
 # Initialize logger first
 logger = get_logger(__name__)
 
-# Check AI capabilities
+# Check enhanced AI capabilities
 ai_capabilities = get_ai_capabilities()
 CHATGPT_AVAILABLE = ai_capabilities['openai_enabled']
+MULTI_AI_AVAILABLE = ai_capabilities['multi_ai_enabled']
 
-# Conditional imports for ChatGPT components
+# Conditional imports for AI components
 ChatGPTStrategyOptimizer = None
 AIStrategyConsensus = None
 AdvancedBacktester = None
+MultiAIConsensus = None
 
+# Try to import Multi-AI Consensus system first
+if MULTI_AI_AVAILABLE:
+    try:
+        from ..services.multi_ai_consensus import MultiAIConsensus
+        logger.info(f"Multi-AI Consensus system loaded - {ai_capabilities['total_ai_agents']} agents available")
+    except ImportError as e:
+        logger.warning(f"Multi-AI Consensus system failed to load: {e}")
+        MULTI_AI_AVAILABLE = False
+
+# Legacy ChatGPT-only components
 if CHATGPT_AVAILABLE:
     try:
         from ..services.chatgpt_strategy_optimizer import ChatGPTStrategyOptimizer
@@ -35,13 +47,15 @@ if CHATGPT_AVAILABLE:
         logger.warning(f"ChatGPT integration failed to load: {e}")
         CHATGPT_AVAILABLE = False
 else:
-    logger.info("ChatGPT integration not available - using Manus AI only")
-    # Import fallback backtester that doesn't use ChatGPT
-    try:
+    logger.info("ChatGPT integration not available - using enhanced AI system")
+
+# Always try to load advanced backtester
+try:
+    if not AdvancedBacktester:
         from ..services.advanced_backtester import AdvancedBacktester
-        logger.info("Advanced backtester loaded in Manus AI only mode")
-    except ImportError as e:
-        logger.warning(f"Advanced backtester not available: {e}")
+        logger.info("Advanced backtester loaded")
+except ImportError as e:
+    logger.warning(f"Advanced backtester not available: {e}")
 from ..providers.mock import MockDataProvider
 from ..providers.alphavantage import AlphaVantageProvider
 from ..providers.freecurrency import FreeCurrencyAPIProvider
@@ -107,15 +121,29 @@ class SignalEngine:
         
         self.execution_provider = MT5BridgeExecutionProvider()
         
-        # Initialize enhanced dual-AI system for collaborative trading recommendations
+        # Initialize enhanced AI system for collaborative trading recommendations
         self.manus_ai = ManusAI()
         
-        # Initialize ChatGPT components if available
+        # Initialize Multi-AI Consensus system if available
+        if MULTI_AI_AVAILABLE and MultiAIConsensus:
+            try:
+                self.multi_ai_consensus = MultiAIConsensus()
+                self.enable_multi_ai = True
+                logger.info("SignalEngine: Multi-AI Consensus system initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize Multi-AI Consensus: {e}")
+                self.enable_multi_ai = False
+                self.multi_ai_consensus = None
+        else:
+            self.enable_multi_ai = False
+            self.multi_ai_consensus = None
+            
+        # Initialize legacy ChatGPT components if available
         if CHATGPT_AVAILABLE and ChatGPTStrategyOptimizer and AIStrategyConsensus:
             try:
                 self.chatgpt_optimizer = ChatGPTStrategyOptimizer()
                 self.ai_consensus = AIStrategyConsensus()
-                logger.info("SignalEngine: Dual-AI components initialized successfully")
+                logger.info("SignalEngine: Legacy ChatGPT components initialized successfully")
             except Exception as e:
                 logger.warning(f"SignalEngine: Failed to initialize ChatGPT components: {e}")
                 self.chatgpt_optimizer = None
@@ -223,11 +251,13 @@ class SignalEngine:
                 regime_detector.store_regime(symbol, regime_data, db)
                 logger.debug(f"Market regime for {symbol}: {regime_data['regime']} ({regime_data['confidence']:.2f})")
             
-            # Get dual-AI strategy recommendations using consensus system
-            if self.enable_dual_ai and CHATGPT_AVAILABLE:
+            # Get AI strategy recommendations using enhanced multi-AI system
+            if self.enable_multi_ai and self.multi_ai_consensus:
+                consensus_recommendations = await self._get_multi_ai_recommendations(symbol, data, [s.name for s in strategies])
+            elif self.enable_dual_ai and CHATGPT_AVAILABLE:
                 consensus_recommendations = await self._get_ai_consensus_recommendations(symbol, data, [s.name for s in strategies])
             else:
-                # Fallback to single Manus AI (when ChatGPT not available or dual AI disabled)
+                # Fallback to single Manus AI
                 consensus_recommendations = await self._get_manus_ai_recommendations(symbol, data)
             
             # Process each strategy
@@ -254,8 +284,10 @@ class SignalEngine:
                 if should_prioritize:
                     logger.info(f"Strategy {strategy_config.name} prioritized for {symbol}: {ai_reason}")
                 
-                # Process strategy with AI-enhanced analysis
-                if CHATGPT_AVAILABLE:
+                # Process strategy with enhanced AI analysis
+                if self.enable_multi_ai and self.multi_ai_consensus:
+                    await self._process_strategy_with_multi_ai(symbol, data, strategy_config, db, consensus_recommendations)
+                elif CHATGPT_AVAILABLE:
                     await self._process_strategy_with_ai_consensus(symbol, data, strategy_config, db, consensus_recommendations)
                 else:
                     await self._process_strategy(symbol, data, strategy_config, db, consensus_recommendations)
@@ -572,6 +604,50 @@ class SignalEngine:
         except Exception as e:
             logger.warning(f"Error getting Manus AI recommendations for {symbol}: {e}")
             return None
+    
+    async def _get_multi_ai_recommendations(self, symbol: str, data: pd.DataFrame, strategy_names: List[str]) -> Dict[str, Any]:
+        """Get enhanced recommendations from Multi-AI Consensus system"""
+        try:
+            # Generate comprehensive multi-AI analysis
+            multi_ai_analysis = await self.multi_ai_consensus.generate_enhanced_signal_analysis(
+                symbol=symbol,
+                market_data=data,
+                base_signal=None  # Will be provided later during signal processing
+            )
+            
+            # Extract core recommendations from consensus
+            manus_insights = multi_ai_analysis.get('agent_insights', {}).get('manus_ai', {})
+            
+            return {
+                'regime': manus_insights.get('regime', 'UNKNOWN'),
+                'confidence': multi_ai_analysis.get('final_confidence', 0.5),
+                'recommended_strategies': strategy_names,  # All strategies considered with AI adjustment
+                'market_condition': manus_insights.get('market_condition', 'unknown'),
+                'ai_mode': 'multi_ai_consensus',
+                'agent_count': multi_ai_analysis.get('agent_count', 1),
+                'consensus_strength': multi_ai_analysis.get('consensus_strength', 0.5),
+                'multi_ai_analysis': multi_ai_analysis  # Store full analysis for later use
+            }
+        except Exception as e:
+            logger.error(f"Multi-AI recommendations failed for {symbol}: {e}")
+            # Fallback to Manus AI only
+            fallback = await self._get_manus_ai_recommendations(symbol, data)
+            if fallback:
+                return {
+                    'regime': fallback.get('market_analysis', {}).get('regime', 'UNKNOWN'),
+                    'confidence': fallback.get('market_analysis', {}).get('regime_confidence', 0.5),
+                    'recommended_strategies': [s['name'] for s in fallback.get('recommended_strategies', [])],
+                    'market_condition': 'unknown',
+                    'ai_mode': 'manus_fallback'
+                }
+            else:
+                return {
+                    'regime': 'UNKNOWN',
+                    'confidence': 0.5,
+                    'recommended_strategies': strategy_names,
+                    'market_condition': 'unknown',
+                    'ai_mode': 'fallback'
+                }
     
     def _should_block_strategy(self, strategy_name: str, manus_recommendations: Optional[Dict]) -> Tuple[bool, str]:
         """

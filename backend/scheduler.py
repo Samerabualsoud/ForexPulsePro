@@ -86,7 +86,7 @@ class SignalScheduler:
         """Generate signals for all symbols"""
         db = self.SessionLocal()
         try:
-            symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'BTCUSD']
+            symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'BTCUSD', 'ETHUSD', 'XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD', 'XPTUSD', 'XPDUSD']
             
             for symbol in symbols:
                 try:

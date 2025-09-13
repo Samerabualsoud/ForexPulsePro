@@ -152,11 +152,27 @@ class SignalEngine:
         crypto_symbols = ['BTCUSD', 'ETHUSD', 'LTCUSD', 'ADAUSD', 'DOGUSD', 'SOLUSD', 'AVAXUSD']
         return symbol in crypto_symbols or 'BTC' in symbol or 'ETH' in symbol
     
+    def _is_metals_oil_symbol(self, symbol: str) -> bool:
+        """Check if symbol is a metals or oil pair"""
+        metals_oil_symbols = ['XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD', 'XPTUSD', 'XPDUSD', 'WTIUSD', 'XBRUSD', 'XRHHUSD']
+        return symbol in metals_oil_symbols or symbol.startswith('XAU') or symbol.startswith('XAG') or 'OIL' in symbol
+    
     def _is_market_open_for_symbol(self, symbol: str) -> bool:
         """Check if market is open for the specific symbol type"""
         # Crypto markets are 24/7 - always open
         if self._is_crypto_symbol(symbol):
             logger.debug(f"Crypto market for {symbol} is always open (24/7)")
+            return True
+        
+        # Metals and oil markets are typically 23/6 (closed Saturdays)
+        if self._is_metals_oil_symbol(symbol):
+            now = datetime.utcnow()
+            weekday = now.weekday()  # Monday = 0, Sunday = 6
+            # Closed on Saturday (weekday 5)
+            if weekday == 5:
+                logger.debug(f"Metals/Oil market for {symbol} is closed on Saturday")
+                return False
+            logger.debug(f"Metals/Oil market for {symbol} is open")
             return True
         
         # Forex markets have specific hours

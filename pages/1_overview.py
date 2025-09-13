@@ -247,25 +247,27 @@ st.markdown("---")
 
 # Separate signals by type
 def separate_signals_by_type(signals):
-    """Separate signals into Forex Major and Crypto categories"""
+    """Separate signals into Forex Major, Crypto, and Metals & Oil categories"""
     forex_majors = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD', 
                    'EURJPY', 'GBPJPY', 'EURGBP', 'AUDJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'AUDCAD']
-    crypto_pairs = ['BTCUSD', 'ETHUSD', 'BTCEUR', 'ETHEUR', 'BTCGBP', 'ETHGBP']
+    crypto_pairs = ['BTCUSD', 'ETHUSD', 'BTCEUR', 'ETHEUR', 'BTCGBP', 'ETHGBP', 'LTCUSD', 'ADAUSD', 'DOGUSD', 'SOLUSD', 'AVAXUSD']
+    metals_oil = ['XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD', 'XPTUSD', 'XPDUSD', 'WTIUSD', 'XBRUSD', 'XPDUSD', 'XRHHUSD']
     
     forex_signals = [s for s in signals if s.get('symbol', '').upper() in forex_majors]
     crypto_signals = [s for s in signals if s.get('symbol', '').upper() in crypto_pairs]
+    metals_oil_signals = [s for s in signals if s.get('symbol', '').upper() in metals_oil]
     
-    return forex_signals, crypto_signals
+    return forex_signals, crypto_signals, metals_oil_signals
 
 # Main signals sections
 st.markdown('<div class="section-header">📊 Live Trading Signals</div>', unsafe_allow_html=True)
 
 if signals and len(signals) > 0:
     # Separate signals by type
-    forex_signals, crypto_signals = separate_signals_by_type(signals)
+    forex_signals, crypto_signals, metals_oil_signals = separate_signals_by_type(signals)
     
-    # Create tabs for Forex Major and Crypto
-    tab1, tab2 = st.tabs(["💱 Forex Major", "₿ Crypto"])
+    # Create tabs for Forex Major, Crypto, and Metals & Oil
+    tab1, tab2, tab3 = st.tabs(["💱 Forex Major", "₿ Crypto", "🥇 Metals & Oil"])
     
     with tab1:
         st.markdown('<h4>Major Currency Pairs</h4>', unsafe_allow_html=True)
@@ -318,6 +320,32 @@ if signals and len(signals) > 0:
                 st.metric("Avg Confidence", f"{crypto_confidence:.1%}")
         else:
             st.info("₿ No active cryptocurrency signals. The system is monitoring BTC/USD and ETH/USD pairs 24/7.")
+    
+    with tab3:
+        st.markdown('<h4>Metals & Oil Markets</h4>', unsafe_allow_html=True)
+        if metals_oil_signals:
+            render_signal_table(metals_oil_signals, title="", show_details=False, max_rows=10)
+            
+            # Metals & Oil metrics
+            col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+            
+            with col1:
+                metals_active = sum(1 for s in metals_oil_signals if get_signal_status(s)[0].startswith('🟢'))
+                st.metric("Active Metals/Oil", metals_active)
+            
+            with col2:
+                metals_buy = sum(1 for s in metals_oil_signals if s.get('action') == 'BUY')
+                st.metric("Metals/Oil Buy", metals_buy)
+            
+            with col3:
+                metals_sell = sum(1 for s in metals_oil_signals if s.get('action') == 'SELL')
+                st.metric("Metals/Oil Sell", metals_sell)
+            
+            with col4:
+                metals_confidence = sum(s.get('confidence', 0) for s in metals_oil_signals) / len(metals_oil_signals) if metals_oil_signals else 0
+                st.metric("Avg Confidence", f"{metals_confidence:.1%}")
+        else:
+            st.info("🥇 No active metals & oil signals. The system is monitoring Gold (XAU/USD), Silver (XAG/USD), Oil (US/UK), and precious metals markets 24/7.")
     
     # Global action buttons
     st.markdown("---")

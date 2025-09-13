@@ -212,7 +212,6 @@ def get_fallback_data(endpoint):
                 "issued_at": signal_time.isoformat() + "Z",
                 "expires_at": expire_time.isoformat() + "Z",
                 "blocked_by_risk": random.choice([True, False]),
-                "sent_to_whatsapp": False,
                 "risk_reason": "Demo mode" if random.choice([True, False]) else None
             })
         
@@ -446,7 +445,6 @@ with col1:
                 'Confidence': f"{signal.get('confidence', 0):.0%}",
                 'Strategy': signal.get('strategy', 'N/A'),
                 'Result': signal.get('result', 'PENDING'),
-                'WhatsApp': "✅" if signal.get('sent_to_whatsapp') else "❌",
                 'Blocked': "🚫" if signal.get('blocked_by_risk') else "✅"
             })
         
@@ -519,23 +517,11 @@ with col1:
         # Quick action buttons for recent signals
         st.markdown('<h3 class="signals-header">🚀 Quick Actions</h3>', unsafe_allow_html=True)
         
-        if st.button("🔄 Refresh Data", use_container_width=True):
+        # Signal management actions
+        if st.button("🔄 Refresh Signal Data", use_container_width=True):
             st.cache_data.clear()
+            st.success("✅ Signal data refreshed!")
             st.rerun()
-        
-        # WhatsApp actions for the latest signal
-        if len(recent_signals) > 0:
-            latest_signal = recent_signals[0]
-            col_a, col_b = st.columns(2)
-            
-            with col_a:
-                if st.button(f"📱 Resend Latest to WhatsApp", use_container_width=True):
-                    # This would require authentication - simplified for demo
-                    st.info("Feature requires admin authentication")
-            
-            with col_b:
-                if st.button("🧪 Test WhatsApp", use_container_width=True):
-                    st.info("Feature requires admin authentication")
     
     else:
         st.info("No recent signals found. The system may be starting up or no signals have been generated yet.")

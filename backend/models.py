@@ -48,7 +48,6 @@ class Signal(Base):
     version = Column(String(10), default="v1")
     expires_at = Column(DateTime, nullable=False)
     issued_at = Column(DateTime, default=datetime.utcnow, index=True)
-    sent_to_whatsapp = Column(Boolean, default=False)
     blocked_by_risk = Column(Boolean, default=False)
     risk_reason = Column(Text)
     
@@ -83,7 +82,6 @@ class Signal(Base):
             "version": self.version,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "issued_at": self.issued_at.isoformat() if self.issued_at else None,
-            "sent_to_whatsapp": self.sent_to_whatsapp,
             "blocked_by_risk": self.blocked_by_risk,
             "tp_reached": self.tp_reached,
             "sl_hit": self.sl_hit,

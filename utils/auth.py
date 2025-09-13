@@ -95,6 +95,8 @@ def require_authentication(admin_only: bool = False) -> Optional[Dict[str, Any]]
         st.session_state.user_info = None
     if 'auth_token' not in st.session_state:
         st.session_state.auth_token = None
+    if 'user_role' not in st.session_state:
+        st.session_state.user_role = None
 
     # Check existing authentication
     if st.session_state.authenticated and st.session_state.auth_token:
@@ -113,6 +115,7 @@ def require_authentication(admin_only: bool = False) -> Optional[Dict[str, Any]]
             st.session_state.authenticated = False
             st.session_state.user_info = None
             st.session_state.auth_token = None
+            st.session_state.user_role = None
 
     # Show login form
     show_login_form(admin_only)
@@ -162,6 +165,7 @@ Password: viewer123
         st.session_state.authenticated = False
         st.session_state.user_info = None
         st.session_state.auth_token = None
+        st.session_state.user_role = None
         st.rerun()
     
     if login_clicked and username and password:
@@ -178,6 +182,7 @@ Password: viewer123
                 st.session_state.authenticated = True
                 st.session_state.user_info = user_info
                 st.session_state.auth_token = user_info['token']
+                st.session_state.user_role = user_info['role']
                 
                 st.success(f"✅ Welcome back, {user_info['name']}! ({user_info['role'].title()})")
                 logger.info(f"User authenticated: {username} ({user_info['role']})")
@@ -198,6 +203,7 @@ def logout_user():
     st.session_state.authenticated = False
     st.session_state.user_info = None
     st.session_state.auth_token = None
+    st.session_state.user_role = None
 
 def render_user_info():
     """Render current user info in sidebar"""

@@ -211,7 +211,7 @@ Provide JSON response:
                         f"{self.client['base_url']}/chat/completions",
                         headers=headers,
                         json=data,
-                        timeout=15  # Increased from 10s to 15s
+                        timeout=8  # Reduced for faster failures
                     )
                     break  # Success, exit retry loop
                 except Exception as e:

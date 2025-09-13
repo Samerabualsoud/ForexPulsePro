@@ -214,10 +214,10 @@ class MultiAIConsensus:
                 'weight': 0.25
             }
         
-        # **QUALITY REQUIREMENT**: Minimum 3 out of 4 agents required for valid signals
+        # **QUALITY REQUIREMENT**: Minimum 2 out of 4 agents required for valid signals (temporarily lowered from 3)
         available_agents = len(agent_insights)
-        if available_agents < 3:
-            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/4 (minimum 3 required)")
+        if available_agents < 2:
+            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/4 (minimum 2 required)")
             return {
                 'final_confidence': 0.0,
                 'consensus_action': 'INSUFFICIENT_CONSENSUS',

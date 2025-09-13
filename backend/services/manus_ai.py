@@ -33,11 +33,66 @@ class ManusAI:
         self.regime_detector = RegimeDetector()
         self.sentiment_analyzer = SentimentAnalyzer()
         
-        # Professional strategy mapping based on market conditions
-        self.strategy_mapping = {
+        # Market-specific strategy mappings based on market conditions and asset type
+        self.forex_major_strategy_mapping = {
             'TRENDING': {
                 'primary': ['donchian_atr', 'ema_rsi'],
-                'secondary': ['macd_crossover'],
+                'secondary': ['macd_strategy'],
+                'avoid': ['meanrev_bb', 'stochastic'],
+                'reasoning': 'Trending forex markets favor breakout and momentum strategies with lower volatility'
+            },
+            'STRONG_TRENDING': {
+                'primary': ['donchian_atr', 'fibonacci'],
+                'secondary': ['ema_rsi'],
+                'avoid': ['meanrev_bb', 'stochastic', 'rsi_divergence'],
+                'reasoning': 'Strong forex trends require momentum strategies with wider stops'
+            },
+            'RANGING': {
+                'primary': ['meanrev_bb', 'stochastic'],
+                'secondary': ['rsi_divergence'],
+                'avoid': ['donchian_atr', 'fibonacci'],
+                'reasoning': 'Range-bound forex markets favor mean reversion strategies'
+            },
+            'HIGH_VOLATILITY': {
+                'primary': ['stochastic', 'rsi_divergence'],
+                'secondary': ['meanrev_bb'],
+                'avoid': ['donchian_atr'],
+                'reasoning': 'High volatility forex requires precision timing strategies'
+            }
+        }
+        
+        self.crypto_strategy_mapping = {
+            'TRENDING': {
+                'primary': ['donchian_atr', 'ema_rsi', 'macd_strategy'],
+                'secondary': ['fibonacci'],
+                'avoid': ['meanrev_bb'],
+                'reasoning': 'Trending crypto markets strongly favor momentum and breakout strategies'
+            },
+            'STRONG_TRENDING': {
+                'primary': ['donchian_atr', 'fibonacci', 'ema_rsi'],
+                'secondary': ['macd_strategy'],
+                'avoid': ['meanrev_bb', 'stochastic', 'rsi_divergence'],
+                'reasoning': 'Strong crypto trends require aggressive momentum strategies'
+            },
+            'RANGING': {
+                'primary': ['meanrev_bb', 'rsi_divergence'],
+                'secondary': ['stochastic'],
+                'avoid': ['donchian_atr', 'fibonacci'],
+                'reasoning': 'Range-bound crypto markets favor quick mean reversion strategies'
+            },
+            'HIGH_VOLATILITY': {
+                'primary': ['rsi_divergence', 'stochastic'],
+                'secondary': ['meanrev_bb', 'ema_rsi'],
+                'avoid': ['donchian_atr', 'fibonacci'],
+                'reasoning': 'High volatility crypto requires nimble timing strategies'
+            }
+        }
+        
+        # Fallback strategy mapping for other market types (maintains compatibility)
+        self.default_strategy_mapping = {
+            'TRENDING': {
+                'primary': ['donchian_atr', 'ema_rsi'],
+                'secondary': ['macd_strategy'],
                 'avoid': ['meanrev_bb', 'stochastic'],
                 'reasoning': 'Trending markets favor breakout and momentum strategies'
             },
@@ -63,14 +118,49 @@ class ManusAI:
         
         # Risk management parameters
         self.max_risk_per_trade = 0.01  # 1% maximum risk per trade
-        self.volatility_threshold = 0.005  # 0.5% ATR threshold for high volatility (realistic for FX)
+        
+        # Market-specific volatility thresholds
+        self.volatility_thresholds = {
+            'forex_major': 0.005,  # 0.5% ATR threshold for high volatility (realistic for FX)
+            'crypto': 0.02,        # 2.0% ATR threshold for high volatility (realistic for crypto)
+            'other': 0.005         # Default to forex-like threshold
+        }
         self.confidence_adjustment_factors = {
             'sentiment_boost': 0.05,  # Max 5% confidence boost from positive sentiment
             'regime_penalty': 0.10,   # Max 10% confidence reduction for wrong regime
             'volatility_penalty': 0.15  # Max 15% reduction for high volatility
         }
         
-        logger.info(f"Enhanced Manus AI service initialized with professional trading best practices")
+        # Major forex pairs for classification
+        self.forex_major_pairs = {
+            'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD',
+            'EURGBP', 'EURJPY', 'GBPJPY', 'AUDJPY', 'CHFJPY', 'EURCHF', 'GBPAUD', 'AUDCAD'
+        }
+        
+        # Crypto pairs for classification
+        self.crypto_pairs = {
+            'BTCUSD', 'ETHUSD', 'LTCUSD', 'ADAUSD', 'DOGUSD', 'SOLUSD', 'AVAXUSD'
+        }
+        
+        logger.info(f"Enhanced Manus AI service initialized with market-type-aware strategy selection")
+    
+    def _classify_market(self, symbol: str) -> str:
+        """Classify market type based on symbol
+        
+        Args:
+            symbol: Trading symbol (e.g., 'EURUSD', 'BTCUSD')
+            
+        Returns:
+            str: 'forex_major', 'crypto', or 'other'
+        """
+        symbol_upper = symbol.upper()
+        
+        if symbol_upper in self.forex_major_pairs:
+            return 'forex_major'
+        elif symbol_upper in self.crypto_pairs:
+            return 'crypto'
+        else:
+            return 'other'
     
     def suggest_strategies(self, symbol: str, market_data: pd.DataFrame, sentiment_data: Optional[Dict] = None) -> Dict[str, Any]:
         """
@@ -88,6 +178,9 @@ class ManusAI:
             Dict with recommended strategies, reasoning, and risk parameters
         """
         try:
+            # Classify market type for market-aware strategy selection
+            market_type = self._classify_market(symbol)
+            
             # Detect current market regime
             regime_data = self.regime_detector.detect_regime(market_data, symbol)
             current_regime = regime_data['regime']
@@ -97,17 +190,17 @@ class ManusAI:
             if sentiment_data is None:
                 sentiment_data = self._analyze_market_sentiment(symbol)
             
-            # Calculate volatility metrics
-            volatility_analysis = self._calculate_volatility_metrics(market_data)
+            # Calculate volatility metrics with market-specific thresholds
+            volatility_analysis = self._calculate_volatility_metrics(market_data, market_type)
             
-            # Get base strategy recommendations
+            # Get base strategy recommendations with market awareness
             strategy_recommendations = self._get_strategy_recommendations(
-                current_regime, regime_confidence, volatility_analysis, sentiment_data
+                current_regime, regime_confidence, volatility_analysis, sentiment_data, market_type
             )
             
-            # Apply professional filters and adjustments
+            # Apply professional filters and adjustments with market context
             filtered_strategies = self._apply_professional_filters(
-                strategy_recommendations, regime_data, volatility_analysis, sentiment_data
+                strategy_recommendations, regime_data, volatility_analysis, sentiment_data, market_type
             )
             
             # Calculate risk guidance (defer position sizing to RiskManager)
@@ -121,6 +214,7 @@ class ManusAI:
                 'symbol': symbol,
                 'timestamp': datetime.utcnow().isoformat(),
                 'market_analysis': {
+                    'market_type': market_type,
                     'regime': current_regime,
                     'regime_confidence': regime_confidence,
                     'volatility_level': volatility_analysis['level'],
@@ -130,7 +224,7 @@ class ManusAI:
                 'recommended_strategies': filtered_strategies,
                 'risk_guidance': risk_guidance,  # Risk suggestions, not mandates
                 'risk_parameters': risk_parameters,  # Technical parameters for reference
-                'reasoning': self._generate_reasoning(current_regime, volatility_analysis, sentiment_data)
+                'reasoning': self._generate_reasoning(current_regime, volatility_analysis, sentiment_data, market_type)
             }
             
             logger.info(f"Strategy recommendations generated for {symbol}: "
@@ -175,7 +269,7 @@ class ManusAI:
             logger.warning(f"Error analyzing sentiment for {symbol}: {e}")
             return {'score': 0.0, 'label': 'neutral', 'confidence': 0.0, 'reasoning': 'Sentiment analysis unavailable'}
     
-    def _calculate_volatility_metrics(self, market_data: pd.DataFrame) -> Dict:
+    def _calculate_volatility_metrics(self, market_data: pd.DataFrame, market_type: str = 'other') -> Dict:
         """Calculate comprehensive volatility metrics using proper ATR calculation"""
         try:
             # Add explicit data length validation
@@ -195,11 +289,13 @@ class ManusAI:
             current_price = market_data['close'].iloc[-1]
             atr_percentage = atr_14 / current_price
             
-            # Classify volatility level with realistic FX thresholds
-            if atr_percentage > self.volatility_threshold:  # > 0.5%
+            # Classify volatility level with market-specific thresholds
+            volatility_threshold = self.volatility_thresholds.get(market_type, self.volatility_thresholds['other'])
+            
+            if atr_percentage > volatility_threshold:
                 level = 'high'
                 multiplier = 1.5  # Wider stops for high volatility
-            elif atr_percentage > self.volatility_threshold * 0.4:  # > 0.2%
+            elif atr_percentage > volatility_threshold * 0.4:
                 level = 'medium'
                 multiplier = 1.0
             else:
@@ -212,7 +308,9 @@ class ManusAI:
                 'atr_percentage': float(atr_percentage),
                 'stop_multiplier': multiplier,
                 'current_price': float(current_price),
-                'data_points': len(market_data)
+                'data_points': len(market_data),
+                'market_type': market_type,
+                'volatility_threshold': volatility_threshold
             }
             
         except Exception as e:
@@ -269,15 +367,24 @@ class ManusAI:
         regime: str, 
         regime_confidence: float, 
         volatility_analysis: Dict, 
-        sentiment_data: Dict
+        sentiment_data: Dict,
+        market_type: str = 'other'
     ) -> List[Dict]:
-        """Get base strategy recommendations based on market conditions"""
+        """Get base strategy recommendations based on market conditions and market type"""
         try:
+            # Select appropriate strategy mapping based on market type
+            if market_type == 'forex_major':
+                strategy_mapping = self.forex_major_strategy_mapping
+            elif market_type == 'crypto':
+                strategy_mapping = self.crypto_strategy_mapping
+            else:
+                strategy_mapping = self.default_strategy_mapping
+            
             # Get strategy mapping for current regime
-            if regime not in self.strategy_mapping:
+            if regime not in strategy_mapping:
                 regime = 'RANGING'  # Default fallback
             
-            mapping = self.strategy_mapping[regime]
+            mapping = strategy_mapping[regime]
             recommendations = []
             
             # Primary strategies (highest confidence)
@@ -299,7 +406,7 @@ class ManusAI:
                 })
             
             # Add all other strategies as tertiary (low confidence)
-            all_strategies = ['ema_rsi', 'donchian_atr', 'meanrev_bb', 'macd_crossover', 
+            all_strategies = ['ema_rsi', 'donchian_atr', 'meanrev_bb', 'macd_strategy', 
                              'stochastic', 'rsi_divergence', 'fibonacci']
             avoid_strategies = set(mapping.get('avoid', []))
             used_strategies = set(mapping['primary'] + mapping['secondary'])
@@ -324,7 +431,8 @@ class ManusAI:
         recommendations: List[Dict], 
         regime_data: Dict, 
         volatility_analysis: Dict, 
-        sentiment_data: Dict
+        sentiment_data: Dict,
+        market_type: str = 'other'
     ) -> List[Dict]:
         """Apply professional trading filters and confidence adjustments"""
         try:
@@ -355,9 +463,21 @@ class ManusAI:
                 # Sentiment adjustment
                 sentiment_score = sentiment_data.get('score', 0.0)
                 if abs(sentiment_score) > 0.3:  # Strong sentiment
-                    if rec['name'] in ['ema_rsi', 'macd_crossover']:  # Momentum strategies
+                    if rec['name'] in ['ema_rsi', 'macd_strategy']:  # Momentum strategies
                         adjusted_confidence *= 1.05  # Small boost for momentum in strong sentiment
                         adjustment_reasons.append("sentiment_momentum_boost")
+                
+                # Market-type specific adjustments
+                if market_type == 'crypto':
+                    # Crypto markets favor momentum strategies
+                    if rec['name'] in ['donchian_atr', 'ema_rsi', 'macd_strategy']:
+                        adjusted_confidence *= 1.05
+                        adjustment_reasons.append("crypto_momentum_boost")
+                elif market_type == 'forex_major':
+                    # Forex majors favor stability and precision
+                    if rec['name'] in ['meanrev_bb', 'stochastic', 'rsi_divergence']:
+                        adjusted_confidence *= 1.02
+                        adjustment_reasons.append("forex_precision_boost")
                 
                 # Professional risk controls with explicit confidence clamping (0.1-1.0)
                 adjusted_confidence = max(0.1, min(1.0, adjusted_confidence))
@@ -380,6 +500,7 @@ class ManusAI:
                     'adjustments': adjustment_reasons,
                     'recommended': adjusted_confidence >= 0.5,
                     'risk_guidance': {
+                        'market_type': market_type,
                         'volatility_level': volatility_analysis['level'],
                         'suggested_stop_multiplier': volatility_analysis.get('stop_multiplier', 1.0)
                     }
@@ -472,20 +593,42 @@ class ManusAI:
                 'risk_reward_ratios': {'conservative': 1.5, 'balanced': 2.0, 'aggressive': 3.0}
             }
     
-    def _generate_reasoning(self, regime: str, volatility_analysis: Dict, sentiment_data: Dict) -> str:
+    def _generate_reasoning(self, regime: str, volatility_analysis: Dict, sentiment_data: Dict, market_type: str = 'other') -> str:
         """Generate human-readable reasoning for strategy recommendations"""
         try:
             reasoning_parts = []
             
-            # Market regime reasoning
-            regime_explanations = {
-                'TRENDING': "Market shows clear directional movement favoring momentum strategies",
-                'STRONG_TRENDING': "Strong trending conditions require robust breakout strategies", 
-                'RANGING': "Sideways market conditions favor mean reversion approaches",
-                'HIGH_VOLATILITY': "High volatility environment requires precise timing strategies"
+            # Market type context
+            market_descriptions = {
+                'forex_major': 'major forex pair with institutional liquidity',
+                'crypto': 'cryptocurrency pair with 24/7 trading',
+                'other': 'financial instrument'
             }
             
-            reasoning_parts.append(regime_explanations.get(regime, "Market regime analysis complete"))
+            # Market regime reasoning with market type awareness
+            if market_type == 'crypto':
+                regime_explanations = {
+                    'TRENDING': "Crypto market shows strong directional momentum favoring breakout strategies",
+                    'STRONG_TRENDING': "Strong crypto trend requires aggressive momentum strategies", 
+                    'RANGING': "Sideways crypto market favors quick mean reversion approaches",
+                    'HIGH_VOLATILITY': "High crypto volatility requires nimble timing strategies"
+                }
+            elif market_type == 'forex_major':
+                regime_explanations = {
+                    'TRENDING': "Forex market shows clear directional movement favoring momentum strategies",
+                    'STRONG_TRENDING': "Strong forex trend requires robust breakout strategies", 
+                    'RANGING': "Sideways forex market favors precise mean reversion approaches",
+                    'HIGH_VOLATILITY': "High forex volatility requires precision timing strategies"
+                }
+            else:
+                regime_explanations = {
+                    'TRENDING': "Market shows clear directional movement favoring momentum strategies",
+                    'STRONG_TRENDING': "Strong trending conditions require robust breakout strategies", 
+                    'RANGING': "Sideways market conditions favor mean reversion approaches",
+                    'HIGH_VOLATILITY': "High volatility environment requires precise timing strategies"
+                }
+            
+            reasoning_parts.append(f"Analyzing {market_descriptions.get(market_type, 'financial instrument')}: {regime_explanations.get(regime, 'Market regime analysis complete')}")
             
             # Volatility reasoning
             volatility_level = volatility_analysis['level']
@@ -506,13 +649,23 @@ class ManusAI:
     
     def _fallback_strategy_suggestions(self, symbol: str) -> Dict:
         """Fallback strategy suggestions when analysis fails"""
+        market_type = self._classify_market(symbol)
         return {
             'status': 'fallback',
             'symbol': symbol,
             'timestamp': datetime.utcnow().isoformat(),
+            'market_analysis': {
+                'market_type': market_type,
+                'regime': 'unknown',
+                'regime_confidence': 0.0,
+                'volatility_level': 'medium',
+                'atr_percentage': 0.001,
+                'sentiment': 'neutral'
+            },
             'recommended_strategies': self._fallback_strategy_list(),
-            'reasoning': "Using fallback strategy recommendations - full analysis unavailable",
+            'reasoning': f"Using fallback strategy recommendations for {market_type} market - full analysis unavailable",
             'risk_guidance': {
+                'market_type': market_type,
                 'suggested_risk_reduction': 0.0,
                 'reasoning': 'Fallback mode - use standard risk parameters',
                 'stop_multiplier_adjustment': 1.0
@@ -526,9 +679,9 @@ class ManusAI:
     def _fallback_strategy_list(self) -> List[Dict]:
         """Default strategy list for fallback scenarios"""
         return [
-            {'name': 'ema_rsi', 'confidence': 0.6, 'priority': 'primary', 'recommended': True},
-            {'name': 'meanrev_bb', 'confidence': 0.5, 'priority': 'secondary', 'recommended': True},
-            {'name': 'stochastic', 'confidence': 0.4, 'priority': 'tertiary', 'recommended': False}
+            {'name': 'ema_rsi', 'confidence': 0.6, 'priority': 'primary', 'recommended': True, 'reasoning': 'Fallback momentum strategy'},
+            {'name': 'meanrev_bb', 'confidence': 0.5, 'priority': 'secondary', 'recommended': True, 'reasoning': 'Fallback mean reversion strategy'},
+            {'name': 'stochastic', 'confidence': 0.4, 'priority': 'tertiary', 'recommended': False, 'reasoning': 'Fallback oscillator strategy'}
         ]
 
     def is_available(self) -> bool:

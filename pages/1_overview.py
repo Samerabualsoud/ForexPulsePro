@@ -245,14 +245,82 @@ with col4:
 
 st.markdown("---")
 
-# Main signals table using FIXED component
+# Separate signals by type
+def separate_signals_by_type(signals):
+    """Separate signals into Forex Major and Crypto categories"""
+    forex_majors = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD', 
+                   'EURJPY', 'GBPJPY', 'EURGBP', 'AUDJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'AUDCAD']
+    crypto_pairs = ['BTCUSD', 'ETHUSD', 'BTCEUR', 'ETHEUR', 'BTCGBP', 'ETHGBP']
+    
+    forex_signals = [s for s in signals if s.get('symbol', '').upper() in forex_majors]
+    crypto_signals = [s for s in signals if s.get('symbol', '').upper() in crypto_pairs]
+    
+    return forex_signals, crypto_signals
+
+# Main signals sections
 st.markdown('<div class="section-header">📊 Live Trading Signals</div>', unsafe_allow_html=True)
 
 if signals and len(signals) > 0:
-    # Use the FIXED signal table component with restored actions
-    render_signal_table(signals, title="", show_details=False, max_rows=10)
+    # Separate signals by type
+    forex_signals, crypto_signals = separate_signals_by_type(signals)
     
-    # FIXED action buttons with proper metrics
+    # Create tabs for Forex Major and Crypto
+    tab1, tab2 = st.tabs(["💱 Forex Major", "₿ Crypto"])
+    
+    with tab1:
+        st.markdown('<h4>Major Currency Pairs</h4>', unsafe_allow_html=True)
+        if forex_signals:
+            render_signal_table(forex_signals, title="", show_details=False, max_rows=10)
+            
+            # Forex metrics
+            col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+            
+            with col1:
+                forex_active = sum(1 for s in forex_signals if get_signal_status(s)[0].startswith('🟢'))
+                st.metric("Active Forex", forex_active)
+            
+            with col2:
+                forex_buy = sum(1 for s in forex_signals if s.get('action') == 'BUY')
+                st.metric("Forex Buy", forex_buy)
+            
+            with col3:
+                forex_sell = sum(1 for s in forex_signals if s.get('action') == 'SELL')
+                st.metric("Forex Sell", forex_sell)
+            
+            with col4:
+                forex_confidence = sum(s.get('confidence', 0) for s in forex_signals) / len(forex_signals) if forex_signals else 0
+                st.metric("Avg Confidence", f"{forex_confidence:.1%}")
+        else:
+            st.info("📊 No active Forex major currency signals. The system is monitoring EUR/USD, GBP/USD, USD/JPY and other major pairs.")
+    
+    with tab2:
+        st.markdown('<h4>Cryptocurrency Pairs</h4>', unsafe_allow_html=True)
+        if crypto_signals:
+            render_signal_table(crypto_signals, title="", show_details=False, max_rows=10)
+            
+            # Crypto metrics
+            col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+            
+            with col1:
+                crypto_active = sum(1 for s in crypto_signals if get_signal_status(s)[0].startswith('🟢'))
+                st.metric("Active Crypto", crypto_active)
+            
+            with col2:
+                crypto_buy = sum(1 for s in crypto_signals if s.get('action') == 'BUY')
+                st.metric("Crypto Buy", crypto_buy)
+            
+            with col3:
+                crypto_sell = sum(1 for s in crypto_signals if s.get('action') == 'SELL')
+                st.metric("Crypto Sell", crypto_sell)
+            
+            with col4:
+                crypto_confidence = sum(s.get('confidence', 0) for s in crypto_signals) / len(crypto_signals) if crypto_signals else 0
+                st.metric("Avg Confidence", f"{crypto_confidence:.1%}")
+        else:
+            st.info("₿ No active cryptocurrency signals. The system is monitoring BTC/USD and ETH/USD pairs 24/7.")
+    
+    # Global action buttons
+    st.markdown("---")
     col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
     
     with col1:
@@ -261,17 +329,17 @@ if signals and len(signals) > 0:
             st.rerun()
     
     with col2:
-        # Use FIXED status calculation
-        active_count = sum(1 for s in signals if get_signal_status(s)[0].startswith('🟢'))
-        st.metric("Active Signals", active_count)
+        # Total active signals
+        total_active = sum(1 for s in signals if get_signal_status(s)[0].startswith('🟢'))
+        st.metric("Total Active", total_active)
     
     with col3:
-        buy_count = sum(1 for s in signals if s.get('action') == 'BUY')
-        st.metric("Buy Signals", buy_count)
+        total_buy = sum(1 for s in signals if s.get('action') == 'BUY')
+        st.metric("Total Buy", total_buy)
     
     with col4:
-        sell_count = sum(1 for s in signals if s.get('action') == 'SELL')
-        st.metric("Sell Signals", sell_count)
+        total_sell = sum(1 for s in signals if s.get('action') == 'SELL')
+        st.metric("Total Sell", total_sell)
 
 else:
     # Market closed or no signals message

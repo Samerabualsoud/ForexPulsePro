@@ -64,6 +64,11 @@ class ExchangeRateProvider:
                 # Cryptocurrency Pairs (current market prices Sep 2025)
                 'BTCUSD': 115918.0,  # Bitcoin current market price
                 'ETHUSD': 4639.0,    # Ethereum current market price ~4638-4640
+                'BTCEUR': 106250.0,  # Bitcoin EUR price (BTC/EUR)
+                'ETHEUR': 4256.0,   # Ethereum EUR price (ETH/EUR)
+                'LTCUSD': 88.45,    # Litecoin realistic price
+                'ADAUSD': 0.3420,   # Cardano realistic price
+                'SOLUSD': 142.75    # Solana realistic price
             }
             
             # Get base rate and add small random variation (±0.05%)

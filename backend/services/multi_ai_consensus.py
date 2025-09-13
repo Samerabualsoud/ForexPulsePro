@@ -198,6 +198,33 @@ class MultiAIConsensus:
                 'weight': 0.25
             }
         
+        # Process DeepSeek reasoning insights  
+        if 'deepseek_reasoning' in analyses:
+            deepseek = analyses['deepseek_reasoning']
+            deepseek_confidence = deepseek.get('confidence', 0.0)
+            if deepseek_confidence > 0:
+                confidence_adjustments.append(('deepseek_reasoning', deepseek_confidence - 0.5, 0.25))
+            
+            agent_insights['deepseek_reasoning'] = {
+                'sentiment': deepseek.get('sentiment', 'neutral'),
+                'reasoning': deepseek.get('reasoning', ''),
+                'weight': 0.25
+            }
+        
+        # **QUALITY REQUIREMENT**: Minimum 3 out of 4 agents required for valid signals
+        available_agents = len(agent_insights)
+        if available_agents < 3:
+            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/4 (minimum 3 required)")
+            return {
+                'final_confidence': 0.0,
+                'consensus_action': 'INSUFFICIENT_CONSENSUS',
+                'agent_count': available_agents,
+                'consensus_strength': 0.0,
+                'risk_level': 'HIGH',
+                'quality_gate': 'FAILED_MIN_AGENTS',
+                'agent_insights': agent_insights
+            }
+
         # Calculate weighted confidence adjustment
         total_adjustment = 0.0
         total_weight = 0.0

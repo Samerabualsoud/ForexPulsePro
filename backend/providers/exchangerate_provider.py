@@ -61,9 +61,9 @@ class ExchangeRateProvider:
                 'EURCHF': 0.9205,  # EUR/CHF typical range 0.92-0.98
                 'AUDCAD': 0.9214,  # AUD/CAD typical range 0.90-0.95
                 
-                # Cryptocurrency Pairs (realistic 2025 prices)
-                'BTCUSD': 67245.0,  # Bitcoin typical range 55k-80k
-                'ETHUSD': 3456.78,  # Ethereum typical range 2.5k-4.5k
+                # Cryptocurrency Pairs (current market prices Sep 2025)
+                'BTCUSD': 115918.0,  # Bitcoin current market price
+                'ETHUSD': 3456.78,   # Ethereum typical range 2.5k-4.5k
             }
             
             # Get base rate and add small random variation (±0.05%)

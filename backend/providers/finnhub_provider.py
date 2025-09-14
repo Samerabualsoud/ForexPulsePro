@@ -9,7 +9,7 @@ import finnhub
 logger = structlog.get_logger(__name__)
 
 class FinnhubProvider:
-    """Finnhub.io forex data provider - Free tier with real-time data"""
+    """Finnhub.io crypto data provider - Free tier with real-time data"""
     
     def __init__(self):
         self.api_key = os.getenv('FINNHUB_API_KEY')
@@ -23,23 +23,14 @@ class FinnhubProvider:
         else:
             logger.info("No Finnhub API key found")
         
-        # Forex symbol mapping (Finnhub format)
+        # Crypto symbol mapping (Finnhub format)
+        # Using BINANCE exchange for crypto pairs
         self.symbol_mapping = {
-            'EURUSD': 'OANDA:EUR_USD',
-            'GBPUSD': 'OANDA:GBP_USD', 
-            'USDJPY': 'OANDA:USD_JPY',
-            'USDCHF': 'OANDA:USD_CHF',
-            'AUDUSD': 'OANDA:AUD_USD',
-            'USDCAD': 'OANDA:USD_CAD',
-            'NZDUSD': 'OANDA:NZD_USD',
-            'EURJPY': 'OANDA:EUR_JPY',
-            'GBPJPY': 'OANDA:GBP_JPY',
-            'EURGBP': 'OANDA:EUR_GBP',
-            'AUDJPY': 'OANDA:AUD_JPY',
-            'EURAUD': 'OANDA:EUR_AUD',
-            'EURCAD': 'OANDA:EUR_CAD',
-            'EURCHF': 'OANDA:EUR_CHF',
-            'AUDCAD': 'OANDA:AUD_CAD'
+            'BTCUSD': 'BINANCE:BTCUSDT',
+            'ETHUSD': 'BINANCE:ETHUSDT',
+            'LTCUSD': 'BINANCE:LTCUSDT',
+            'ADAUSD': 'BINANCE:ADAUSDT',
+            'SOLUSD': 'BINANCE:SOLUSDT'
         }
         
         logger.info(f"Finnhub provider initialized with API key: {'✓' if self.api_key else '✗'}")
@@ -49,11 +40,11 @@ class FinnhubProvider:
         return self.client is not None
     
     def _get_finnhub_symbol(self, symbol: str) -> str:
-        """Convert standard forex symbol to Finnhub format"""
-        return self.symbol_mapping.get(symbol.upper(), f'OANDA:{symbol[:3]}_{symbol[3:]}')
+        """Convert standard crypto symbol to Finnhub format"""
+        return self.symbol_mapping.get(symbol.upper(), f'BINANCE:{symbol.upper()}T')
     
     async def get_current_price(self, symbol: str) -> Optional[dict]:
-        """Get current forex price"""
+        """Get current crypto price"""
         if not self.is_available():
             return None
             
@@ -98,7 +89,7 @@ class FinnhubProvider:
                 return None
             
             # Create synthetic OHLC data based on current price
-            # This simulates realistic forex price movements
+            # This simulates realistic crypto price movements
             current_price = current_price_data['price']
             high_price = current_price_data['high'] or current_price * 1.001
             low_price = current_price_data['low'] or current_price * 0.999

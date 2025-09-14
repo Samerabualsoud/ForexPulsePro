@@ -24,19 +24,8 @@ class SignalScheduler:
     def start(self):
         """Start the scheduler"""
         try:
-            # AI-optimized signal frequencies by asset class
-            # Forex: Every 15 minutes (optimal for trend detection and reduced noise)
-            # Crypto: Every 5 minutes (higher volatility requires faster signals)
-            # Metals/Oil: Every 30 minutes (longer-term trends, less noise)
-            self.scheduler.add_job(
-                func=self._run_signal_generation,
-                trigger=IntervalTrigger(minutes=15),  # AI-recommended for forex
-                id='signal_generation',
-                name='Generate Forex Signals',
-                replace_existing=True
-            )
-            
-            # Add high-frequency crypto signal generation
+            # Crypto-only configuration with AI-optimized 5-minute frequency
+            # High-frequency analysis for crypto volatility capture
             self.scheduler.add_job(
                 func=self._run_crypto_signal_generation,
                 trigger=IntervalTrigger(minutes=5),  # AI-recommended for crypto
@@ -45,29 +34,20 @@ class SignalScheduler:
                 replace_existing=True
             )
             
-            # Add low-frequency metals/oil signal generation
-            self.scheduler.add_job(
-                func=self._run_metals_signal_generation,
-                trigger=IntervalTrigger(minutes=30),  # AI-recommended for metals/oil
-                id='metals_signal_generation',
-                name='Generate Metals/Oil Signals', 
-                replace_existing=True
-            )
-            
             # Add job to evaluate signals every minute (offset by 30 seconds)
             self.scheduler.add_job(
                 func=self._run_signal_evaluation,
                 trigger=IntervalTrigger(minutes=1),
                 id='signal_evaluation',
-                name='Evaluate Forex Signals',
+                name='Evaluate Crypto Signals',
                 replace_existing=True
             )
             
             self.scheduler.start()
             logger.info("Signal scheduler started successfully")
             
-            # Run immediately on start
-            self._run_signal_generation()
+            # Run crypto signal generation immediately on start
+            self._run_crypto_signal_generation()
             # Run evaluation 10 seconds after to allow signals to be created first
             self.scheduler.add_job(
                 func=self._run_signal_evaluation,
@@ -89,19 +69,7 @@ class SignalScheduler:
         except Exception as e:
             logger.error(f"Failed to stop scheduler: {e}")
     
-    def _run_signal_generation(self):
-        """Run signal generation in a separate thread"""
-        def run_async():
-            # Create new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(self._generate_signals())
-            finally:
-                loop.close()
-        
-        thread = threading.Thread(target=run_async)
-        thread.start()
+    # Removed _run_signal_generation - crypto-only configuration
     
     def _run_crypto_signal_generation(self):
         """Run crypto signal generation with AI-optimized 5-minute frequency"""
@@ -116,45 +84,16 @@ class SignalScheduler:
         thread = threading.Thread(target=run_async)
         thread.start()
     
-    def _run_metals_signal_generation(self):
-        """Run metals/oil signal generation with AI-optimized 30-minute frequency"""
-        def run_async():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(self._generate_metals_signals())
-            finally:
-                loop.close()
-        
-        thread = threading.Thread(target=run_async)
-        thread.start()
+    # Removed _run_metals_signal_generation - crypto-only configuration
     
-    async def _generate_signals(self):
-        """Generate signals for all symbols"""
-        db = self.SessionLocal()
-        try:
-            symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'BTCUSD', 'ETHUSD', 'XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD', 'XPTUSD', 'XPDUSD']
-            
-            for symbol in symbols:
-                try:
-                    await self.signal_engine.process_symbol(symbol, db)
-                    logger.debug(f"Processed signals for {symbol}")
-                except Exception as e:
-                    logger.error(f"Error processing {symbol}: {e}")
-            
-            logger.info(f"Signal generation completed at {datetime.utcnow()}")
-            
-        except Exception as e:
-            logger.error(f"Signal generation failed: {e}")
-        finally:
-            db.close()
+    # Removed _generate_signals - using crypto-specific generation only
     
     async def _generate_crypto_signals(self):
         """Generate signals specifically for crypto pairs with high-frequency analysis"""
         db = self.SessionLocal()
         try:
-            # AI-recommended crypto pairs with 5-minute frequency for volatility capture
-            crypto_symbols = ['BTCUSD', 'ETHUSD', 'BTCEUR', 'ETHEUR', 'LTCUSD', 'ADAUSD', 'SOLUSD']
+            # Required crypto vs USD pairs only
+            crypto_symbols = ['BTCUSD', 'ETHUSD', 'LTCUSD', 'ADAUSD', 'SOLUSD']
             
             for symbol in crypto_symbols:
                 try:
@@ -170,26 +109,7 @@ class SignalScheduler:
         finally:
             db.close()
     
-    async def _generate_metals_signals(self):
-        """Generate signals for metals and oil with low-frequency trend analysis"""
-        db = self.SessionLocal()
-        try:
-            # AI-recommended metals/oil pairs with 30-minute frequency for trend stability
-            metals_oil_symbols = ['XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD', 'XPTUSD', 'XPDUSD']
-            
-            for symbol in metals_oil_symbols:
-                try:
-                    await self.signal_engine.process_symbol(symbol, db)
-                    logger.debug(f"Processed metals/oil signals for {symbol}")
-                except Exception as e:
-                    logger.error(f"Error processing metals/oil {symbol}: {e}")
-            
-            logger.info(f"Metals/Oil signal generation completed at {datetime.utcnow()}")
-            
-        except Exception as e:
-            logger.error(f"Metals/Oil signal generation failed: {e}")
-        finally:
-            db.close()
+    # Removed _generate_metals_signals - crypto-only configuration
     
     def _run_signal_evaluation(self):
         """Run signal evaluation in a separate thread"""

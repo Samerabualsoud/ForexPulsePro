@@ -26,6 +26,7 @@ from prometheus_client import generate_latest
 from fastapi.responses import Response
 from .monitoring.metrics import metrics
 from .api.monitoring import router as monitoring_router
+from .api.environment_validation import router as environment_router
 import time
 import asyncio
 from contextlib import asynccontextmanager
@@ -101,6 +102,7 @@ app.add_middleware(
 
 # Include monitoring router
 app.include_router(monitoring_router)
+app.include_router(environment_router)
 
 logger = get_logger(__name__)
 

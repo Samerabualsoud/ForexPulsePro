@@ -31,7 +31,7 @@ class PolygonProvider(BaseDataProvider):
         # Enhanced rate limiting with token bucket approach
         self._rate_limit_lock = None  # Lazy initialization to avoid event loop binding issues
         self.call_timestamps = []  # Track request timestamps
-        self.calls_per_minute = 4  # Very conservative limit for free tier
+        self.calls_per_minute = 8  # Increased limit with better fallback
         
         # Data caching to reduce API calls
         self.price_cache = {}  # Cache for price data
@@ -142,12 +142,12 @@ class PolygonProvider(BaseDataProvider):
                     if response.status_code == 429:
                         # Rate limited - implement exponential backoff
                         if attempt < max_retries:
-                            backoff_time = (2 ** attempt) * 8 + random.uniform(2, 5)  # 8-13s, 16-21s, 32-37s
+                            backoff_time = (2 ** attempt) * 3 + random.uniform(1, 2)  # 4-5s, 7-8s, 13-14s
                             logger.warning(f"Polygon.io 429 rate limit hit, attempt {attempt + 1}/{max_retries + 1}, waiting {backoff_time:.1f}s")
                             await asyncio.sleep(backoff_time)
                             continue
                         else:
-                            logger.error(f"Polygon.io rate limit exceeded after {max_retries + 1} attempts")
+                            logger.warning(f"Polygon.io rate limit exceeded after {max_retries + 1} attempts, fallback required")
                             return None
                     
                     response.raise_for_status()

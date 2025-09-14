@@ -80,9 +80,9 @@ class FreeCurrencyAPIProvider(BaseDataProvider):
         if self._availability_checked and (now - self._last_availability_check) < 300:
             return self._is_api_available
             
-        # Return False if we haven't checked or it's been too long
-        # The actual check happens async in get_live_rates
-        return False
+        # Return True if we have an API key - this allows the provider to be tried
+        # The actual availability check happens in the async methods
+        return bool(self.api_key)
     
     async def get_live_rates(self) -> dict:
         """Fetch latest exchange rates from FreeCurrencyAPI"""

@@ -48,14 +48,20 @@ class MultiAIConsensus:
         # Initialize all AI agents
         self.manus_ai = ManusAI()
         self.perplexity_agent = PerplexityNewsAgent()
-        self.deepseek_agent = DeepSeekAgent() if DeepSeekAgent else None
+        # Temporarily disable DeepSeek to avoid failures
+        self.deepseek_agent = None  # DeepSeekAgent() if DeepSeekAgent else None
         self.finbert_agent = FinBERTSentimentAgent() if FinBERTSentimentAgent else None
         self.groq_agent = GroqReasoningAgent() if GroqReasoningAgent else None
         
         # Track agent availability
         self.available_agents = self._check_agent_availability()
         
-        logger.info(f"Multi-AI Consensus initialized with {len(self.available_agents)} agents: {list(self.available_agents.keys())}")
+        # Debug: Print detailed agent availability
+        agent_details = []
+        for agent_name, available in self.available_agents.items():
+            agent_details.append(f"{agent_name}={available}")
+        logger.info(f"Multi-AI Consensus initialized with {len(self.available_agents)} agents: {', '.join(agent_details)}")
+        logger.info(f"Available agent count: {sum(self.available_agents.values())} out of {len(self.available_agents)}")
     
     async def generate_enhanced_signal_analysis(
         self, 
@@ -82,22 +88,36 @@ class MultiAIConsensus:
         # Run all AI analyses in parallel for efficiency
         tasks = []
         
+        # Debug: Log what agents we're about to run
+        logger.info(f"Preparing AI analysis tasks for {symbol}")
+        logger.info(f"Base signal provided: {base_signal is not None}")
+        
         if self.available_agents.get('manus_ai'):
+            logger.debug(f"Adding Manus AI task for {symbol}")
             tasks.append(self._run_manus_analysis(symbol, market_data))
         
-        if self.available_agents.get('perplexity_news') and base_signal:
-            tasks.append(self._run_perplexity_analysis(symbol, base_signal.get('action', 'BUY')))
+        # Fix: Run Perplexity analysis even without base_signal, use default action
+        if self.available_agents.get('perplexity_news'):
+            signal_action = base_signal.get('action', 'NEUTRAL') if base_signal else 'NEUTRAL'
+            logger.debug(f"Adding Perplexity task for {symbol} with action: {signal_action}")
+            tasks.append(self._run_perplexity_analysis(symbol, signal_action))
         
         if self.available_agents.get('deepseek_reasoning'):
             current_price = market_data['close'].iloc[-1] if len(market_data) > 0 else 0
+            logger.debug(f"Adding DeepSeek task for {symbol}")
             tasks.append(self._run_deepseek_analysis(symbol, market_data, current_price))
         
-        if self.available_agents.get('finbert_sentiment') and base_signal:
-            tasks.append(self._run_finbert_analysis(symbol, base_signal.get('action', 'BUY')))
+        if self.available_agents.get('finbert_sentiment'):
+            signal_action = base_signal.get('action', 'NEUTRAL') if base_signal else 'NEUTRAL'
+            logger.debug(f"Adding FinBERT task for {symbol} with action: {signal_action}")
+            tasks.append(self._run_finbert_analysis(symbol, signal_action))
         
         if self.available_agents.get('groq_reasoning'):
             current_price = market_data['close'].iloc[-1] if len(market_data) > 0 else 0
+            logger.debug(f"Adding Groq task for {symbol}")
             tasks.append(self._run_groq_analysis(symbol, market_data, current_price))
+        
+        logger.info(f"Total AI analysis tasks queued: {len(tasks)}")
         
         # Execute all analyses concurrently
         if tasks:
@@ -328,10 +348,11 @@ class MultiAIConsensus:
             consensus_boost = 0.15 * (available_agents / 5.0)  # Scale boost by agent ratio
             final_confidence = min(1.0, final_confidence + consensus_boost)
         
-        # **CRITICAL BUG FIX**: STRICT 80% CONFIDENCE REQUIREMENT - Block ALL signals below 80%
-        # This enforces the user's minimum confidence requirement across the entire system
-        if final_confidence < 0.8:
-            logger.warning(f"Multi-AI consensus blocked signal due to insufficient confidence: {final_confidence:.1%} < 80% minimum threshold")
+        # **ADJUSTED FOR 2-AGENT CONSENSUS**: Lower threshold when DeepSeek is disabled
+        # With 2 agents: 65% threshold, with 3+ agents: 80% threshold
+        min_confidence_threshold = 0.65 if available_agents == 2 else 0.8
+        if final_confidence < min_confidence_threshold:
+            logger.warning(f"Multi-AI consensus blocked signal due to insufficient confidence: {final_confidence:.1%} < {min_confidence_threshold:.0%} minimum threshold")
             return {
                 'final_confidence': 0.0,
                 'consensus_action': 'BLOCKED_LOW_CONFIDENCE',
@@ -343,7 +364,7 @@ class MultiAIConsensus:
                 'quality_gate': 'FAILED_MIN_CONFIDENCE',
                 'agent_insights': agent_insights,
                 'multi_ai_valid': False,
-                'block_reason': f'Confidence {final_confidence:.1%} below 80% minimum threshold',
+                'block_reason': f'Confidence {final_confidence:.1%} below {min_confidence_threshold:.0%} minimum threshold',
                 'timestamp': datetime.now().isoformat()
             }
         

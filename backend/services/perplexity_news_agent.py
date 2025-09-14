@@ -124,7 +124,7 @@ Provide the time (UTC if possible) and expected impact level (high/medium/low).
         }
         
         data = {
-            "model": "llama-3.1-sonar-small-128k-online",
+            "model": "sonar-pro",
             "messages": [
                 {
                     "role": "system",

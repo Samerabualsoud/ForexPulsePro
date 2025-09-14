@@ -63,7 +63,7 @@ class ExchangeRateProvider:
                 
                 # Cryptocurrency Pairs (current market prices Sep 2025)
                 'BTCUSD': 115918.0,  # Bitcoin current market price
-                'ETHUSD': 4639.0,    # Ethereum current market price ~4638-4640
+                'ETHUSD': 4669.5,   # Ethereum UPDATED TO CURRENT MARKET PRICE
                 'BTCEUR': 106250.0,  # Bitcoin EUR price (BTC/EUR)
                 'ETHEUR': 4256.0,   # Ethereum EUR price (ETH/EUR)
                 'LTCUSD': 88.45,    # Litecoin realistic price

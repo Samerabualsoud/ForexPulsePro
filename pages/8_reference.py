@@ -15,16 +15,14 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 try:
-    from utils.auth import require_authentication, render_user_info
     from utils.cache import get_cached_performance_stats, get_cached_market_data
     
-    # Require authentication for this page
-    user_info = require_authentication()
-    render_user_info()
+    # No authentication required
+    user_info = {"username": "user", "role": "admin"}
     imports_available = True
 except ImportError as e:
     st.warning(f"⚠️ Import error: {e} - running in demo mode")
-    user_info = {"username": "demo", "role": "admin"}
+    user_info = {"username": "user", "role": "admin"}
     imports_available = False
 
 # Professional Reference Page Styling

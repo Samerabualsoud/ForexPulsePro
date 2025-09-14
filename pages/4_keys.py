@@ -11,20 +11,16 @@ st.set_page_config(page_title="API Keys", page_icon="🔐", layout="wide")
 st.title("🔐 API Keys & Configuration")
 
 # Helper function to call backend API
-def call_api(endpoint, method="GET", data=None, token=None):
-    """Call backend API"""
+def call_api(endpoint, method="GET", data=None):
+    """Call backend API (no authentication required)"""
     try:
         base_url = "http://0.0.0.0:8000"
         url = f"{base_url}{endpoint}"
         
-        headers = {}
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-        
         if method == "GET":
-            response = requests.get(url, headers=headers, timeout=10)
+            response = requests.get(url, timeout=10)
         elif method == "POST":
-            response = requests.post(url, json=data, headers=headers, timeout=10)
+            response = requests.post(url, json=data, timeout=10)
         
         if response.status_code == 200:
             return response.json()
@@ -35,45 +31,7 @@ def call_api(endpoint, method="GET", data=None, token=None):
         st.error(f"Connection error: {e}")
         return None
 
-# Authentication state
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-if 'auth_token' not in st.session_state:
-    st.session_state.auth_token = None
-
-# Authentication required
-if not st.session_state.authenticated:
-    st.warning("⚠️ Admin authentication required to view/modify API keys")
-    
-    with st.form("login_form"):
-        st.subheader("🔐 Admin Login")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        submit = st.form_submit_button("Login")
-        
-        if submit and username and password:
-            # Try to authenticate
-            auth_response = call_api("/api/auth/login", "POST", {
-                "username": username,
-                "password": password
-            })
-            
-            if auth_response and auth_response.get("access_token"):
-                st.session_state.authenticated = True
-                st.session_state.auth_token = auth_response["access_token"]
-                st.session_state.user_role = auth_response.get("role", "viewer")
-                st.success("✅ Authentication successful!")
-                st.rerun()
-            else:
-                st.error("❌ Invalid credentials")
-    
-    st.info("💡 Use your admin credentials to access API keys and settings")
-    st.stop()
-
-# Check if user is admin
-if st.session_state.get('user_role') != 'admin':
-    st.error("🚫 Admin privileges required to access API key management")
-    st.stop()
+# No authentication required - direct access to API configuration
 
 def mask_key(key: str, show_chars: int = 4) -> str:
     """Mask API key showing only first/last characters"""

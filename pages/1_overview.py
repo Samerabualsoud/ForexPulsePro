@@ -38,18 +38,10 @@ class StatsDTO(TypedDict, total=False):
     active_signals: int
     win_rate: float
 
-try:
-    from utils.auth import require_authentication, render_user_info
-    from pages.components.signal_table import render_signal_table, get_signal_status
-    # Require authentication for this page
-    user_info = require_authentication()
-    render_user_info()
-    imports_successful = True
-except ImportError as e:
-    st.warning("⚠️ Authentication modules not found - running in demo mode")
-    user_info = {"username": "demo", "role": "admin"}
-    imports_successful = False
-    from pages.components.signal_table import render_signal_table, get_signal_status
+from pages.components.signal_table import render_signal_table, get_signal_status
+
+# No authentication required
+user_info = {"username": "user", "role": "admin"}
 
 # Clean, simple CSS styling
 st.markdown("""

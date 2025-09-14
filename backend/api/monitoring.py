@@ -2,7 +2,6 @@
 Advanced Monitoring and Metrics API Endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from datetime import datetime, timedelta
@@ -12,25 +11,21 @@ import time
 
 from ..database import get_db
 from ..models import Signal, Strategy, User, MarketRegime
-from ..auth import verify_token
+# Authentication removed
 from ..monitoring.metrics import metrics
 from ..performance.pnl_tracker import pnl_tracker
 from ..regime.detector import regime_detector
 from ..logs.logger import get_logger
 
 router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
-security = HTTPBearer()
+# No security required
 logger = get_logger(__name__)
 
 @router.get("/dashboard")
 async def get_monitoring_dashboard(
-    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """Get comprehensive monitoring dashboard data"""
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
     
     try:
         # System metrics
@@ -110,13 +105,11 @@ async def get_monitoring_dashboard(
 
 @router.get("/alerts")
 async def get_system_alerts(
-    token: HTTPAuthorizationCredentials = Depends(security),
+
     db: Session = Depends(get_db)
 ):
     """Get system alerts and warnings"""
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    # No authentication required
     
     alerts = []
     
@@ -182,13 +175,11 @@ async def get_system_alerts(
 
 @router.get("/performance")
 async def get_performance_metrics(
-    token: HTTPAuthorizationCredentials = Depends(security),
+
     db: Session = Depends(get_db)
 ):
     """Get performance metrics and statistics"""
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    # No authentication required
     
     try:
         # Signal performance over time
@@ -244,7 +235,7 @@ async def get_performance_metrics(
 async def get_strategy_pnl(
     strategy: str,
     days: int = 30,
-    token: HTTPAuthorizationCredentials = Depends(security),
+
     db: Session = Depends(get_db)
 ):
     """Get P&L performance for specific strategy"""
@@ -263,7 +254,7 @@ async def get_strategy_pnl(
 @router.get("/pnl/portfolio")
 async def get_portfolio_pnl(
     days: int = 30,
-    token: HTTPAuthorizationCredentials = Depends(security),
+
     db: Session = Depends(get_db)
 ):
     """Get overall portfolio P&L performance"""
@@ -281,7 +272,7 @@ async def get_portfolio_pnl(
 
 @router.get("/regimes")
 async def get_market_regimes(
-    token: HTTPAuthorizationCredentials = Depends(security),
+
     db: Session = Depends(get_db)
 ):
     """Get current market regimes for all symbols"""

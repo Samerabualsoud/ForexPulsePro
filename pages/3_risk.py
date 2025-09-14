@@ -13,16 +13,8 @@ st.set_page_config(page_title="Risk Management", page_icon="🛡️", layout="wi
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-try:
-    from utils.auth import require_authentication, render_user_info
-    # Require authentication for this page
-    user_info = require_authentication()
-    render_user_info()
-    imports_successful = True
-except ImportError:
-    st.warning("⚠️ Authentication modules not found - running in demo mode")
-    user_info = {"username": "demo", "role": "admin"}
-    imports_successful = False
+# No authentication required
+user_info = {"username": "user", "role": "admin"}
 
 # Clean, simple CSS styling
 st.markdown("""

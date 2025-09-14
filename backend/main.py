@@ -3,12 +3,11 @@ FastAPI Main Application
 """
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 from typing import List, Optional
 from datetime import datetime
 
-from .auth import verify_token, create_access_token
+# Authentication removed - no longer needed
 from .models import Signal, User, Strategy, NewsArticle, NewsSentiment
 from .schemas import (
     SignalResponse, SignalCreate, UserCreate, StrategyUpdate, LoginRequest, 
@@ -58,8 +57,6 @@ app.add_middleware(
 # Include monitoring router
 app.include_router(monitoring_router)
 
-# Security
-security = HTTPBearer()
 logger = get_logger(__name__)
 
 # Lifespan function already defined above
@@ -171,18 +168,14 @@ async def resend_signal(
 @app.post("/api/risk/killswitch")
 async def toggle_killswitch(
     request: KillSwitchRequest,
-    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Toggle global kill switch (Admin only)"""
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    """Toggle global kill switch (No auth required)"""
     
     risk_manager = RiskManager(db)
     risk_manager.set_kill_switch(request.enabled)
     
-    logger.info(f"Kill switch {'enabled' if request.enabled else 'disabled'} by user {user.get('username')}")
+    logger.info(f"Kill switch {'enabled' if request.enabled else 'disabled'}")
     return {"status": "success", "kill_switch_enabled": request.enabled}
 
 @app.get("/api/risk/status")
@@ -199,13 +192,9 @@ async def get_risk_status(db: Session = Depends(get_db)):
 @app.put("/api/risk/config")
 async def update_risk_config(
     config: RiskConfigUpdate,
-    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Update risk configuration (Admin only)"""
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    """Update risk configuration (No auth required)"""
     
     risk_manager = RiskManager(db)
     
@@ -214,7 +203,7 @@ async def update_risk_config(
     if config.kill_switch_enabled is not None:
         risk_manager.set_kill_switch(config.kill_switch_enabled)
     
-    logger.info(f"Risk config updated by user {user.get('username')}")
+    logger.info(f"Risk config updated")
     return {"status": "success", "config": config}
 
 @app.get("/api/strategies")
@@ -227,13 +216,9 @@ async def get_strategies(db: Session = Depends(get_db)):
 async def update_strategy(
     strategy_id: int,
     strategy_update: StrategyUpdate,
-    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Update strategy configuration (Admin only)"""
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    """Update strategy configuration (No auth required)"""
     
     strategy = db.query(Strategy).filter(Strategy.id == strategy_id).first()
     if not strategy:
@@ -245,7 +230,7 @@ async def update_strategy(
     db.commit()
     db.refresh(strategy)
     
-    logger.info(f"Strategy {strategy_id} updated by user {user.get('username')}")
+    logger.info(f"Strategy {strategy_id} updated")
     return strategy
 
 @app.get("/metrics")
@@ -263,15 +248,7 @@ async def get_metrics(db: Session = Depends(get_db)):
     
     return Response(generate_latest(), media_type="text/plain")
 
-@app.post("/api/auth/login")
-async def login(request: LoginRequest, db: Session = Depends(get_db)):
-    """User authentication"""
-    user = db.query(User).filter(User.username == request.username).first()
-    if not user or not user.verify_password(request.password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    token = create_access_token({"username": user.username, "role": user.role})
-    return {"access_token": token, "token_type": "bearer", "role": user.role}
+# Login endpoint removed - no authentication required
 
 @app.get("/api/signals/stats")
 async def get_signal_stats(db: Session = Depends(get_db)):
@@ -308,13 +285,9 @@ async def get_success_rate(
 
 @app.post("/api/signals/evaluate-expired")
 async def evaluate_expired_signals(
-    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Evaluate expired signals and update their outcomes (Admin only)"""
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    """Evaluate expired signals and update their outcomes (No auth required)"""
     
     try:
         results = evaluator.evaluate_expired_signals(db)
@@ -330,13 +303,9 @@ async def evaluate_expired_signals(
 @app.post("/api/signals/{signal_id}/simulate")
 async def simulate_signal_outcome(
     signal_id: int,
-    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Simulate signal outcome for testing (Admin only)"""
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    """Simulate signal outcome for testing (No auth required)"""
     
     signal = db.query(Signal).filter(Signal.id == signal_id).first()
     if not signal:
@@ -483,14 +452,9 @@ async def get_sentiment_summary(
 @app.post("/api/news/analyze")
 async def trigger_news_analysis(
     request: NewsAnalysisRequest,
-    token: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Trigger news collection and sentiment analysis (Admin only)"""
-    # Verify admin access
-    user = verify_token(token.credentials)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    """Trigger news collection and sentiment analysis (No auth required)"""
     
     try:
         # Run news collection
@@ -500,7 +464,7 @@ async def trigger_news_analysis(
             categories=request.categories
         )
         
-        logger.info(f"News analysis triggered by user {user.get('username')}: {summary['total_stored']} articles processed")
+        logger.info(f"News analysis triggered: {summary['total_stored']} articles processed")
         
         return {
             "status": "success",
@@ -594,10 +558,8 @@ async def get_news_statistics(
             NewsArticle.retrieved_at >= cutoff_date
         ).scalar() or 0.0
         
-        # Unique symbols covered
-        symbols_covered = db.query(
-            distinct(func.json_array_elements_text(NewsArticle.symbols))
-        ).filter(
+        # Unique symbols covered  
+        symbols_covered = db.query(NewsArticle).filter(
             NewsArticle.retrieved_at >= cutoff_date,
             NewsArticle.symbols.isnot(None)
         ).count()

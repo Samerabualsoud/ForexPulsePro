@@ -20,12 +20,20 @@ except Exception as e:
     DeepSeekAgent = None
     logger.warning(f"DeepSeek disabled: import failed: {e}")
 
+# Optional FinBERT import with fallback
+try:
+    from .finbert_sentiment_agent import FinBERTSentimentAgent
+except Exception as e:
+    FinBERTSentimentAgent = None
+    logger.warning(f"FinBERT disabled: import failed: {e}")
+
 class MultiAIConsensus:
     """
     Advanced multi-AI consensus system that combines insights from:
     - Manus AI (Primary strategy recommendations)
     - Perplexity AI (Market intelligence)
     - DeepSeek AI (Advanced reasoning and sentiment analysis)
+    - FinBERT AI (Financial news sentiment analysis)
     """
     
     def __init__(self):
@@ -33,6 +41,7 @@ class MultiAIConsensus:
         self.manus_ai = ManusAI()
         self.perplexity_agent = PerplexityNewsAgent()
         self.deepseek_agent = DeepSeekAgent() if DeepSeekAgent else None
+        self.finbert_agent = FinBERTSentimentAgent() if FinBERTSentimentAgent else None
         
         # Track agent availability
         self.available_agents = self._check_agent_availability()
@@ -73,6 +82,9 @@ class MultiAIConsensus:
         if self.available_agents.get('deepseek_reasoning'):
             current_price = market_data['close'].iloc[-1] if len(market_data) > 0 else 0
             tasks.append(self._run_deepseek_analysis(symbol, market_data, current_price))
+        
+        if self.available_agents.get('finbert_sentiment') and base_signal:
+            tasks.append(self._run_finbert_analysis(symbol, base_signal.get('action', 'BUY')))
         
         # Execute all analyses concurrently
         if tasks:
@@ -150,6 +162,18 @@ class MultiAIConsensus:
             logger.error(f"DeepSeek analysis failed: {e}")
             return {}
     
+    async def _run_finbert_analysis(self, symbol: str, signal_action: str) -> Dict[str, Any]:
+        """Run FinBERT financial news sentiment analysis"""
+        try:
+            if self.finbert_agent is None:
+                logger.warning("FinBERT agent not available")
+                return {}
+            analysis = await self.finbert_agent.analyze_market_news_impact(symbol, signal_action)
+            return {'finbert_sentiment': analysis}
+        except Exception as e:
+            logger.error(f"FinBERT analysis failed: {e}")
+            return {}
+    
     def _generate_consensus(self, analyses: Dict[str, Any], base_signal: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Generate final consensus from all AI analyses
@@ -204,10 +228,23 @@ class MultiAIConsensus:
                 'weight': 0.25
             }
         
-        # **QUALITY REQUIREMENT**: Minimum 2 out of 3 agents required for valid signals
+        # Process FinBERT sentiment insights
+        if 'finbert_sentiment' in analyses:
+            finbert = analyses['finbert_sentiment']
+            finbert_impact = finbert.get('news_impact', 0.0)
+            confidence_adjustments.append(('finbert_sentiment', finbert_impact, 0.25))
+            
+            agent_insights['finbert_sentiment'] = {
+                'sentiment': finbert.get('sentiment', 'neutral'),
+                'risk_factors': finbert.get('risk_factors', []),
+                'confidence': finbert.get('confidence', 0.0),
+                'weight': 0.25
+            }
+        
+        # **QUALITY REQUIREMENT**: Minimum 2 out of 4 agents required for valid signals
         available_agents = len(agent_insights)
         if available_agents < 2:
-            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/3 (minimum 2 required)")
+            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/4 (minimum 2 required)")
             return {
                 'final_confidence': 0.0,
                 'consensus_action': 'INSUFFICIENT_CONSENSUS',
@@ -279,7 +316,7 @@ class MultiAIConsensus:
         bearish_signals = 0
         
         for agent, insights in agent_insights.items():
-            if agent == 'perplexity_news':
+            if agent in ['perplexity_news', 'finbert_sentiment', 'deepseek_reasoning']:
                 sentiment = insights.get('sentiment', 'neutral')
                 if sentiment == 'bullish':
                     bullish_signals += 1
@@ -344,7 +381,8 @@ class MultiAIConsensus:
         return {
             'manus_ai': True,  # Always available
             'perplexity_news': self.perplexity_agent.is_available(),
-            'deepseek_reasoning': bool(self.deepseek_agent and self.deepseek_agent.is_available())
+            'deepseek_reasoning': bool(self.deepseek_agent and self.deepseek_agent.is_available()),
+            'finbert_sentiment': bool(self.finbert_agent and self.finbert_agent.is_available())
         }
     
     def get_agent_status(self) -> Dict[str, Any]:

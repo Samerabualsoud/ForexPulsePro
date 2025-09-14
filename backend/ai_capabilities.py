@@ -21,6 +21,8 @@ PERPLEXITY_AVAILABLE = False
 PERPLEXITY_ENABLED = False
 DEEPSEEK_AVAILABLE = False
 DEEPSEEK_ENABLED = False
+HUGGINGFACE_AVAILABLE = False
+HUGGINGFACE_ENABLED = False
 
 # Try to import OpenAI package
 try:
@@ -73,9 +75,24 @@ if DEEPSEEK_API_KEY:
 else:
     logger.info("DeepSeek API key not provided (DEEPSEEK_API_KEY)")
 
+# Check Hugging Face FinBERT availability (uses requests for inference API)
+HUGGINGFACE_API_TOKEN = os.getenv('HUGGINGFACE_API_TOKEN')
+if HUGGINGFACE_API_TOKEN:
+    try:
+        import requests
+        HUGGINGFACE_AVAILABLE = True
+        HUGGINGFACE_ENABLED = True
+        logger.info("Hugging Face FinBERT integration enabled with API token")
+    except ImportError:
+        logger.warning("Hugging Face FinBERT requires requests library")
+        HUGGINGFACE_AVAILABLE = False
+        HUGGINGFACE_ENABLED = False
+else:
+    logger.info("Hugging Face API token not provided (HUGGINGFACE_API_TOKEN)")
+
 # Calculate overall AI capabilities
-MULTI_AI_ENABLED = sum([OPENAI_ENABLED, PERPLEXITY_ENABLED, DEEPSEEK_ENABLED]) > 1
-TOTAL_AI_AGENTS = sum([True, PERPLEXITY_ENABLED, DEEPSEEK_ENABLED])  # Manus AI always available
+MULTI_AI_ENABLED = sum([OPENAI_ENABLED, PERPLEXITY_ENABLED, DEEPSEEK_ENABLED, HUGGINGFACE_ENABLED]) > 1
+TOTAL_AI_AGENTS = sum([True, PERPLEXITY_ENABLED, DEEPSEEK_ENABLED, HUGGINGFACE_ENABLED])  # Manus AI always available
 
 logger.info(f"Multi-AI System Status: {TOTAL_AI_AGENTS} agents available, Multi-AI: {MULTI_AI_ENABLED}")
 
@@ -93,6 +110,8 @@ def get_ai_capabilities() -> Dict[str, Any]:
         'perplexity_enabled': PERPLEXITY_ENABLED,
         'deepseek_available': DEEPSEEK_AVAILABLE,
         'deepseek_enabled': DEEPSEEK_ENABLED,
+        'huggingface_available': HUGGINGFACE_AVAILABLE,
+        'huggingface_enabled': HUGGINGFACE_ENABLED,
         'multi_ai_enabled': MULTI_AI_ENABLED,
         'total_ai_agents': TOTAL_AI_AGENTS,
         'dual_ai_mode': OPENAI_ENABLED,  # Legacy compatibility
@@ -100,11 +119,13 @@ def get_ai_capabilities() -> Dict[str, Any]:
         'capabilities': {
             'market_intelligence': PERPLEXITY_ENABLED,
             'deepseek_analysis': DEEPSEEK_ENABLED,
+            'news_sentiment': HUGGINGFACE_ENABLED,
             'strategy_consensus': MULTI_AI_ENABLED,
             'advanced_backtesting': OPENAI_ENABLED,
             'chatgpt_optimization': OPENAI_ENABLED,
             'perplexity_news': PERPLEXITY_ENABLED,
             'deepseek_reasoning': DEEPSEEK_ENABLED,
+            'finbert_sentiment': HUGGINGFACE_ENABLED,
             'fallback_manus_ai': True  # Always available
         }
     }
@@ -148,6 +169,29 @@ def create_deepseek_client() -> Optional[Any]:
         logger.error(f"Failed to create DeepSeek client: {e}")
         return None
 
+def create_finbert_client() -> Optional[Any]:
+    """
+    Create FinBERT client configuration if available and enabled
+    
+    Returns:
+        Simple requests-based client config for Hugging Face API or None if not available
+    """
+    if not HUGGINGFACE_ENABLED:
+        return None
+    
+    try:
+        import requests
+        # Return a simple client config dict for Hugging Face Inference API
+        return {
+            'api_token': HUGGINGFACE_API_TOKEN,
+            'model_name': 'ProsusAI/finbert',
+            'base_url': 'https://api-inference.huggingface.co/models/ProsusAI/finbert',
+            'requests': requests
+        }
+    except Exception as e:
+        logger.error(f"Failed to create FinBERT client: {e}")
+        return None
+
 def log_ai_status():
     """Log the current AI capability status"""
     capabilities = get_ai_capabilities()
@@ -157,6 +201,7 @@ def log_ai_status():
         if OPENAI_ENABLED: active_agents.append("ChatGPT")
         if PERPLEXITY_ENABLED: active_agents.append("Perplexity")
         if DEEPSEEK_ENABLED: active_agents.append("DeepSeek")
+        if HUGGINGFACE_ENABLED: active_agents.append("FinBERT")
         
         logger.info(f"Multi-AI mode active: Manus AI + {', '.join(active_agents)}")
     elif capabilities['dual_ai_mode']:

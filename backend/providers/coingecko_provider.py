@@ -101,7 +101,7 @@ class CoinGeckoProvider(BaseDataProvider):
         """Convert standard crypto symbol to CoinGecko ID"""
         return self.crypto_mapping.get(symbol.upper())
     
-    async def _make_request_with_retry(self, endpoint: str, params: Dict = None, max_retries: int = 3) -> Optional[httpx.Response]:
+    async def _make_request_with_retry(self, endpoint: str, params: Optional[Dict] = None, max_retries: int = 3) -> Optional[httpx.Response]:
         """Make rate-limited request with exponential backoff retry"""
         url = f"{self.base_url}{endpoint}"
         
@@ -660,7 +660,9 @@ class CoinGeckoProvider(BaseDataProvider):
         try:
             # Test with a simple ping request
             endpoint = "/ping"
-            response = await self._make_request(endpoint)
+            response = await self._make_request_with_retry(endpoint)
+            if response is None:
+                return False
             data = response.json()
             return data.get('gecko_says') == '(V3) To the Moon!'
         except:
@@ -693,7 +695,9 @@ class CoinGeckoProvider(BaseDataProvider):
                 'include_last_updated_at': 'true'
             }
             
-            response = await self._make_request(endpoint, params)
+            response = await self._make_request_with_retry(endpoint, params)
+            if response is None:
+                return None
             data = response.json()
             
             # Convert back to symbol-based format

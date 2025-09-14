@@ -185,6 +185,43 @@ class SignalEngine:
         metals_oil_symbols = ['XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD', 'XPTUSD', 'XPDUSD', 'WTIUSD', 'XBRUSD', 'XRHHUSD']
         return symbol in metals_oil_symbols or symbol.startswith('XAU') or symbol.startswith('XAG') or 'OIL' in symbol
     
+    def _get_asset_class(self, symbol: str) -> str:
+        """Determine asset class for intelligent provider routing"""
+        if self._is_crypto_symbol(symbol):
+            return 'crypto'
+        elif self._is_metals_oil_symbol(symbol):
+            return 'metals_oil'
+        else:
+            return 'forex'
+    
+    def _get_providers_for_asset_class(self, asset_class: str) -> List[tuple]:
+        """Get prioritized list of providers for specific asset class"""
+        # Provider tuples: (provider_instance, provider_name)
+        if asset_class == 'crypto':
+            # Crypto: Use providers that support crypto symbols
+            return [
+                (self.polygon_provider, 'Polygon.io'),  # Best for crypto (X: prefix)
+                (self.exchangerate_provider, 'ExchangeRate.host'),  # Has crypto hardcoded rates
+                (self.mt5_provider, 'MT5'),  # May support crypto
+            ]
+        elif asset_class == 'metals_oil':
+            # Metals/Oil: Use providers that support commodity symbols  
+            return [
+                (self.mt5_provider, 'MT5'),  # Professional metals/oil data
+                (self.exchangerate_provider, 'ExchangeRate.host'),  # Has metals hardcoded rates
+                (self.polygon_provider, 'Polygon.io'),  # May support some commodities
+            ]
+        else:  # forex
+            # Forex: All providers support forex, prioritize by quality
+            return [
+                (self.polygon_provider, 'Polygon.io'),  # Professional forex data
+                (self.mt5_provider, 'MT5'),  # Professional trading platform
+                (self.exchangerate_provider, 'ExchangeRate.host'),  # Free unlimited forex
+                (self.finnhub_provider, 'Finnhub'),  # Real-time forex (OANDA)
+                (self.freecurrency_provider, 'FreeCurrency'),  # Live forex rates
+                (self.alphavantage_provider, 'AlphaVantage'),  # Traditional forex API
+            ]
+    
     def _is_market_open_for_symbol(self, symbol: str) -> bool:
         """Check if market is open for the specific symbol type"""
         # Crypto markets are 24/7 - always open
@@ -354,59 +391,45 @@ class SignalEngine:
         return True
 
     async def _get_market_data(self, symbol: str) -> Optional[pd.DataFrame]:
-        """Get ONLY real market data from available providers - STRICT REAL-DATA-ONLY POLICY"""
-        # Try Polygon.io first for real live market data
-        if self.polygon_provider.is_available():
-            # Convert timeframe format for Polygon.io
-            timeframe_mapping = {'1H': 'H1', '4H': 'H4', '1D': 'D1', '1M': 'M1', '5M': 'M5'}
-            converted_tf = timeframe_mapping.get("1H", 'H1')
-            data = await self.polygon_provider.get_ohlc_data(symbol, timeframe=converted_tf, limit=200)
-            if data is not None and self._validate_real_data(data, symbol):
-                logger.info(f"Using Polygon.io real live market data for {symbol}")
-                return data
-            elif data is not None:
-                logger.warning(f"Rejected Polygon.io data for {symbol}: Failed real data validation")
+        """Get ONLY real market data from available providers - ASSET-CLASS-AWARE ROUTING"""
+        # Determine asset class for intelligent provider routing
+        asset_class = self._get_asset_class(symbol)
+        providers = self._get_providers_for_asset_class(asset_class)
         
-        # Try MT5 for professional real-time data
-        if self.mt5_provider.is_available():
-            data = await self.mt5_provider.get_ohlc_data(symbol, limit=200)
-            if data is not None and self._validate_real_data(data, symbol):
-                logger.info(f"Using MT5 professional real-time data for {symbol}")
-                return data
-            elif data is not None:
-                logger.warning(f"Rejected MT5 data for {symbol}: Failed real data validation")
+        logger.info(f"Getting {asset_class} data for {symbol} using {len(providers)} compatible providers")
         
-        # Try Finnhub for real-time data (if available)
-        if self.finnhub_provider.is_available():
-            data = await self.finnhub_provider.get_ohlc_data(symbol, limit=200)
-            if data is not None and self._validate_real_data(data, symbol):
-                logger.info(f"Using Finnhub real-time forex data for {symbol}")
-                return data
-            elif data is not None:
-                logger.warning(f"Rejected Finnhub data for {symbol}: Failed real data validation")
-        
-        # Try FreeCurrencyAPI for live data
-        if self.freecurrency_provider.is_available():
-            data = await self.freecurrency_provider.get_ohlc_data(symbol, limit=200)
-            if data is not None and self._validate_real_data(data, symbol):
-                logger.info(f"Using FreeCurrency live data for {symbol}")
-                return data
-            elif data is not None:
-                logger.warning(f"Rejected FreeCurrency data for {symbol}: Failed real data validation")
-        
-        # Try Alpha Vantage if available
-        if self.alphavantage_provider.is_available():
-            data = await self.alphavantage_provider.get_ohlc_data(symbol, limit=200)
-            if data is not None and self._validate_real_data(data, symbol):
-                logger.info(f"Using Alpha Vantage real data for {symbol}")
-                return data
-            elif data is not None:
-                logger.warning(f"Rejected Alpha Vantage data for {symbol}: Failed real data validation")
+        # Try providers in priority order for this asset class
+        for provider_instance, provider_name in providers:
+            if not provider_instance.is_available():
+                logger.debug(f"{provider_name} not available for {symbol}")
+                continue
+                
+            try:
+                # Special handling for Polygon.io timeframe conversion
+                if provider_name == 'Polygon.io':
+                    timeframe_mapping = {'1H': 'H1', '4H': 'H4', '1D': 'D1', '1M': 'M1', '5M': 'M5'}
+                    converted_tf = timeframe_mapping.get("1H", 'H1')
+                    data = await provider_instance.get_ohlc_data(symbol, timeframe=converted_tf, limit=200)
+                else:
+                    data = await provider_instance.get_ohlc_data(symbol, limit=200)
+                
+                if data is not None and self._validate_real_data(data, symbol):
+                    logger.info(f"Using {provider_name} real {asset_class} data for {symbol}")
+                    return data
+                elif data is not None:
+                    logger.warning(f"Rejected {provider_name} data for {symbol}: Failed real data validation")
+                else:
+                    logger.debug(f"{provider_name} returned no data for {symbol}")
+                    
+            except Exception as e:
+                logger.warning(f"{provider_name} failed for {symbol}: {e}")
+                continue
         
         # CRITICAL: NO FALLBACK TO MOCK/SYNTHETIC DATA FOR LIVE TRADING
         # All data must be real market data or signal generation is blocked
-        logger.error(f"CRITICAL: No real market data available for {symbol} - Signal generation BLOCKED for safety")
+        logger.error(f"CRITICAL: No real {asset_class} data available for {symbol} - Signal generation BLOCKED for safety")
         logger.error(f"Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.")
+        logger.error(f"Tried {len(providers)} compatible providers for {asset_class} asset class")
         return None
     
     async def _process_strategy(

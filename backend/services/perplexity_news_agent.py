@@ -1,14 +1,17 @@
 """
 Perplexity News Agent - Real-Time Market Intelligence and News Analysis
 Using Perplexity AI for live market context and economic event analysis
+Enhanced with robust error handling and rate limiting
 """
 import os
 import json
-import requests
+import asyncio
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 
 from ..logs.logger import get_logger
+from .resilience_utils import create_perplexity_client, JSONParser
+
 logger = get_logger(__name__)
 
 class PerplexityNewsAgent:
@@ -19,13 +22,17 @@ class PerplexityNewsAgent:
         self.api_key = os.getenv('PERPLEXITY_API_KEY')
         self.base_url = "https://api.perplexity.ai/chat/completions"
         
+        # Initialize resilient API client
+        self.api_client = None
+        
         if self.api_key:
             self.enabled = True
-            logger.info("Perplexity News Agent initialized successfully")
+            self.api_client = create_perplexity_client()
+            logger.info("Perplexity News Agent initialized successfully with resilient client")
         else:
             logger.info("Perplexity News Agent: PERPLEXITY_API_KEY not provided")
     
-    def analyze_market_context(self, symbol: str, signal_action: str) -> Dict[str, Any]:
+    async def analyze_market_context(self, symbol: str, signal_action: str) -> Dict[str, Any]:
         """
         Analyze current market context and news events that might affect the signal
         
@@ -47,8 +54,8 @@ class PerplexityNewsAgent:
             # Create market context query
             query = self._create_market_query(symbol, signal_action)
             
-            # Call Perplexity API
-            response = self._call_perplexity_api(query)
+            # Call Perplexity API with resilient client
+            response = await self._call_perplexity_api_async(query)
             
             # Parse response
             analysis = self._parse_perplexity_response(response, symbol)
@@ -60,7 +67,7 @@ class PerplexityNewsAgent:
             logger.error(f"Perplexity market analysis failed for {symbol}: {e}")
             return self._fallback_analysis()
     
-    def get_economic_calendar(self) -> Dict[str, Any]:
+    async def get_economic_calendar(self) -> Dict[str, Any]:
         """
         Get upcoming economic events that might impact forex markets
         
@@ -72,7 +79,7 @@ class PerplexityNewsAgent:
         
         try:
             query = self._create_economic_calendar_query()
-            response = self._call_perplexity_api(query)
+            response = await self._call_perplexity_api_async(query)
             
             # Parse economic events
             events = self._parse_economic_events(response)
@@ -116,8 +123,11 @@ Focus on:
 Provide the time (UTC if possible) and expected impact level (high/medium/low).
 """
     
-    def _call_perplexity_api(self, query: str) -> Dict[str, Any]:
-        """Call Perplexity API with the given query"""
+    async def _call_perplexity_api_async(self, query: str) -> Dict[str, Any]:
+        """Call Perplexity API with resilient client including retry logic and rate limiting"""
+        if not self.api_client:
+            raise Exception("Perplexity API client not initialized")
+        
         headers = {
             'Authorization': f'Bearer {self.api_key}',
             'Content-Type': 'application/json'
@@ -144,10 +154,22 @@ Provide the time (UTC if possible) and expected impact level (high/medium/low).
             "stream": False
         }
         
-        response = requests.post(self.base_url, headers=headers, json=data, timeout=12)
-        response.raise_for_status()
-        
-        return response.json()
+        try:
+            # Use resilient API client with automatic retry and rate limiting
+            response = await self.api_client.make_request(
+                method="POST",
+                url=self.base_url,
+                headers=headers,
+                json_data=data,
+                use_httpx=True
+            )
+            
+            response.raise_for_status()
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Perplexity API call failed after all retries: {e}")
+            raise e
     
     def _parse_perplexity_response(self, response: Dict[str, Any], symbol: str) -> Dict[str, Any]:
         """Parse Perplexity API response into structured analysis"""

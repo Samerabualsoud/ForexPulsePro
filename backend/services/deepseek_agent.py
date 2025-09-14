@@ -12,6 +12,7 @@ import httpx
 
 from ..logs.logger import get_logger
 from ..ai_capabilities import create_deepseek_client, DEEPSEEK_ENABLED
+from .resilience_utils import create_deepseek_client as create_resilient_deepseek_client, JSONParser
 
 logger = get_logger(__name__)
 
@@ -33,6 +34,11 @@ class DeepSeekAgent:
         # HTTP client configuration
         self.http_client = None
         self._session_lock = asyncio.Lock()
+        
+        # Initialize resilient API client
+        self.resilient_client = None
+        if self.available:
+            self.resilient_client = create_resilient_deepseek_client()
         
         if self.available:
             logger.info("DeepSeek AI agent initialized successfully")
@@ -231,7 +237,7 @@ Provide JSON response:
 
     async def _make_api_call_async(self, prompt: str) -> Optional[Dict[str, Any]]:
         """
-        Make async API call to DeepSeek with proper error handling and fail-fast logic
+        Make async API call to DeepSeek with resilient client and improved JSON parsing
         
         Args:
             prompt: Analysis prompt
@@ -239,7 +245,7 @@ Provide JSON response:
         Returns:
             Parsed JSON response or None if failed
         """
-        if not self.client_config:
+        if not self.client_config or not self.resilient_client:
             return None
 
         # Check health before making request
@@ -248,8 +254,6 @@ Provide JSON response:
             return None
             
         try:
-            client = await self._get_http_client()
-            
             headers = {
                 'Authorization': f"Bearer {self.client_config['api_key']}",
                 'Content-Type': 'application/json',
@@ -272,54 +276,22 @@ Provide JSON response:
                 'max_tokens': 1000
             }
             
-            # Improved retry logic with exponential backoff and jitter
-            max_retries = 3  # Now matches comment: 2s, 4s, 8s
-            response = None
-            
-            for attempt in range(max_retries + 1):
-                try:
-                    response = await client.post(
-                        f"{self.client_config['base_url']}/chat/completions",
-                        headers=headers,
-                        json=data
-                    )
-                    
-                    # Don't record success yet - validate response first
-                    break
-                    
-                except (httpx.TimeoutException, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.PoolTimeout) as e:
-                    error_type = type(e).__name__
-                    if attempt == max_retries:
-                        logger.error(f"DeepSeek API {error_type} after {max_retries + 1} attempts: {e}")
-                        self._record_failure()
-                        return None
-                    
-                    # Exponential backoff with jitter: 2-5s, 4-8s, 8-16s
-                    base_delay = 2 ** (attempt + 1)
-                    jitter = random.uniform(0.0, base_delay)
-                    delay = base_delay + jitter
-                    logger.warning(f"DeepSeek API {error_type} retry {attempt + 1}/{max_retries}, waiting {delay:.1f}s: {e}")
-                    await asyncio.sleep(delay)
-                    
-                except (httpx.ConnectError, httpx.RequestError, httpx.HTTPStatusError) as e:
-                    logger.error(f"DeepSeek API network/request error: {e}")
+            # Use resilient client with automatic retry, rate limiting, and circuit breaker
+            try:
+                response = await self.resilient_client.make_request(
+                    method="POST",
+                    url=f"{self.client_config['base_url']}/chat/completions",
+                    headers=headers,
+                    json_data=data,
+                    use_httpx=True
+                )
+                
+                if response is None:
                     self._record_failure()
                     return None
                     
-                except Exception as e:
-                    if attempt == max_retries:
-                        logger.error(f"DeepSeek API unexpected error after {max_retries + 1} attempts: {e}")
-                        self._record_failure()
-                        return None
-                    
-                    # Exponential backoff with jitter for unexpected errors
-                    base_delay = 2 ** (attempt + 1)
-                    jitter = random.uniform(0.0, base_delay)
-                    delay = base_delay + jitter
-                    logger.warning(f"DeepSeek API retry {attempt + 1}/{max_retries} for error: {e}, waiting {delay:.1f}s")
-                    await asyncio.sleep(delay)
-            
-            if response is None:
+            except Exception as e:
+                logger.error(f"DeepSeek API call failed through resilient client: {e}")
                 self._record_failure()
                 return None
             

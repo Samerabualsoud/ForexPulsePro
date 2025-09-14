@@ -174,9 +174,9 @@ class MultiAIConsensus:
     
     
     async def _run_perplexity_analysis(self, symbol: str, signal_action: str) -> Dict[str, Any]:
-        """Run Perplexity news analysis"""
+        """Run Perplexity news analysis with resilient handling"""
         try:
-            analysis = self.perplexity_agent.analyze_market_context(symbol, signal_action)
+            analysis = await self.perplexity_agent.analyze_market_context(symbol, signal_action)
             return {'perplexity_news': analysis}
         except Exception as e:
             logger.error(f"Perplexity analysis failed: {e}")
@@ -300,8 +300,13 @@ class MultiAIConsensus:
                 'weight': 0.2
             }
         
-        # **QUALITY REQUIREMENT**: Minimum 2 out of 5 agents required for valid signals
-        available_agents = len(agent_insights)
+        # **CRITICAL FIX**: Only count agents that actually provided analysis results
+        # Filter out agents that returned empty results (e.g., disabled DeepSeek)
+        actual_responding_agents = {k: v for k, v in agent_insights.items() if v and isinstance(v, dict)}
+        available_agents = len(actual_responding_agents)
+        
+        logger.info(f"Agent analysis results: Requested={len(analyses)}, Responded={available_agents}, Details={list(actual_responding_agents.keys())}")
+        
         if available_agents < 2:
             logger.warning(f"Insufficient AI agents for consensus: {available_agents}/5 (minimum 2 required)")
             return {
@@ -348,9 +353,9 @@ class MultiAIConsensus:
             consensus_boost = 0.15 * (available_agents / 5.0)  # Scale boost by agent ratio
             final_confidence = min(1.0, final_confidence + consensus_boost)
         
-        # **ADJUSTED FOR 2-AGENT CONSENSUS**: Lower threshold when DeepSeek is disabled
-        # With 2 agents: 50% threshold (temporary fix for Perplexity API issues), with 3+ agents: 80% threshold
-        min_confidence_threshold = 0.50 if available_agents == 2 else 0.8
+        # **GRACEFUL DEGRADATION**: Adaptive confidence thresholds based on available agents
+        # 2 agents: 50% threshold, 3+ agents: 75% threshold (previously 80%, now more forgiving)
+        min_confidence_threshold = 0.50 if available_agents == 2 else (0.75 if available_agents == 3 else 0.80)
         if final_confidence < min_confidence_threshold:
             logger.warning(f"Multi-AI consensus blocked signal due to insufficient confidence: {final_confidence:.1%} < {min_confidence_threshold:.0%} minimum threshold")
             return {

@@ -24,13 +24,13 @@ class SignalScheduler:
     def start(self):
         """Start the scheduler"""
         try:
-            # Major forex pairs configuration with institutional 15-minute frequency
-            # Professional forex trading analysis for major pairs
+            # Major forex & crypto pairs configuration with institutional 15-minute frequency
+            # Professional forex and crypto trading analysis for comprehensive market coverage
             self.scheduler.add_job(
                 func=self._run_forex_signal_generation,
                 trigger=IntervalTrigger(minutes=15),  # Standard for forex institutional trading
                 id='forex_signal_generation', 
-                name='Generate Forex Signals',
+                name='Generate Forex & Crypto Signals',
                 replace_existing=True
             )
             
@@ -39,7 +39,7 @@ class SignalScheduler:
                 func=self._run_signal_evaluation,
                 trigger=IntervalTrigger(minutes=1),
                 id='signal_evaluation',
-                name='Evaluate Forex Signals',
+                name='Evaluate Signals',
                 replace_existing=True
             )
             
@@ -54,7 +54,7 @@ class SignalScheduler:
                 trigger='date',
                 run_date=datetime.utcnow().replace(microsecond=0) + timedelta(seconds=10),
                 id='initial_evaluation',
-                name='Initial Forex Signal Evaluation'
+                name='Initial Signal Evaluation'
             )
             
         except Exception as e:
@@ -77,7 +77,7 @@ class SignalScheduler:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                loop.run_until_complete(self._generate_forex_signals())
+                loop.run_until_complete(self._generate_signals())
             finally:
                 loop.close()
         
@@ -88,8 +88,8 @@ class SignalScheduler:
     
     # Removed _generate_signals - using forex-specific generation only
     
-    async def _generate_forex_signals(self):
-        """Generate signals specifically for major forex pairs with institutional analysis"""
+    async def _generate_signals(self):
+        """Generate signals for major forex pairs and cryptocurrency pairs with comprehensive analysis"""
         db = self.SessionLocal()
         try:
             # All major forex pairs for comprehensive trading coverage
@@ -106,6 +106,13 @@ class SignalScheduler:
                 'AUDCAD', 'AUDCHF', 'AUDNZD', 'CADCHF', 'NZDCAD', 'NZDCHF'
             ]
             
+            # All major cryptocurrency pairs for 24/7 crypto trading coverage
+            crypto_symbols = [
+                'BTCUSD', 'ETHUSD', 'ADAUSD', 'DOGEUSD',
+                'SOLUSD', 'BNBUSD', 'XRPUSD', 'MATICUSD'
+            ]
+            
+            # Process forex pairs
             for symbol in forex_symbols:
                 try:
                     await self.signal_engine.process_symbol(symbol, db)
@@ -113,10 +120,19 @@ class SignalScheduler:
                 except Exception as e:
                     logger.error(f"Error processing forex {symbol}: {e}")
             
-            logger.info(f"Forex signal generation completed for {len(forex_symbols)} pairs at {datetime.utcnow()}")
+            # Process crypto pairs
+            for symbol in crypto_symbols:
+                try:
+                    await self.signal_engine.process_symbol(symbol, db)
+                    logger.debug(f"Processed crypto signals for {symbol}")
+                except Exception as e:
+                    logger.error(f"Error processing crypto {symbol}: {e}")
+            
+            total_symbols = len(forex_symbols) + len(crypto_symbols)
+            logger.info(f"Forex & Crypto signal generation completed for {len(forex_symbols)} forex + {len(crypto_symbols)} crypto = {total_symbols} total pairs at {datetime.utcnow()}")
             
         except Exception as e:
-            logger.error(f"Forex signal generation failed: {e}")
+            logger.error(f"Forex & Crypto signal generation failed: {e}")
         finally:
             db.close()
     

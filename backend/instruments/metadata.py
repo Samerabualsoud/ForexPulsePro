@@ -307,10 +307,87 @@ class InstrumentMetadataDB:
             )
         }
         
-        # All crypto, metals and commodities removed for forex-only configuration
+        # === MAJOR CRYPTOCURRENCY PAIRS ===
+        # Professional crypto trading specifications with modern precision and 24/7 markets
+        # All crypto markets are 24/7 with higher volatility margin requirements
+        crypto_pairs = {
+            'BTCUSD': InstrumentMetadata(
+                symbol='BTCUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # Bitcoin precision: $0.01
+                min_lot_size=0.001, max_lot_size=100.0, lot_step=0.001,
+                pip_value_per_lot=0.01, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.05, description="Bitcoin vs US Dollar",
+                base_currency='BTC', quote_currency='USD'
+            ),
+            'ETHUSD': InstrumentMetadata(
+                symbol='ETHUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # Ethereum precision: $0.01
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.01, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.05, description="Ethereum vs US Dollar",
+                base_currency='ETH', quote_currency='USD'
+            ),
+            'ADAUSD': InstrumentMetadata(
+                symbol='ADAUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.0001, decimal_places=4, quote_precision=4,  # Cardano precision: $0.0001
+                min_lot_size=1.0, max_lot_size=100000.0, lot_step=1.0,
+                pip_value_per_lot=0.0001, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.07, description="Cardano vs US Dollar",
+                base_currency='ADA', quote_currency='USD'
+            ),
+            'DOGEUSD': InstrumentMetadata(
+                symbol='DOGEUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Dogecoin precision: $0.00001
+                min_lot_size=10.0, max_lot_size=1000000.0, lot_step=10.0,
+                pip_value_per_lot=0.00001, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.10, description="Dogecoin vs US Dollar",
+                base_currency='DOGE', quote_currency='USD'
+            ),
+            'SOLUSD': InstrumentMetadata(
+                symbol='SOLUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Solana precision: $0.001
+                min_lot_size=0.1, max_lot_size=10000.0, lot_step=0.1,
+                pip_value_per_lot=0.001, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.08, description="Solana vs US Dollar",
+                base_currency='SOL', quote_currency='USD'
+            ),
+            'BNBUSD': InstrumentMetadata(
+                symbol='BNBUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # Binance Coin precision: $0.01
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.01, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.06, description="Binance Coin vs US Dollar",
+                base_currency='BNB', quote_currency='USD'
+            ),
+            'XRPUSD': InstrumentMetadata(
+                symbol='XRPUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.0001, decimal_places=4, quote_precision=4,  # Ripple precision: $0.0001
+                min_lot_size=1.0, max_lot_size=100000.0, lot_step=1.0,
+                pip_value_per_lot=0.0001, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.08, description="Ripple vs US Dollar",
+                base_currency='XRP', quote_currency='USD'
+            ),
+            'MATICUSD': InstrumentMetadata(
+                symbol='MATICUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.0001, decimal_places=4, quote_precision=4,  # Polygon precision: $0.0001
+                min_lot_size=1.0, max_lot_size=100000.0, lot_step=1.0,
+                pip_value_per_lot=0.0001, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.09, description="Polygon vs US Dollar",
+                base_currency='MATIC', quote_currency='USD'
+            )
+        }
         
-        # Combine only major forex instruments
+        # Combine forex and crypto instruments for comprehensive trading coverage
         instruments.update(forex_pairs)
+        instruments.update(crypto_pairs)
         
         return instruments
     

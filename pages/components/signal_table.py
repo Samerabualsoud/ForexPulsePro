@@ -6,6 +6,12 @@ import pandas as pd
 import requests
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
+import sys
+from pathlib import Path
+
+# Add utils to path
+sys.path.append(str(Path(__file__).parent.parent.parent / "utils"))
+from timezone_utils import format_saudi_time, format_saudi_time_full, to_saudi_time
 
 def call_api(endpoint: str, method: str = "GET", data: dict = None) -> dict:
     """Make API call with error handling"""
@@ -108,17 +114,15 @@ def _render_detailed_table(signals: List[Dict[str, Any]]) -> None:
     # Use st.data_editor for better reliability
     table_data = []
     for signal in signals:
-        # Format time
+        # Format time in Saudi local time
         try:
-            issued_time = datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00'))
-            time_str = issued_time.strftime("%m/%d %H:%M")
+            time_str = format_saudi_time(signal['issued_at'])
         except:
             time_str = "N/A"
         
-        # Format expiry time
+        # Format expiry time in Saudi local time
         try:
-            expires_time = datetime.fromisoformat(signal['expires_at'].replace('Z', '+00:00'))
-            expires_str = expires_time.strftime("%m/%d %H:%M")
+            expires_str = format_saudi_time(signal['expires_at'])
         except:
             expires_str = "N/A"
         
@@ -317,18 +321,16 @@ def format_signal_text(signal: Dict[str, Any]) -> str:
     text += f"Confidence: {confidence:.1%}\n"
     text += f"Strategy: {strategy}\n"
     
-    # Add timing info if available
+    # Add timing info in Saudi local time if available
     if signal.get('issued_at'):
         try:
-            dt = datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00'))
-            text += f"Issued: {dt.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+            text += f"Issued: {format_saudi_time_full(signal['issued_at'])}\n"
         except:
             pass
     
     if signal.get('expires_at'):
         try:
-            dt = datetime.fromisoformat(signal['expires_at'].replace('Z', '+00:00'))
-            text += f"Expires: {dt.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+            text += f"Expires: {format_saudi_time_full(signal['expires_at'])}\n"
         except:
             pass
     

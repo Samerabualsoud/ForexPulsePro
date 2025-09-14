@@ -4,7 +4,7 @@ FastAPI Main Application
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from datetime import datetime
 
 # Authentication removed - no longer needed
@@ -19,6 +19,7 @@ from .risk.guards import RiskManager
 from .logs.logger import get_logger
 from .services.signal_evaluator import evaluator
 from .services.news_collector import news_collector
+from .services.provider_diagnostics import provider_diagnostics_service
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from prometheus_client import generate_latest
@@ -86,7 +87,7 @@ app = FastAPI(
     title="Forex Signal Dashboard API",
     description="Production-ready Forex Signal Dashboard REST API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan  # type: ignore
 )
 
 # CORS Configuration
@@ -134,6 +135,32 @@ async def health_check(db: Session = Depends(get_db)):
         }
     }
 
+@app.get("/api/diagnostics/providers")
+async def get_provider_diagnostics():
+    """
+    Comprehensive provider diagnostics endpoint for configuration verification.
+    
+    This endpoint provides detailed information about:
+    - Provider configurations and status
+    - Strict live mode settings
+    - Environment detection
+    - Configuration fingerprint for environment comparison
+    - Health checks and troubleshooting information
+    
+    Use the configuration_fingerprint to verify identical configurations
+    between development and production environments.
+    """
+    try:
+        diagnostics = provider_diagnostics_service.get_comprehensive_diagnostics()
+        logger.info(f"Provider diagnostics generated successfully: {diagnostics['configuration_fingerprint']}")
+        return diagnostics
+    except Exception as e:
+        logger.error(f"Failed to generate provider diagnostics: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to generate provider diagnostics: {str(e)}"
+        )
+
 @app.get("/api/signals/latest")
 async def get_latest_signal(
     symbol: Optional[str] = None,
@@ -175,7 +202,7 @@ async def test_signal(
         raise HTTPException(status_code=404, detail="Signal not found")
     
     # Format signal text for testing
-    signal_text = f"{signal.symbol} {signal.action} @ {signal.price:.5f} | SL {signal.sl or 'N/A'} | TP {signal.tp or 'N/A'} | conf {signal.confidence:.2f}"
+    signal_text = f"{signal.symbol} {signal.action} @ {signal.price:.5f} | SL {signal.sl if signal.sl is not None else 'N/A'} | TP {signal.tp if signal.tp is not None else 'N/A'} | conf {signal.confidence:.2f}"
     
     logger.info(f"Signal {signal_id} test message generated: {signal_text}")
     
@@ -355,7 +382,7 @@ async def simulate_signal_outcome(
     if not signal:
         raise HTTPException(status_code=404, detail="Signal not found")
     
-    if signal.result != "PENDING":
+    if signal.result != "PENDING":  # type: ignore
         raise HTTPException(status_code=400, detail="Signal already evaluated")
     
     try:
@@ -447,13 +474,13 @@ async def get_article_sentiment(
         
         response_sentiments = [
             NewsSentimentResponse(
-                id=s.id,
-                news_article_id=s.news_article_id,
-                analyzer_type=s.analyzer_type,
-                sentiment_score=s.sentiment_score,
-                confidence_score=s.confidence_score,
-                sentiment_label=s.sentiment_label,
-                analyzed_at=s.analyzed_at
+                id=s.id,  # type: ignore
+                news_article_id=s.news_article_id,  # type: ignore
+                analyzer_type=s.analyzer_type,  # type: ignore
+                sentiment_score=s.sentiment_score,  # type: ignore
+                confidence_score=s.confidence_score,  # type: ignore
+                sentiment_label=s.sentiment_label,  # type: ignore
+                analyzed_at=s.analyzed_at  # type: ignore
             ) for s in sentiments
         ]
         

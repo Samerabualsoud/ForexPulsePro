@@ -1056,12 +1056,16 @@ class SignalEngine:
             # Current signal action
             current_action = signal_data['action']
             
-            # If there are conflicting signals, require higher confidence
+            # If there are conflicting signals, require higher confidence (adaptive threshold)
             if (current_action == 'BUY' and sell_count > 0) or (current_action == 'SELL' and buy_count > 0):
-                # Require 80%+ confidence for conflicting signals
-                if signal_data['confidence'] < 0.80:
-                    logger.debug(f"Cross-strategy conflict: {symbol} needs 80%+ confidence for {current_action}, got {signal_data['confidence']:.2f}")
+                # **ADAPTIVE THRESHOLD**: Scale required confidence based on available AI agents
+                # With fewer agents, lower the threshold since 80% is unrealistic with 2-3 agents
+                min_confidence = 0.65 if hasattr(signal_data, 'participating_agents') and signal_data.get('participating_agents', 3) <= 3 else 0.80
+                if signal_data['confidence'] < min_confidence:
+                    logger.debug(f"Cross-strategy conflict: {symbol} needs {min_confidence*100:.0f}%+ confidence for {current_action}, got {signal_data['confidence']:.2f}")
                     return False
+                else:
+                    logger.info(f"Cross-strategy conflict resolved: {symbol} {current_action} approved with {signal_data['confidence']:.1%} confidence (threshold: {min_confidence:.1%})")
                     
             return True
             

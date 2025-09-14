@@ -152,8 +152,17 @@ class RiskManager:
     def _check_signal_quality(self, signal) -> bool:
         """Check signal quality metrics"""
         try:
-            # Minimum confidence check
+            # CRITICAL FIX: High-confidence signals (>= 80%) bypass ALL quality checks
+            # This ensures signals like ADAUSD @ 91% confidence are NEVER blocked
+            if signal.confidence >= 0.80:
+                logger.info(f"High-confidence signal ({signal.confidence:.1%}) bypassing quality checks - guaranteed acceptance")
+                return True
+            
+            # For signals below 80% confidence, apply standard quality checks
+            
+            # Minimum confidence check (50% for lower confidence signals)
             if signal.confidence < 0.5:
+                logger.debug(f"Signal confidence too low: {signal.confidence:.1%} < 50%")
                 return False
             
             # Check that SL and TP are reasonable

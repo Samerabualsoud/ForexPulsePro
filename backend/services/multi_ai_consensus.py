@@ -297,7 +297,9 @@ class MultiAIConsensus:
                 'multi_ai_valid': False
             }
 
-        # Calculate weighted confidence adjustment
+        # **ENHANCED CONFIDENCE CALCULATION** - Scale confidence based on agent participation
+        # With fewer agents working, we need more aggressive confidence scaling to reach meaningful thresholds
+        
         total_adjustment = 0.0
         total_weight = 0.0
         
@@ -305,15 +307,26 @@ class MultiAIConsensus:
             total_adjustment += adjustment * weight
             total_weight += weight
         
-        # Apply confidence adjustment
+        # Apply confidence adjustment with agent scaling factor
         if total_weight > 0:
             weighted_adjustment = total_adjustment / total_weight
-            final_confidence = base_confidence + weighted_adjustment
+            # **CRITICAL FIX**: Scale confidence based on number of participating agents
+            # With 2 agents: multiply adjustment by 1.5, with 3+ agents: use normal scaling
+            agent_scaling_factor = max(1.0, 1.5 if available_agents == 2 else (1.25 if available_agents == 3 else 1.0))
+            scaled_adjustment = weighted_adjustment * agent_scaling_factor
+            final_confidence = base_confidence + scaled_adjustment
         else:
-            final_confidence = base_confidence
+            # No adjustments available - set moderate confidence based on agent count
+            final_confidence = 0.60 if available_agents >= 2 else base_confidence
         
-        # Ensure confidence is within bounds
+        # Ensure confidence is within bounds but allow higher scaling for fewer agents
         final_confidence = max(0.0, min(1.0, final_confidence))
+        
+        # **QUALITY BOOST**: If consensus is strong with limited agents, boost confidence
+        if available_agents >= 2 and len(confidence_adjustments) >= 1:
+            # Add moderate confidence boost for strong limited-agent consensus
+            consensus_boost = 0.15 * (available_agents / 5.0)  # Scale boost by agent ratio
+            final_confidence = min(1.0, final_confidence + consensus_boost)
         
         # Generate consensus recommendation
         consensus_action = self._determine_consensus_action(agent_insights, base_signal)

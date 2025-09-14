@@ -335,8 +335,8 @@ class MultiAIConsensus:
             return {
                 'final_confidence': 0.0,
                 'consensus_action': 'BLOCKED_LOW_CONFIDENCE',
-                'agent_count': actual_participating_agents,
-                'participating_agents': actual_participating_agents,  # Signal engine expects this field
+                'agent_count': available_agents,
+                'participating_agents': available_agents,  # Signal engine expects this field
                 'consensus_strength': 0.0,
                 'consensus_level': 0.0,  # Signal engine expects this field
                 'risk_level': 'HIGH',
@@ -353,24 +353,21 @@ class MultiAIConsensus:
         # Calculate consensus metrics
         consensus_strength = self._calculate_consensus_strength(agent_insights)
         
-        # **CRITICAL**: Additional validation - ensure we have actual participating agents
-        actual_participating_agents = len(agent_insights)
-        
         # Create detailed consensus analysis
         consensus = {
             'final_confidence': final_confidence,
             'base_confidence': base_confidence,
             'confidence_adjustment': final_confidence - base_confidence,
             'consensus_action': consensus_action,
-            'agent_count': actual_participating_agents,
-            'participating_agents': actual_participating_agents,  # Signal engine expects this field
+            'agent_count': available_agents,
+            'participating_agents': available_agents,  # Signal engine expects this field
             'agent_insights': agent_insights,
             'consensus_strength': consensus_strength,
             'consensus_level': consensus_strength,  # Signal engine expects this field
             'risk_assessment': self._assess_overall_risk(agent_insights),
             'timestamp': datetime.now().isoformat(),
             'multi_ai_enabled': True,
-            'multi_ai_valid': actual_participating_agents >= 2 and consensus_strength >= 0.5
+            'multi_ai_valid': available_agents >= 2 and consensus_strength >= 0.5
         }
         
         return consensus

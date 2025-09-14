@@ -29,7 +29,7 @@ class StochasticStrategy:
             d_period = config.get('stoch_d', 3)
             oversold_level = config.get('oversold', 20)
             overbought_level = config.get('overbought', 80)
-            min_confidence = config.get('min_confidence', 0.60)
+            min_confidence = config.get('min_confidence', 0.8)  # User requested 80% minimum
             
             if len(data) < k_period + k_slow_period + d_period + 10:
                 return None

@@ -27,7 +27,7 @@ class FibonacciStrategy:
         try:
             swing_period = config.get('swing_period', 20)
             fib_tolerance = config.get('fib_tolerance', 0.0005)  # Price tolerance near fib levels
-            min_confidence = config.get('min_confidence', 0.65)
+            min_confidence = config.get('min_confidence', 0.8)  # User requested 80% minimum
             trend_period = config.get('trend_period', 50)
             
             if len(data) < max(swing_period, trend_period) + 10:

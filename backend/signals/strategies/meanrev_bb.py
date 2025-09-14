@@ -29,7 +29,7 @@ class MeanReversionBBStrategy:
             adx_period = config.get('adx_period', 14)
             adx_threshold = config.get('adx_threshold', 15)  # Lower ADX requirement
             zscore_threshold = config.get('zscore_threshold', 1.5)  # More lenient
-            min_confidence = config.get('min_confidence', 0.4)  # Much lower minimum
+            min_confidence = config.get('min_confidence', 0.8)  # User requested 80% minimum
             
             if len(data) < max(bb_period, adx_period) + 5:
                 return None

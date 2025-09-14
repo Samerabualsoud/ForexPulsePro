@@ -24,11 +24,11 @@ class SignalScheduler:
     def start(self):
         """Start the scheduler"""
         try:
-            # Major forex & crypto pairs configuration with institutional 15-minute frequency
+            # Major forex & crypto pairs configuration with 1-minute frequency
             # Professional forex and crypto trading analysis for comprehensive market coverage
             self.scheduler.add_job(
                 func=self._run_forex_signal_generation,
-                trigger=IntervalTrigger(minutes=15),  # Standard for forex institutional trading
+                trigger=IntervalTrigger(minutes=1),  # User requested 1-minute frequency
                 id='forex_signal_generation', 
                 name='Generate Forex & Crypto Signals',
                 replace_existing=True

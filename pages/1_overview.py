@@ -164,9 +164,7 @@ def get_demo_data(endpoint):
     import random
     
     if "/api/signals/recent" in endpoint:
-        if not is_forex_market_open():
-            return []
-        
+        # Always show signals - crypto trades 24/7 and users need historical data
         # Demo signals with proper structure matching Signal model
         signals = []
         symbols = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "BTCUSD", "ETHUSD", "LTCUSD", "ADAUSD", "SOLUSD"]

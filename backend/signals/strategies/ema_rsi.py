@@ -32,7 +32,7 @@ class EMAStragey:
             rsi_period = config.get('rsi_period', 14)
             rsi_buy_threshold = config.get('rsi_buy_threshold', 45)  # More lenient
             rsi_sell_threshold = config.get('rsi_sell_threshold', 55)  # More lenient
-            min_confidence = config.get('min_confidence', 0.35)  # Lower minimum
+            min_confidence = config.get('min_confidence', 0.8)  # User requested 80% minimum
             
             # Calculate indicators
             close_prices = np.asarray(data['close'].values, dtype=np.float64)

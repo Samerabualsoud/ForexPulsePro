@@ -28,7 +28,7 @@ class DonchianATRStrategy:
             atr_period = config.get('atr_period', 14)
             atr_multiplier = config.get('atr_multiplier', 2.0)
             use_supertrend = config.get('use_supertrend', True)
-            min_confidence = config.get('min_confidence', 0.65)
+            min_confidence = config.get('min_confidence', 0.8)  # User requested 80% minimum
             
             if len(data) < max(donchian_period, atr_period) + 5:
                 return None

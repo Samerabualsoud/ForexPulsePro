@@ -28,7 +28,7 @@ class RSIDivergenceStrategy:
             lookback_period = config.get('lookback', 20)
             oversold_level = config.get('oversold', 30)
             overbought_level = config.get('overbought', 70)
-            min_confidence = config.get('min_confidence', 0.70)
+            min_confidence = config.get('min_confidence', 0.8)  # User requested 80% minimum
             volume_filter = config.get('use_volume', True)
             
             if len(data) < rsi_period + lookback_period + 10:

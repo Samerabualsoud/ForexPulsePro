@@ -27,7 +27,7 @@ class MACDStrategy:
             fast_period = config.get('macd_fast', 12)
             slow_period = config.get('macd_slow', 26)
             signal_period = config.get('macd_signal', 9)
-            min_confidence = config.get('min_confidence', 0.65)
+            min_confidence = config.get('min_confidence', 0.8)  # User requested 80% minimum
             use_histogram_filter = config.get('use_histogram', True)
             
             if len(data) < max(slow_period, signal_period) + 10:

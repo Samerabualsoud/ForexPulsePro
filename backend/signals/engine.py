@@ -3,6 +3,7 @@ Signal Generation Engine
 """
 import pandas as pd
 import os
+import time
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Tuple, Any
@@ -12,6 +13,8 @@ from ..models import Signal, Strategy
 from ..logs.logger import get_logger
 from ..ai_capabilities import get_ai_capabilities, OPENAI_ENABLED
 from ..services.manus_ai import ManusAI
+from ..instruments.metadata import instrument_db, AssetClass, get_instrument_metadata, get_pip_size, format_price
+from ..config.strict_live_config import StrictLiveConfig
 
 # Initialize logger first
 logger = get_logger(__name__)
@@ -174,24 +177,23 @@ class SignalEngine:
         self.auto_trade_enabled = os.getenv('AUTO_TRADE_ENABLED', 'false').lower() == 'true'
         self.confidence_threshold = float(os.getenv('AUTO_TRADE_CONFIDENCE_THRESHOLD', '0.85'))
         self.default_lot_size = float(os.getenv('AUTO_TRADE_LOT_SIZE', '0.01'))  # Micro lot
-    
-    def _is_crypto_symbol(self, symbol: str) -> bool:
-        """Check if symbol is a cryptocurrency pair"""
-        crypto_symbols = ['BTCUSD', 'ETHUSD', 'LTCUSD', 'ADAUSD', 'DOGUSD', 'SOLUSD', 'AVAXUSD']
-        return symbol in crypto_symbols or 'BTC' in symbol or 'ETH' in symbol
-    
-    def _is_metals_oil_symbol(self, symbol: str) -> bool:
-        """Check if symbol is a metals or oil pair"""
-        metals_oil_symbols = ['XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD', 'XPTUSD', 'XPDUSD', 'WTIUSD', 'XBRUSD', 'XRHHUSD']
-        return symbol in metals_oil_symbols or symbol.startswith('XAU') or symbol.startswith('XAG') or 'OIL' in symbol
+        
+        # Strict Live Mode Configuration - Enterprise-grade production safety
+        StrictLiveConfig.log_configuration(logger)
     
     def _get_asset_class(self, symbol: str) -> str:
-        """Determine asset class for intelligent provider routing"""
-        if self._is_crypto_symbol(symbol):
+        """Determine asset class for intelligent provider routing using instrument metadata"""
+        asset_class = instrument_db.get_asset_class(symbol)
+        
+        # Map AssetClass enum to string for backward compatibility
+        if asset_class == AssetClass.CRYPTO:
             return 'crypto'
-        elif self._is_metals_oil_symbol(symbol):
+        elif asset_class in [AssetClass.METALS, AssetClass.OIL]:
             return 'metals_oil'
+        elif asset_class == AssetClass.FOREX:
+            return 'forex'
         else:
+            # Fallback for unknown symbols
             return 'forex'
     
     def _get_providers_for_asset_class(self, asset_class: str) -> List[tuple]:
@@ -223,40 +225,59 @@ class SignalEngine:
             ]
     
     def _is_market_open_for_symbol(self, symbol: str) -> bool:
-        """Check if market is open for the specific symbol type"""
-        # Crypto markets are 24/7 - always open
-        if self._is_crypto_symbol(symbol):
-            logger.debug(f"Crypto market for {symbol} is always open (24/7)")
+        """Check if market is open for the specific symbol type using instrument metadata"""
+        instrument = get_instrument_metadata(symbol)
+        
+        if instrument is None:
+            # Fallback for unknown symbols - assume forex market hours
+            logger.warning(f"Unknown instrument {symbol}, using forex market hours as fallback")
+            return is_forex_market_open()
+        
+        # Check if market is 24/7 (crypto)
+        if instrument.is_24_7:
+            logger.debug(f"Market for {symbol} is always open (24/7)")
             return True
         
-        # Metals and oil markets are typically 23/6 (closed Saturdays)
-        if self._is_metals_oil_symbol(symbol):
-            now = datetime.utcnow()
-            weekday = now.weekday()  # Monday = 0, Sunday = 6
-            # Closed on Saturday (weekday 5)
-            if weekday == 5:
-                logger.debug(f"Metals/Oil market for {symbol} is closed on Saturday")
-                return False
-            logger.debug(f"Metals/Oil market for {symbol} is open")
-            return True
+        # Check market hours for other instruments
+        now = datetime.utcnow()
+        weekday = now.weekday()  # Monday = 0, Sunday = 6
+        current_hour = now.hour
         
-        # Forex markets have specific hours
-        return is_forex_market_open()
+        # Check if today is a trading day
+        if weekday not in instrument.market_open_days:
+            logger.debug(f"Market for {symbol} is closed today (weekday {weekday})")
+            return False
+        
+        # Check trading hours
+        start_hour, end_hour = instrument.market_open_hours
+        if start_hour <= current_hour < end_hour:
+            logger.debug(f"Market for {symbol} is open (hour {current_hour} within {start_hour}-{end_hour})")
+            return True
+        else:
+            logger.debug(f"Market for {symbol} is closed (hour {current_hour} outside {start_hour}-{end_hour})")
+            return False
     
     async def process_symbol(self, symbol: str, db: Session):
         """Process signals for a single symbol"""
         try:
-            # Check if market is open before processing (only for Forex, crypto is 24/7)
+            # STRICT MODE: Enhanced market open validation
             if not self._is_market_open_for_symbol(symbol):
-                logger.info(f"Market closed - skipping signal generation for {symbol}")
+                if StrictLiveConfig.ENABLED and StrictLiveConfig.REQUIRE_MARKET_OPEN:
+                    logger.warning(f"🔒 STRICT MODE BLOCKED {symbol}: Market closed - production safety requires open market")
+                else:
+                    logger.info(f"Market closed - skipping signal generation for {symbol}")
                 return
                 
             logger.debug(f"Processing signals for {symbol}")
             
-            # Get initial OHLC data
+            # STRICT MODE: Enhanced data retrieval with production safety
             data = await self._get_market_data(symbol)
             if data is None:
-                logger.warning(f"No data available for {symbol}")
+                if StrictLiveConfig.ENABLED:
+                    logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: No real market data available - signal generation BLOCKED for safety")
+                    logger.error(f"🔒 Production safety requires verified real-time data. Ensure approved data providers are available.")
+                else:
+                    logger.warning(f"No data available for {symbol}")
                 return
             
             # Add a new bar to simulate real-time updates
@@ -336,22 +357,39 @@ class SignalEngine:
     def _validate_real_data(self, data: pd.DataFrame, symbol: str) -> bool:
         """STRICT validation to ensure only fresh real-time market data is used"""
         if data is None or data.empty:
-            logger.warning(f"Data validation failed for {symbol}: No data or empty dataset")
+            if StrictLiveConfig.VERBOSE_LOGGING:
+                logger.warning(f"Data validation failed for {symbol}: No data or empty dataset")
             return False
             
         # Check for synthetic data markers in attributes
         if hasattr(data, 'attrs'):
-            # Reject if explicitly marked as synthetic/mock
-            if data.attrs.get('is_synthetic', False) or data.attrs.get('is_mock', False):
-                logger.warning(f"Data validation failed for {symbol}: Contains synthetic/mock data markers")
+            # STRICT MODE: Apply zero-tolerance checks for synthetic/mock data
+            if StrictLiveConfig.ENABLED and StrictLiveConfig.BLOCK_SYNTHETIC_DATA:
+                if data.attrs.get('is_synthetic', False):
+                    logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: Synthetic data detected")
+                    return False
+            elif data.attrs.get('is_synthetic', False):
+                logger.warning(f"Data validation failed for {symbol}: Contains synthetic data markers")
                 return False
                 
-            # Accept only if explicitly marked as real data
-            if not data.attrs.get('is_real_data', False):
+            if StrictLiveConfig.ENABLED and StrictLiveConfig.BLOCK_MOCK_DATA:
+                if data.attrs.get('is_mock', False):
+                    logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: Mock data detected")
+                    return False
+            elif data.attrs.get('is_mock', False):
+                logger.warning(f"Data validation failed for {symbol}: Contains mock data markers")
+                return False
+                
+            # STRICT MODE: Require explicit real data marker
+            if StrictLiveConfig.ENABLED and StrictLiveConfig.REQUIRE_REAL_DATA_MARKER:
+                if not data.attrs.get('is_real_data', False):
+                    logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: No real data marker found")
+                    return False
+            elif not data.attrs.get('is_real_data', False):
                 logger.warning(f"Data validation failed for {symbol}: No real data marker found")
                 return False
                 
-            # CRITICAL: Check data freshness (must be updated within last 15 SECONDS for live trading)
+            # STRICT MODE: Enhanced data freshness validation
             last_updated = data.attrs.get('last_updated')
             fetch_timestamp = data.attrs.get('fetch_timestamp')
             
@@ -373,11 +411,18 @@ class SignalEngine:
                     current_time = datetime.now(timezone.utc)
                     time_diff = (current_time - update_time).total_seconds()
                     
-                    # Log exact data age for transparency
-                    if time_diff <= 15.0:
-                        logger.info(f"Data freshness PASSED for {symbol}: Data is {time_diff:.1f} seconds old - ACCEPTED")
+                    # STRICT MODE: Apply configurable data age limits
+                    max_age = StrictLiveConfig.MAX_DATA_AGE_SECONDS if StrictLiveConfig.ENABLED else 15.0
+                    is_fresh, freshness_reason = StrictLiveConfig.validate_data_freshness(time_diff)
+                    
+                    if is_fresh:
+                        if StrictLiveConfig.VERBOSE_LOGGING:
+                            logger.info(f"Data freshness PASSED for {symbol}: {freshness_reason}")
                     else:
-                        logger.error(f"Data freshness FAILED for {symbol}: Data is {time_diff:.1f} seconds old - REJECTED (limit: 15s)")
+                        if StrictLiveConfig.ENABLED:
+                            logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: {freshness_reason}")
+                        else:
+                            logger.error(f"Data freshness FAILED for {symbol}: {freshness_reason}")
                         return False
                         
                 except Exception as e:
@@ -387,38 +432,73 @@ class SignalEngine:
                 logger.error(f"Data validation failed for {symbol}: No timestamp information available for freshness check")
                 return False
             
-            # Validate data source is from a verified live provider
-            verified_live_sources = ['Polygon.io', 'Finnhub', 'MT5', 'FreeCurrencyAPI']
-            cached_sources = ['ExchangeRate.host', 'AlphaVantage']  # These may have cached data
-            
+            # STRICT MODE: Enhanced data source validation
             data_source = data.attrs.get('data_source', 'Unknown')
             is_live_source = data.attrs.get('is_live_source', False)
             
-            # Prefer verified live sources for real-time trading
-            if data_source in verified_live_sources and is_live_source:
-                logger.debug(f"Data source verification PASSED for {symbol}: Verified live source '{data_source}'")
-            elif data_source in cached_sources:
-                logger.warning(f"Data source verification WARNING for {symbol}: Cached source '{data_source}' - data may not be real-time")
-                # Still allow but with warning for cached sources if timestamp is fresh
+            # STRICT MODE: Check if data source is approved
+            if StrictLiveConfig.ENABLED:
+                if StrictLiveConfig.is_data_source_blocked(data_source):
+                    logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: Data source '{data_source}' is explicitly blocked")
+                    return False
+                
+                if not StrictLiveConfig.is_data_source_approved(data_source):
+                    logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: Data source '{data_source}' not in approved list")
+                    return False
+                
+                if StrictLiveConfig.REQUIRE_LIVE_SOURCE and not is_live_source:
+                    logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: Live source required but '{data_source}' is not live")
+                    return False
+                
+                if StrictLiveConfig.BLOCK_CACHED_DATA and data_source in ['ExchangeRate.host', 'AlphaVantage']:
+                    logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: Cached data source '{data_source}' blocked")
+                    return False
+                
+                if StrictLiveConfig.VERBOSE_LOGGING:
+                    logger.info(f"🔒 STRICT MODE APPROVED {symbol}: Data source '{data_source}' validation passed")
             else:
-                logger.error(f"Data validation failed for {symbol}: Unverified data source '{data_source}'")
-                return False
+                # Legacy validation for non-strict mode
+                verified_live_sources = ['Polygon.io', 'Finnhub', 'MT5', 'FreeCurrencyAPI']
+                cached_sources = ['ExchangeRate.host', 'AlphaVantage']  # These may have cached data
+                
+                if data_source in verified_live_sources and is_live_source:
+                    logger.debug(f"Data source verification PASSED for {symbol}: Verified live source '{data_source}'")
+                elif data_source in cached_sources:
+                    logger.warning(f"Data source verification WARNING for {symbol}: Cached source '{data_source}' - data may not be real-time")
+                    # Still allow but with warning for cached sources if timestamp is fresh
+                else:
+                    logger.error(f"Data validation failed for {symbol}: Unverified data source '{data_source}'")
+                    return False
                 
         else:
             logger.error(f"Data validation failed for {symbol}: No data attributes found for validation")
             return False
             
-        # Validate data structure and content
+        # STRICT MODE: Enhanced data structure and quality validation
         required_columns = ['open', 'high', 'low', 'close']
         missing_columns = [col for col in required_columns if col not in data.columns]
         if missing_columns:
-            logger.warning(f"Data validation failed for {symbol}: Missing required columns {missing_columns}")
+            if StrictLiveConfig.ENABLED:
+                logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: Missing required columns {missing_columns}")
+            else:
+                logger.warning(f"Data validation failed for {symbol}: Missing required columns {missing_columns}")
+            return False
+        
+        # STRICT MODE: Check minimum data bars requirement
+        if StrictLiveConfig.ENABLED and len(data) < StrictLiveConfig.MIN_DATA_BARS:
+            logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: Insufficient data bars ({len(data)} < {StrictLiveConfig.MIN_DATA_BARS})")
+            return False
+        elif len(data) < 30:  # Legacy minimum for non-strict mode
+            logger.warning(f"Data validation failed for {symbol}: Insufficient data bars ({len(data)} < 30)")
             return False
             
         # Check for reasonable price values (no zeros, negatives, or extreme outliers)
         for col in required_columns:
             if (data[col] <= 0).any():
-                logger.warning(f"Data validation failed for {symbol}: Invalid {col} values (zero or negative)")
+                if StrictLiveConfig.ENABLED:
+                    logger.error(f"🔒 STRICT MODE BLOCKED {symbol}: Invalid {col} values (zero or negative)")
+                else:
+                    logger.warning(f"Data validation failed for {symbol}: Invalid {col} values (zero or negative)")
                 return False
                 
         # ENHANCED: Validate latest bar timestamp for real-time requirements
@@ -439,7 +519,12 @@ class SignalEngine:
                     logger.debug(f"Could not validate latest bar timestamp for {symbol}: {e}")
         
         data_source = data.attrs.get('data_source', 'Unknown')
-        logger.info(f"Data validation PASSED for {symbol}: Fresh real-time data from {data_source}")
+        
+        # STRICT MODE: Final validation summary
+        if StrictLiveConfig.ENABLED and StrictLiveConfig.VERBOSE_LOGGING:
+            logger.info(f"🔒 STRICT MODE VALIDATION PASSED for {symbol}: Production-grade data from {data_source}")
+        else:
+            logger.info(f"Data validation PASSED for {symbol}: Fresh real-time data from {data_source}")
         return True
 
     async def _get_market_data(self, symbol: str) -> Optional[pd.DataFrame]:

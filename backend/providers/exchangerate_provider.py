@@ -34,11 +34,11 @@ class ExchangeRateProvider(BaseDataProvider):
         if self.api_key:
             logger.info(f"ExchangeRate.host provider initialized with API key - Live data enabled")
         else:
-            logger.info(f"ExchangeRate.host provider initialized without API key - Using synthetic data fallback")
+            logger.warning(f"ExchangeRate.host provider initialized without API key - Provider will be unavailable")
     
     def is_available(self) -> bool:
-        """Always available - uses synthetic data when API key not available"""
-        return True
+        """Only available when API key is configured - NO synthetic data fallback"""
+        return self.api_key is not None
     
     def _parse_symbol(self, symbol: str) -> tuple[str, str]:
         """Parse forex symbol into base and quote currencies"""
@@ -48,69 +48,53 @@ class ExchangeRateProvider(BaseDataProvider):
         return 'EUR', 'USD'  # Default fallback
     
     async def get_current_rate(self, symbol: str) -> Optional[dict]:
-        """Get current exchange rate using realistic synthetic data"""
+        """Get current exchange rate using real API data only - NO synthetic data"""
+        # Check if API key is available
+        if not self.api_key:
+            logger.debug(f"No API key available for ExchangeRate.host - cannot get current rate for {symbol}")
+            return None
+            
         try:
             base, quote = self._parse_symbol(symbol)
             
-            # LIVE MARKET RATES - Updated September 14, 2025
-            # Using real-time market data from major exchanges
-            realistic_rates = {
-                # Major Forex Pairs - LIVE RATES Sep 14, 2025
-                'EURUSD': 1.1662,  # EUR/USD - Real market price
-                'GBPUSD': 1.3440,  # GBP/USD - Real market price  
-                'USDJPY': 147.646, # USD/JPY - Real market price
-                'USDCHF': 0.8445,  # USD/CHF - Estimated from EUR/CHF
-                'AUDUSD': 0.6789,  # AUD/USD - Market estimate
-                'USDCAD': 1.3567,  # USD/CAD - Market estimate
-                'NZDUSD': 0.6234,  # NZD/USD - Market estimate
-                'EURJPY': 172.23,  # EUR/JPY - Calculated: 1.1662 * 147.646
-                'GBPJPY': 198.52,  # GBP/JPY - Calculated: 1.3440 * 147.646
-                'EURGBP': 0.8677,  # EUR/GBP - Calculated: 1.1662 / 1.3440
-                'AUDJPY': 100.24,  # AUD/JPY - Calculated: 0.6789 * 147.646
-                'EURAUD': 1.7180,  # EUR/AUD - Calculated: 1.1662 / 0.6789
-                'EURCAD': 1.5823,  # EUR/CAD - Calculated: 1.1662 * 1.3567
-                'EURCHF': 0.9850,  # EUR/CHF - Calculated: 1.1662 * 0.8445
-                'AUDCAD': 0.9214,  # AUD/CAD - Market estimate
+            # Make real API call to ExchangeRate.host
+            async with httpx.AsyncClient(timeout=self.session_timeout) as client:
+                params = {
+                    'base': base,
+                    'symbols': quote,
+                    'access_key': self.api_key
+                }
                 
-                # Cryptocurrency Pairs - LIVE MARKET PRICES Sep 14, 2025
-                'BTCUSD': 115924.0, # Bitcoin - Real market price $115,924
-                'ETHUSD': 4645.0,   # Ethereum - Real market price $4,645
-                'BTCEUR': 99421.0,  # Bitcoin EUR - Calculated: 115924 / 1.1662
-                'ETHEUR': 3984.0,   # Ethereum EUR - Calculated: 4645 / 1.1662
-                'LTCUSD': 88.45,    # Litecoin - Market estimate
-                'ADAUSD': 0.3420,   # Cardano - Market estimate
-                'SOLUSD': 142.75,   # Solana - Market estimate
+                response = await client.get(
+                    f"{self.base_url}/latest",
+                    params=params
+                )
                 
-                # Metals & Commodities - LIVE MARKET PRICES Sep 14, 2025
-                'XAUUSD': 3597.0,   # Gold - Real market price $3,597/oz
-                'XAGUSD': 41.10,    # Silver - Real market price $41.10/oz
-                'USOIL': 62.56,     # WTI Oil - Real market price $62.56/bbl
-                'UKOUSD': 66.85,    # Brent Oil - Estimated from WTI
-                'XPTUSD': 925.0,    # Platinum - Market estimate
-                'XPDUSD': 940.0     # Palladium - Market estimate
-            }
-            
-            # Get base rate and add small random variation (±0.05%)
-            base_rate = realistic_rates.get(symbol, 1.0000)
-            
-            # Add small realistic variation to simulate live market
-            import numpy as np
-            variation = np.random.normal(0, 0.0005)  # ±0.05% variation
-            current_rate = base_rate * (1 + variation)
-            
-            logger.info(f"Generated realistic rate for {symbol}: {current_rate:.5f} (base: {base_rate})")
-            
-            return {
-                'symbol': symbol,
-                'rate': round(current_rate, 5),
-                'base': base,
-                'quote': quote,
-                'timestamp': int(datetime.now().timestamp()),
-                'date': datetime.now().strftime('%Y-%m-%d')
-            }
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    logger.debug(f"ExchangeRate.host current rate response for {symbol}: {data}")
+                    
+                    if data.get('success', True) and 'rates' in data and quote in data['rates']:
+                        rate = float(data['rates'][quote])
+                        
+                        logger.info(f"ExchangeRate.host: Real API rate for {symbol}: {rate}")
+                        
+                        return {
+                            'symbol': symbol,
+                            'rate': round(rate, 5),
+                            'base': base,
+                            'quote': quote,
+                            'timestamp': int(datetime.now().timestamp()),
+                            'date': datetime.now().strftime('%Y-%m-%d')
+                        }
+                    else:
+                        logger.warning(f"Invalid ExchangeRate.host response format for {symbol}: {data}")
+                else:
+                    logger.warning(f"ExchangeRate.host API error {response.status_code} for {symbol}")
                         
         except Exception as e:
-            logger.warning(f"Synthetic rate generation error for {symbol}: {e}")
+            logger.error(f"ExchangeRate.host current rate API error for {symbol}: {e}")
             
         return None
     
@@ -123,7 +107,7 @@ class ExchangeRateProvider(BaseDataProvider):
             
             # Only make API call if we have an API key
             if not self.api_key:
-                logger.debug(f"No API key available for ExchangeRate.host - falling back to synthetic data")
+                logger.debug(f"No API key available for ExchangeRate.host - cannot get historical rates for {symbol}")
                 return None
                 
             async with httpx.AsyncClient(timeout=self.session_timeout) as client:
@@ -185,9 +169,8 @@ class ExchangeRateProvider(BaseDataProvider):
             historical_data = await self.get_historical_rates(symbol, days=min(limit, 365))
             
             if not historical_data or 'rates' not in historical_data:
-                logger.info(f"No API data available for {symbol} - generating synthetic OHLC data")
-                # Generate synthetic OHLC data when API is not available
-                return await self._generate_synthetic_ohlc_data(symbol, limit)
+                logger.warning(f"No real API data available for {symbol} - cannot generate OHLC data")
+                return None
                 
             rates_data = historical_data['rates']
             
@@ -266,75 +249,6 @@ class ExchangeRateProvider(BaseDataProvider):
             
         return None
     
-    async def _generate_synthetic_ohlc_data(self, symbol: str, limit: int = 200) -> Optional[pd.DataFrame]:
-        """Generate synthetic OHLC data when API is not available"""
-        try:
-            # Get current rate as base
-            current_rate_data = await self.get_current_rate(symbol)
-            if not current_rate_data:
-                logger.warning(f"Cannot generate synthetic OHLC for {symbol} - no base rate available")
-                return None
-                
-            base_rate = current_rate_data['rate']
-            
-            # Generate historical OHLC data
-            import numpy as np
-            df_data = []
-            end_date = datetime.now()
-            
-            for i in range(limit, 0, -1):
-                date_obj = end_date - timedelta(days=i)
-                
-                # Set seed for reproducible data based on date
-                np.random.seed(int(date_obj.timestamp()) % 1000000)
-                
-                # Create realistic price movement over time (trending toward current price)
-                progress = (limit - i) / limit  # 0 to 1
-                trend_factor = 0.95 + (0.1 * progress)  # Slight upward trend toward current rate
-                daily_rate = base_rate * trend_factor * (1 + np.random.normal(0, 0.002))  # ±0.2% daily variation
-                
-                # Generate realistic intraday OHLC
-                daily_volatility = 0.001  # 0.1% daily volatility
-                open_offset = np.random.uniform(-daily_volatility/2, daily_volatility/2)
-                high_offset = abs(open_offset) + np.random.uniform(0, daily_volatility)
-                low_offset = -abs(open_offset) - np.random.uniform(0, daily_volatility)
-                
-                open_price = daily_rate * (1 + open_offset)
-                high_price = daily_rate * (1 + high_offset)
-                low_price = daily_rate * (1 + low_offset)
-                close_price = daily_rate
-                
-                # Ensure price consistency
-                high_price = max(high_price, open_price, close_price)
-                low_price = min(low_price, open_price, close_price)
-                
-                df_data.append({
-                    'time': date_obj,
-                    'open': round(open_price, 5),
-                    'high': round(high_price, 5),
-                    'low': round(low_price, 5),
-                    'close': round(close_price, 5),
-                    'volume': np.random.randint(100000, 1000000)
-                })
-            
-            df = pd.DataFrame(df_data)
-            df = df.set_index('time').sort_index()
-            
-            # Add metadata
-            df = self._add_metadata_to_dataframe(
-                df, 
-                symbol, 
-                data_source=f"{self.name} (Synthetic)",
-                last_updated=datetime.now(timezone.utc).isoformat()
-            )
-            
-            self._log_data_fetch(symbol, True, len(df))
-            logger.info(f"Generated {len(df)} synthetic OHLC bars for {symbol}")
-            return df
-            
-        except Exception as e:
-            logger.error(f"Synthetic OHLC generation error for {symbol}: {e}")
-            return None
     
     async def get_latest_price(self, symbol: str) -> Optional[float]:
         """Get the latest price for a symbol"""
@@ -359,11 +273,16 @@ class ExchangeRateProvider(BaseDataProvider):
     
     async def test_connection(self) -> bool:
         """Test ExchangeRate.host API connection"""
+        if not self.api_key:
+            logger.warning(f"ExchangeRate.host connection test failed: No API key available")
+            return False
+            
         try:
             test_rate = await self.get_current_rate('EURUSD')
             if test_rate and test_rate['rate'] > 0:
                 logger.info(f"ExchangeRate.host connection test successful - EURUSD: {test_rate['rate']}")
                 return True
+            logger.warning(f"ExchangeRate.host connection test failed: No valid rate returned")
             return False
         except Exception as e:
             logger.error(f"ExchangeRate.host connection test failed: {e}")

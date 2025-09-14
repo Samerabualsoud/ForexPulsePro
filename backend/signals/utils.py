@@ -6,6 +6,12 @@ import numpy as np
 import talib as ta
 from typing import Dict, Any, Tuple, Optional
 
+# Import instrument metadata system
+from ..instruments.metadata import (
+    instrument_db, get_instrument_metadata, get_pip_size, get_pip_value_per_lot,
+    format_price, round_lot_size
+)
+
 def calculate_atr(data: pd.DataFrame, period: int = 14) -> np.ndarray:
     """Calculate Average True Range"""
     high_prices = data['high'].values
@@ -18,16 +24,18 @@ def calculate_sl_tp(
     price: float, 
     action: str, 
     data: pd.DataFrame, 
-    config: Dict[str, Any]
+    config: Dict[str, Any],
+    symbol: str = None
 ) -> Tuple[Optional[float], Optional[float]]:
     """
-    Calculate Stop Loss and Take Profit levels
+    Calculate Stop Loss and Take Profit levels using accurate instrument metadata
     
     Args:
         price: Entry price
         action: BUY or SELL
         data: OHLC data
         config: Strategy configuration
+        symbol: Trading symbol for metadata lookup
         
     Returns:
         Tuple of (stop_loss, take_profit)
@@ -38,14 +46,16 @@ def calculate_sl_tp(
     sl = None
     tp = None
     
+    # Get accurate pip size using instrument metadata
+    pip_size = get_pip_size(symbol) if symbol else get_pip_value_legacy(data['close'].iloc[-1])
+    
     # Calculate Stop Loss
     if sl_mode == 'pips':
         sl_pips = config.get('sl_pips', 20)
-        pip_value = get_pip_value(data['close'].iloc[-1])
         if action == 'BUY':
-            sl = price - (sl_pips * pip_value)
+            sl = price - (sl_pips * pip_size)
         else:
-            sl = price + (sl_pips * pip_value)
+            sl = price + (sl_pips * pip_size)
     
     elif sl_mode == 'atr':
         atr_values = calculate_atr(data)
@@ -61,11 +71,10 @@ def calculate_sl_tp(
     # Calculate Take Profit
     if tp_mode == 'pips':
         tp_pips = config.get('tp_pips', 40)
-        pip_value = get_pip_value(data['close'].iloc[-1])
         if action == 'BUY':
-            tp = price + (tp_pips * pip_value)
+            tp = price + (tp_pips * pip_size)
         else:
-            tp = price - (tp_pips * pip_value)
+            tp = price - (tp_pips * pip_size)
     
     elif tp_mode == 'atr':
         atr_values = calculate_atr(data)
@@ -80,15 +89,36 @@ def calculate_sl_tp(
     
     return sl, tp
 
-def get_pip_value(price: float) -> float:
+def get_pip_value_legacy(price: float) -> float:
     """
-    Get pip value based on price level
-    Most forex pairs have 5 decimal places, JPY pairs have 3
+    Legacy pip value calculation - kept for backward compatibility
+    Use get_pip_size() from instrument metadata instead
     """
     if price > 50:  # Likely a JPY pair
         return 0.01
     else:
         return 0.0001
+
+def get_pip_value(symbol_or_price, symbol: str = None) -> float:
+    """
+    Get pip value - supports both legacy price-based and new symbol-based lookup
+    
+    Args:
+        symbol_or_price: Either a symbol string or price float (legacy)
+        symbol: Symbol string when first param is price (legacy mode)
+        
+    Returns:
+        Pip size for the instrument
+    """
+    if isinstance(symbol_or_price, str):
+        # New metadata-based lookup
+        return get_pip_size(symbol_or_price)
+    else:
+        # Legacy price-based lookup with optional symbol
+        if symbol:
+            return get_pip_size(symbol)
+        else:
+            return get_pip_value_legacy(symbol_or_price)
 
 def normalize_symbol(symbol: str) -> str:
     """Normalize symbol format"""
@@ -102,34 +132,36 @@ def calculate_position_size(
     symbol: str
 ) -> float:
     """
-    Calculate position size based on risk management
+    Calculate position size based on risk management using accurate instrument metadata
     
     Args:
         account_balance: Account balance in base currency
         risk_percentage: Risk percentage (e.g., 0.02 for 2%)
         entry_price: Entry price
         stop_loss: Stop loss price
-        symbol: Currency pair symbol
+        symbol: Trading symbol
         
     Returns:
-        Position size in lots
+        Position size in lots (properly rounded to valid increments)
     """
     risk_amount = account_balance * risk_percentage
     
+    # Get accurate pip size and pip value per lot from metadata
+    pip_size = get_pip_size(symbol)
+    pip_value_per_lot_usd = get_pip_value_per_lot(symbol)
+    
     # Calculate pip risk
-    pip_value = get_pip_value(entry_price)
-    pip_risk = abs(entry_price - stop_loss) / pip_value
+    pip_risk = abs(entry_price - stop_loss) / pip_size
     
-    # Calculate lot size (assuming $10 per pip per lot for major pairs)
-    pip_value_per_lot = 10.0  # This is simplified - should be calculated based on account currency
-    lot_size = risk_amount / (pip_risk * pip_value_per_lot)
+    # Calculate raw lot size
+    lot_size = risk_amount / (pip_risk * pip_value_per_lot_usd)
     
-    # Round to appropriate precision
-    return round(lot_size, 2)
+    # Round to valid lot size using instrument specifications
+    return round_lot_size(symbol, lot_size)
 
 def format_signal_message(signal_data: Dict[str, Any]) -> str:
     """
-    Format signal data into WhatsApp message template
+    Format signal data into WhatsApp message template using proper decimal precision
     
     Template: {{symbol}} {{action}} @ {{price}} | SL {{sl}} | TP {{tp}} | conf {{confidence}} | {{strategy}}
     """
@@ -141,11 +173,12 @@ def format_signal_message(signal_data: Dict[str, Any]) -> str:
     confidence = signal_data.get('confidence', 0.0)
     strategy = signal_data.get('strategy', 'unknown')
     
-    # Format SL and TP
-    sl_str = f"{sl:.5f}" if sl and sl != 'N/A' else 'N/A'
-    tp_str = f"{tp:.5f}" if tp and tp != 'N/A' else 'N/A'
+    # Format prices using instrument metadata for correct decimal places
+    price_str = format_price(symbol, price) if symbol != 'UNKNOWN' else f"{price:.5f}"
+    sl_str = format_price(symbol, sl) if sl and sl != 'N/A' and symbol != 'UNKNOWN' else ('N/A' if sl == 'N/A' else f"{sl:.5f}")
+    tp_str = format_price(symbol, tp) if tp and tp != 'N/A' and symbol != 'UNKNOWN' else ('N/A' if tp == 'N/A' else f"{tp:.5f}")
     
-    message = f"{symbol} {action} @ {price:.5f} | SL {sl_str} | TP {tp_str} | conf {confidence:.2f} | {strategy}"
+    message = f"{symbol} {action} @ {price_str} | SL {sl_str} | TP {tp_str} | conf {confidence:.2f} | {strategy}"
     
     return message
 

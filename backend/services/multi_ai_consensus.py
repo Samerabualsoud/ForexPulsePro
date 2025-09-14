@@ -328,6 +328,25 @@ class MultiAIConsensus:
             consensus_boost = 0.15 * (available_agents / 5.0)  # Scale boost by agent ratio
             final_confidence = min(1.0, final_confidence + consensus_boost)
         
+        # **CRITICAL BUG FIX**: STRICT 80% CONFIDENCE REQUIREMENT - Block ALL signals below 80%
+        # This enforces the user's minimum confidence requirement across the entire system
+        if final_confidence < 0.8:
+            logger.warning(f"Multi-AI consensus blocked signal due to insufficient confidence: {final_confidence:.1%} < 80% minimum threshold")
+            return {
+                'final_confidence': 0.0,
+                'consensus_action': 'BLOCKED_LOW_CONFIDENCE',
+                'agent_count': actual_participating_agents,
+                'participating_agents': actual_participating_agents,  # Signal engine expects this field
+                'consensus_strength': 0.0,
+                'consensus_level': 0.0,  # Signal engine expects this field
+                'risk_level': 'HIGH',
+                'quality_gate': 'FAILED_MIN_CONFIDENCE',
+                'agent_insights': agent_insights,
+                'multi_ai_valid': False,
+                'block_reason': f'Confidence {final_confidence:.1%} below 80% minimum threshold',
+                'timestamp': datetime.now().isoformat()
+            }
+        
         # Generate consensus recommendation
         consensus_action = self._determine_consensus_action(agent_insights, base_signal)
         

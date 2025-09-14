@@ -27,7 +27,7 @@ class CoinGeckoProvider(BaseDataProvider):
         
         # Rate limiting (30 calls per minute for free tier)
         self.last_request_time = 0
-        self.min_request_interval = 2.1  # ~30 requests per minute with buffer
+        self.min_request_interval = 3.0  # ~20 requests per minute with safe buffer (was 2.1)
         
         # Crypto symbol mapping for CoinGecko API
         self.crypto_mapping = {
@@ -159,7 +159,12 @@ class CoinGeckoProvider(BaseDataProvider):
             current_price = float(data[coingecko_id]['usd'])
             change_24h = data[coingecko_id].get('usd_24h_change', 0)
             
-            # Generate synthetic historical data similar to other providers
+            # Validate current price is positive
+            if current_price <= 0:
+                logger.error(f"Invalid current price for {symbol}: ${current_price}")
+                return None
+            
+            # Generate synthetic historical data with improved algorithm
             timeframe_minutes = {
                 'M1': 1, 'M5': 5, 'M15': 15, 'H1': 60, 'H4': 240, 'D1': 1440
             }
@@ -167,9 +172,12 @@ class CoinGeckoProvider(BaseDataProvider):
             minutes_per_bar = timeframe_minutes.get(timeframe, 60)
             
             # Create realistic price variations based on crypto volatility
-            # Crypto is more volatile than forex, so use higher volatility
-            daily_volatility = 0.05  # 5% daily volatility for crypto
+            # Use conservative volatility to prevent extreme price movements
+            daily_volatility = 0.03  # 3% daily volatility for crypto (reduced from 5%)
             bar_volatility = daily_volatility * (minutes_per_bar / 1440) ** 0.5  # Scale by timeframe
+            
+            # Cap volatility to prevent extreme movements
+            bar_volatility = min(bar_volatility, 0.02)  # Max 2% per bar
             
             # Generate historical timestamps
             end_time = datetime.now(timezone.utc)
@@ -189,50 +197,94 @@ class CoinGeckoProvider(BaseDataProvider):
             
             timestamps = [end_time - timedelta(minutes=minutes_per_bar * i) for i in range(limit, 0, -1)]
             
-            # Generate synthetic price data
+            # Generate synthetic price data with controlled algorithm
             df_data = []
-            current_p = current_price
             
             # Use numpy random for reproducible synthetic data
             np.random.seed(int(current_price * 1000) % 10000)  # Seed based on price for consistency
             
+            # Generate price variations around the current price
+            price_variations = np.random.normal(0, bar_volatility, limit)
+            
             for i, timestamp in enumerate(timestamps):
-                # Generate price movement with mean reversion to current price
+                # Use simple, safe price generation around current price
+                # Generate a small percentage variation (±1% max)
+                variation_pct = price_variations[i] * 0.01  # Limit to ±1%
+                variation_pct = max(-0.01, min(0.01, variation_pct))  # Clamp to ±1%
+                
                 if i == len(timestamps) - 1:
                     # Last bar should end at current price
                     close_p = current_price
+                    open_p = current_price * (1 + variation_pct * 0.5)
                 else:
-                    # Random walk with slight bias toward current price
-                    random_change = np.random.normal(0, bar_volatility)
-                    bias_toward_current = (current_price - current_p) * 0.001  # Small bias
-                    price_change = random_change + bias_toward_current
-                    close_p = current_p * (1 + price_change)
+                    # Generate close price with small variation
+                    close_p = current_price * (1 + variation_pct)
+                    open_p = current_price * (1 + variation_pct * 0.8)  # Slightly different open
                 
-                # Generate OHLC from close price
-                open_p = current_p
-                volatility_this_bar = bar_volatility * np.random.uniform(0.5, 1.5)
+                # Ensure prices are always positive and reasonable (never less than 80% of current price)
+                min_price = current_price * 0.8
+                close_p = max(close_p, min_price)
+                open_p = max(open_p, min_price)
                 
-                high_p = max(open_p, close_p) * (1 + volatility_this_bar * np.random.uniform(0, 0.8))
-                low_p = min(open_p, close_p) * (1 - volatility_this_bar * np.random.uniform(0, 0.8))
+                # Generate high and low with simple logic
+                high_base = max(open_p, close_p)
+                low_base = min(open_p, close_p)
                 
-                # Ensure high >= max(open, close) and low <= min(open, close)
-                high_p = max(high_p, open_p, close_p)
-                low_p = min(low_p, open_p, close_p)
+                # Add small range for high/low (0.1% to 0.5% of current price)
+                price_range = current_price * np.random.uniform(0.001, 0.005)  # 0.1% to 0.5%
+                
+                high_p = high_base + price_range * np.random.uniform(0.5, 1.0)
+                low_p = low_base - price_range * np.random.uniform(0.5, 1.0)
+                
+                # Ensure high/low boundaries
+                high_p = max(high_p, open_p, close_p, min_price)
+                low_p = max(low_p, min_price)  # Low must be positive
+                low_p = min(low_p, open_p, close_p)  # Low must be below open/close
+                
+                # Final safety check - ensure all values are positive and reasonable
+                open_p = max(open_p, current_price * 0.8)
+                high_p = max(high_p, current_price * 0.8)
+                low_p = max(low_p, current_price * 0.8)
+                close_p = max(close_p, current_price * 0.8)
+                
+                # Round to appropriate precision based on price level
+                if current_price < 1:
+                    precision = 6
+                elif current_price < 100:
+                    precision = 4
+                else:
+                    precision = 2
                 
                 df_data.append({
                     'timestamp': timestamp,
-                    'open': round(open_p, 6),
-                    'high': round(high_p, 6),
-                    'low': round(low_p, 6),
-                    'close': round(close_p, 6),
+                    'open': round(open_p, precision),
+                    'high': round(high_p, precision),
+                    'low': round(low_p, precision),
+                    'close': round(close_p, precision),
                     'volume': np.random.randint(100000, 2000000)  # Crypto volume simulation
                 })
-                
-                current_p = close_p
             
             df = pd.DataFrame(df_data)
             df.set_index('timestamp', inplace=True)
             df.sort_index(inplace=True)
+            
+            # Validate all OHLC data is positive before returning
+            if (df[['open', 'high', 'low', 'close']] <= 0).any().any():
+                logger.error(f"Generated invalid OHLC data for {symbol} - contains zero/negative values")
+                return None
+                
+            # Validate OHLC relationships
+            invalid_bars = (
+                (df['high'] < df[['open', 'close']].max(axis=1)) |
+                (df['low'] > df[['open', 'close']].min(axis=1))
+            )
+            
+            if invalid_bars.any():
+                logger.warning(f"Generated {invalid_bars.sum()} invalid OHLC relationships for {symbol} - correcting...")
+                # Fix invalid relationships
+                for idx in df[invalid_bars].index:
+                    df.loc[idx, 'high'] = max(df.loc[idx, 'open'], df.loc[idx, 'close'], df.loc[idx, 'high'])
+                    df.loc[idx, 'low'] = min(df.loc[idx, 'open'], df.loc[idx, 'close'], df.loc[idx, 'low'])
             
             # Add metadata for real-time validation
             df = self._add_metadata_to_dataframe(
@@ -243,7 +295,8 @@ class CoinGeckoProvider(BaseDataProvider):
             )
             
             self._log_data_fetch(symbol, True, len(df))
-            logger.info(f"Generated {len(df)} synthetic {timeframe} crypto bars for {symbol} from CoinGecko current price: ${current_price}")
+            logger.info(f"Generated {len(df)} valid synthetic {timeframe} crypto bars for {symbol} from CoinGecko current price: ${current_price}")
+            logger.debug(f"OHLC sample for {symbol}: O={df.iloc[-1]['open']}, H={df.iloc[-1]['high']}, L={df.iloc[-1]['low']}, C={df.iloc[-1]['close']}")
             return df
             
         except Exception as e:

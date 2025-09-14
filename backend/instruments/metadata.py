@@ -55,64 +55,46 @@ class InstrumentMetadataDB:
         """Build the complete instrument metadata database"""
         instruments = {}
         
-        # === CRYPTO ONLY CONFIGURATION ===
-        # Removed all forex pairs, metals, and commodities as per requirements
-        # Keeping only cryptocurrency vs USD pairs for focused crypto trading
+        # === MAJOR FOREX PAIRS ONLY CONFIGURATION ===
+        # Focus on the 3 most liquid and reliable forex pairs
+        # Standard institutional forex trading specifications
         
-        # === CRYPTOCURRENCY PAIRS ===
-        # Using realistic pip sizes for crypto trading (typical moves = 10-50 pips)
-        crypto_pairs = {
-            'BTCUSD': InstrumentMetadata(
-                symbol='BTCUSD', asset_class=AssetClass.CRYPTO,
-                pip_size=2.0, decimal_places=2, quote_precision=2,  # $100 move = 50 pips
-                min_lot_size=0.001, max_lot_size=100.0, lot_step=0.001,
-                pip_value_per_lot=2.0, contract_size=1,
-                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,
-                margin_percentage=0.10, description="Bitcoin vs US Dollar",
-                base_currency='BTC', quote_currency='USD'
-            ),
-            'ETHUSD': InstrumentMetadata(
-                symbol='ETHUSD', asset_class=AssetClass.CRYPTO,
-                pip_size=0.20, decimal_places=3, quote_precision=3,  # $10 move = 50 pips
+        # === MAJOR FOREX PAIRS ===
+        # Using standard forex specifications for professional trading
+        forex_pairs = {
+            'EURUSD': InstrumentMetadata(
+                symbol='EURUSD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Standard 5-decimal EUR/USD
                 min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
-                pip_value_per_lot=0.20, contract_size=1,
-                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,
-                margin_percentage=0.10, description="Ethereum vs US Dollar",
-                base_currency='ETH', quote_currency='USD'
+                pip_value_per_lot=1.0, contract_size=100000,  # $1 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,  # Sun 21:00 - Fri 21:00 UTC
+                margin_percentage=0.02, description="Euro vs US Dollar",
+                base_currency='EUR', quote_currency='USD'
             ),
-            'LTCUSD': InstrumentMetadata(
-                symbol='LTCUSD', asset_class=AssetClass.CRYPTO,
-                pip_size=0.10, decimal_places=3, quote_precision=3,  # $5 move = 50 pips
-                min_lot_size=0.1, max_lot_size=1000.0, lot_step=0.1,
-                pip_value_per_lot=0.10, contract_size=1,
-                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,
-                margin_percentage=0.10, description="Litecoin vs US Dollar",
-                base_currency='LTC', quote_currency='USD'
-            ),
-            'ADAUSD': InstrumentMetadata(
-                symbol='ADAUSD', asset_class=AssetClass.CRYPTO,
-                pip_size=0.005, decimal_places=4, quote_precision=4,  # $0.25 move = 50 pips
-                min_lot_size=1.0, max_lot_size=100000.0, lot_step=1.0,
-                pip_value_per_lot=0.005, contract_size=1,
-                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,
-                margin_percentage=0.10, description="Cardano vs US Dollar",
-                base_currency='ADA', quote_currency='USD'
-            ),
-            'SOLUSD': InstrumentMetadata(
-                symbol='SOLUSD', asset_class=AssetClass.CRYPTO,
-                pip_size=0.50, decimal_places=3, quote_precision=3,  # $25 move = 50 pips
+            'GBPUSD': InstrumentMetadata(
+                symbol='GBPUSD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Standard 5-decimal GBP/USD
                 min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
-                pip_value_per_lot=0.50, contract_size=1,
-                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,
-                margin_percentage=0.10, description="Solana vs US Dollar",
-                base_currency='SOL', quote_currency='USD'
+                pip_value_per_lot=1.0, contract_size=100000,  # $1 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,  # Sun 21:00 - Fri 21:00 UTC
+                margin_percentage=0.02, description="British Pound vs US Dollar",
+                base_currency='GBP', quote_currency='USD'
+            ),
+            'USDJPY': InstrumentMetadata(
+                symbol='USDJPY', asset_class=AssetClass.FOREX,
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Standard 3-decimal USD/JPY
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.67, contract_size=100000,  # ~$0.67 per pip per standard lot (varies with JPY rate)
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,  # Sun 21:00 - Fri 21:00 UTC
+                margin_percentage=0.02, description="US Dollar vs Japanese Yen",
+                base_currency='USD', quote_currency='JPY'
             )
         }
         
-        # All metals and commodities removed for crypto-only configuration
+        # All crypto, metals and commodities removed for forex-only configuration
         
-        # Combine only cryptocurrency instruments
-        instruments.update(crypto_pairs)
+        # Combine only major forex instruments
+        instruments.update(forex_pairs)
         
         return instruments
     

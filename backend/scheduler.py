@@ -24,13 +24,13 @@ class SignalScheduler:
     def start(self):
         """Start the scheduler"""
         try:
-            # Crypto-only configuration with AI-optimized 5-minute frequency
-            # High-frequency analysis for crypto volatility capture
+            # Major forex pairs configuration with institutional 15-minute frequency
+            # Professional forex trading analysis for major pairs
             self.scheduler.add_job(
-                func=self._run_crypto_signal_generation,
-                trigger=IntervalTrigger(minutes=5),  # AI-recommended for crypto
-                id='crypto_signal_generation', 
-                name='Generate Crypto Signals',
+                func=self._run_forex_signal_generation,
+                trigger=IntervalTrigger(minutes=15),  # Standard for forex institutional trading
+                id='forex_signal_generation', 
+                name='Generate Forex Signals',
                 replace_existing=True
             )
             
@@ -39,22 +39,22 @@ class SignalScheduler:
                 func=self._run_signal_evaluation,
                 trigger=IntervalTrigger(minutes=1),
                 id='signal_evaluation',
-                name='Evaluate Crypto Signals',
+                name='Evaluate Forex Signals',
                 replace_existing=True
             )
             
             self.scheduler.start()
             logger.info("Signal scheduler started successfully")
             
-            # Run crypto signal generation immediately on start
-            self._run_crypto_signal_generation()
+            # Run forex signal generation immediately on start
+            self._run_forex_signal_generation()
             # Run evaluation 10 seconds after to allow signals to be created first
             self.scheduler.add_job(
                 func=self._run_signal_evaluation,
                 trigger='date',
                 run_date=datetime.utcnow().replace(microsecond=0) + timedelta(seconds=10),
                 id='initial_evaluation',
-                name='Initial Signal Evaluation'
+                name='Initial Forex Signal Evaluation'
             )
             
         except Exception as e:
@@ -69,47 +69,47 @@ class SignalScheduler:
         except Exception as e:
             logger.error(f"Failed to stop scheduler: {e}")
     
-    # Removed _run_signal_generation - crypto-only configuration
+    # Removed _run_signal_generation - forex-only configuration
     
-    def _run_crypto_signal_generation(self):
-        """Run crypto signal generation with AI-optimized 5-minute frequency"""
+    def _run_forex_signal_generation(self):
+        """Run forex signal generation with institutional 15-minute frequency"""
         def run_async():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                loop.run_until_complete(self._generate_crypto_signals())
+                loop.run_until_complete(self._generate_forex_signals())
             finally:
                 loop.close()
         
         thread = threading.Thread(target=run_async)
         thread.start()
     
-    # Removed _run_metals_signal_generation - crypto-only configuration
+    # Removed _run_metals_signal_generation - forex-only configuration
     
-    # Removed _generate_signals - using crypto-specific generation only
+    # Removed _generate_signals - using forex-specific generation only
     
-    async def _generate_crypto_signals(self):
-        """Generate signals specifically for crypto pairs with high-frequency analysis"""
+    async def _generate_forex_signals(self):
+        """Generate signals specifically for major forex pairs with institutional analysis"""
         db = self.SessionLocal()
         try:
-            # Required crypto vs USD pairs only
-            crypto_symbols = ['BTCUSD', 'ETHUSD', 'LTCUSD', 'ADAUSD', 'SOLUSD']
+            # Required major forex pairs only
+            forex_symbols = ['EURUSD', 'GBPUSD', 'USDJPY']
             
-            for symbol in crypto_symbols:
+            for symbol in forex_symbols:
                 try:
                     await self.signal_engine.process_symbol(symbol, db)
-                    logger.debug(f"Processed crypto signals for {symbol}")
+                    logger.debug(f"Processed forex signals for {symbol}")
                 except Exception as e:
-                    logger.error(f"Error processing crypto {symbol}: {e}")
+                    logger.error(f"Error processing forex {symbol}: {e}")
             
-            logger.info(f"Crypto signal generation completed at {datetime.utcnow()}")
+            logger.info(f"Forex signal generation completed at {datetime.utcnow()}")
             
         except Exception as e:
-            logger.error(f"Crypto signal generation failed: {e}")
+            logger.error(f"Forex signal generation failed: {e}")
         finally:
             db.close()
     
-    # Removed _generate_metals_signals - crypto-only configuration
+    # Removed _generate_metals_signals - forex-only configuration
     
     def _run_signal_evaluation(self):
         """Run signal evaluation in a separate thread"""

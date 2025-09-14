@@ -9,7 +9,7 @@ import finnhub
 logger = structlog.get_logger(__name__)
 
 class FinnhubProvider:
-    """Finnhub.io crypto data provider - Free tier with real-time data"""
+    """Finnhub.io forex data provider - Free tier with real-time data"""
     
     def __init__(self):
         self.api_key = os.getenv('FINNHUB_API_KEY')
@@ -23,14 +23,12 @@ class FinnhubProvider:
         else:
             logger.info("No Finnhub API key found")
         
-        # Crypto symbol mapping (Finnhub format)
-        # Using BINANCE exchange for crypto pairs
+        # Forex symbol mapping (Finnhub format)
+        # Using OANDA exchange for major forex pairs
         self.symbol_mapping = {
-            'BTCUSD': 'BINANCE:BTCUSDT',
-            'ETHUSD': 'BINANCE:ETHUSDT',
-            'LTCUSD': 'BINANCE:LTCUSDT',
-            'ADAUSD': 'BINANCE:ADAUSDT',
-            'SOLUSD': 'BINANCE:SOLUSDT'
+            'EURUSD': 'OANDA:EUR_USD',
+            'GBPUSD': 'OANDA:GBP_USD',
+            'USDJPY': 'OANDA:USD_JPY'
         }
         
         logger.info(f"Finnhub provider initialized with API key: {'✓' if self.api_key else '✗'}")
@@ -40,11 +38,11 @@ class FinnhubProvider:
         return self.client is not None
     
     def _get_finnhub_symbol(self, symbol: str) -> str:
-        """Convert standard crypto symbol to Finnhub format"""
-        return self.symbol_mapping.get(symbol.upper(), f'BINANCE:{symbol.upper()}T')
+        """Convert standard forex symbol to Finnhub format"""
+        return self.symbol_mapping.get(symbol.upper(), f'OANDA:{symbol.upper()[:3]}_{symbol.upper()[3:]}')
     
     async def get_current_price(self, symbol: str) -> Optional[dict]:
-        """Get current crypto price"""
+        """Get current forex price"""
         if not self.is_available():
             return None
             
@@ -77,7 +75,7 @@ class FinnhubProvider:
         return None
     
     async def get_ohlc_data(self, symbol: str, limit: int = 200) -> Optional[pd.DataFrame]:
-        """Get synthetic OHLC data from current Finnhub prices"""
+        """Get synthetic OHLC data from current Finnhub forex prices"""
         if not self.is_available():
             return None
             
@@ -89,18 +87,18 @@ class FinnhubProvider:
                 return None
             
             # Create synthetic OHLC data based on current price
-            # This simulates realistic crypto price movements
+            # This simulates realistic forex price movements
             current_price = current_price_data['price']
-            high_price = current_price_data['high'] or current_price * 1.001
-            low_price = current_price_data['low'] or current_price * 0.999
+            high_price = current_price_data['high'] or current_price * 1.0005
+            low_price = current_price_data['low'] or current_price * 0.9995
             open_price = current_price_data['previous_close'] or current_price
             
             # Generate synthetic historical data with realistic variations
             dates = pd.date_range(end=datetime.now(), periods=limit, freq='1min')
             
-            # Create price variations around current price (±0.5%)
+            # Create price variations around current price for forex (±0.05%)
             np_random = __import__('numpy').random
-            price_variations = np_random.normal(0, 0.002, limit)  # 0.2% standard deviation
+            price_variations = np_random.normal(0, 0.0005, limit)  # 0.05% standard deviation for forex
             
             base_prices = [current_price * (1 + var) for var in price_variations]
             
@@ -121,7 +119,7 @@ class FinnhubProvider:
             df = pd.DataFrame(df_data)
             df = df.set_index('time').sort_index()
             
-            logger.info(f"Generated {len(df)} synthetic bars for {symbol} based on Finnhub current price: {current_price}")
+            logger.info(f"Generated {len(df)} synthetic forex bars for {symbol} based on Finnhub current price: {current_price}")
             return df
                         
         except Exception as e:
@@ -211,13 +209,12 @@ class FinnhubProvider:
             return None
             
         try:
-            # For forex pairs, we'll get general forex news and filter
-            # For crypto, we can get crypto news
-            if symbol.upper() in ['BTCUSD', 'ETHUSD', 'BTCEUR', 'ETHEUR']:
-                # Get crypto news for crypto symbols
-                return await self.get_news('crypto', limit)
+            # For major forex pairs, get forex news
+            if symbol.upper() in ['EURUSD', 'GBPUSD', 'USDJPY']:
+                # Get forex news for major forex pairs
+                return await self.get_news('forex', limit)
             elif len(symbol) == 6 and symbol.isalpha():
-                # Get forex news for forex pairs
+                # Get general forex news for other forex pairs
                 return await self.get_news('forex', limit)
             else:
                 # For stocks, we could use company news (requires dates)

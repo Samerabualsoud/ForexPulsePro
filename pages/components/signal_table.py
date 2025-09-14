@@ -13,10 +13,14 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent / "utils"))
 from timezone_utils import format_saudi_time, format_saudi_time_full, to_saudi_time
 
+# Add config path for deployment-safe API URLs
+sys.path.append(str(Path(__file__).parent.parent.parent))
+from config import get_backend_url
+
 def call_api(endpoint: str, method: str = "GET", data: dict = None) -> dict:
     """Make API call with error handling"""
     try:
-        base_url = "http://0.0.0.0:8000"
+        base_url = get_backend_url()
         url = f"{base_url}{endpoint}"
         
         if method == "GET":

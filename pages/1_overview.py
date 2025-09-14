@@ -15,6 +15,9 @@ st.set_page_config(page_title="Overview", page_icon="📈", layout="wide")
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# Import config for deployment-safe API URLs
+from config import get_backend_url
+
 # Type definitions for API responses
 class SignalDTO(TypedDict, total=False):
     id: int
@@ -125,7 +128,7 @@ def call_api(endpoint: str, method: str = "GET", data: Optional[Dict[str, Any]] 
         if method not in ["GET", "POST"]:
             raise ValueError(f"Unsupported method: {method}")
             
-        base_url = "http://localhost:8000"
+        base_url = get_backend_url()
         url = f"{base_url}{endpoint}"
         
         if method == "GET":

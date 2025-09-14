@@ -18,6 +18,10 @@ sys.path.insert(0, str(project_root))
 # Import config for deployment-safe API URLs
 from config import get_backend_url
 
+# Import timezone utilities
+sys.path.append(str(project_root / "utils"))
+from timezone_utils import format_saudi_time, to_saudi_time
+
 # Type definitions for API responses
 class SignalDTO(TypedDict, total=False):
     id: int
@@ -297,13 +301,9 @@ with col1:
         signal_time = latest_signal.get('issued_at', 'Unknown')
         if signal_time and signal_time != 'Unknown':
             try:
-                # Parse ISO format timestamp
-                if 'T' in signal_time:
-                    parsed_time = datetime.fromisoformat(signal_time.replace('Z', '+00:00'))
-                    local_time = parsed_time.strftime('%H:%M:%S')
-                    signal_status = f"🟢 {local_time}"
-                else:
-                    signal_status = "🟡 Parsing..."
+                # Convert to Saudi time and format
+                saudi_time = format_saudi_time(signal_time, "%H:%M:%S AST")
+                signal_status = f"🟢 {saudi_time}"
             except:
                 signal_status = "⚠️ Invalid"
         else:

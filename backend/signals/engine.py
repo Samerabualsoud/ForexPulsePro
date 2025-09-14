@@ -15,6 +15,8 @@ from ..ai_capabilities import get_ai_capabilities, OPENAI_ENABLED
 from ..services.manus_ai import ManusAI
 from ..instruments.metadata import instrument_db, AssetClass, get_instrument_metadata, get_pip_size, format_price
 from ..config.strict_live_config import StrictLiveConfig
+from ..config.provider_config import deterministic_provider_config
+from ..config.provider_validation import get_provider_validation_service
 
 # Initialize logger first
 logger = get_logger(__name__)
@@ -112,17 +114,34 @@ class SignalEngine:
     """Main signal generation engine"""
     
     def __init__(self):
-        # Initialize data providers (priority order: Coinbase -> Binance -> CoinGecko -> Polygon.io -> ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)
-        self.coinbase_provider = CoinbaseProvider()
-        self.binance_provider = BinanceProvider()
-        self.coingecko_provider = CoinGeckoProvider()
-        self.polygon_provider = PolygonProvider()
-        self.exchangerate_provider = ExchangeRateProvider()
-        self.finnhub_provider = FinnhubProvider()
-        self.mt5_provider = MT5DataProvider()
-        self.freecurrency_provider = FreeCurrencyAPIProvider()
-        self.alphavantage_provider = AlphaVantageProvider()
-        self.mock_provider = MockDataProvider()
+        # DETERMINISTIC PROVIDER CONFIGURATION
+        # Use centralized configuration for consistent behavior between dev/prod
+        self.provider_config = deterministic_provider_config
+        
+        # Initialize provider validation service
+        self.validation_service = get_provider_validation_service()
+        
+        # Log provider configuration for troubleshooting
+        config_summary = self.provider_config.get_configuration_summary()
+        logger.info(f"🔧 SignalEngine initialized with {config_summary['available_providers']}/{config_summary['total_providers']} available providers")
+        logger.info(f"🔒 Strict mode approved providers: {config_summary['strict_approved_providers']}")
+        
+        # Generate and log configuration fingerprint for consistency tracking
+        config_fingerprint = self.validation_service.generate_configuration_fingerprint()
+        logger.info(f"📋 Provider configuration fingerprint: {config_fingerprint}")
+        
+        # Validate environment configuration
+        validation_result = self.validation_service.validate_environment_configuration()
+        if not validation_result['validation_passed']:
+            logger.error(f"⚠️ Provider configuration validation FAILED:")
+            for issue in validation_result['issues']:
+                logger.error(f"   - {issue}")
+        else:
+            logger.info(f"✅ Provider configuration validation PASSED")
+        
+        # Log warnings if any
+        for warning in validation_result.get('warnings', []):
+            logger.warning(f"⚠️ Provider warning: {warning}")
         
         # Strategy mapping - 7 Advanced Trading Strategies
         self.strategies = {
@@ -193,6 +212,39 @@ class SignalEngine:
         
         # Strict Live Mode Configuration - Enterprise-grade production safety
         StrictLiveConfig.log_configuration(logger)
+        
+        # Log comprehensive provider status for troubleshooting
+        self._log_provider_initialization_summary()
+    
+    def _log_provider_initialization_summary(self):
+        """Log comprehensive provider initialization summary for troubleshooting"""
+        logger.info("📋 PROVIDER INITIALIZATION SUMMARY:")
+        
+        for asset_class in ['forex', 'crypto', 'metals_oil']:
+            providers = self.provider_config.get_providers_for_asset_class(asset_class)
+            strict_providers = self.provider_config.get_approved_providers_for_asset_class(asset_class, strict_mode=True)
+            
+            logger.info(f"  📊 {asset_class.upper()}:")
+            logger.info(f"     Total providers: {len(providers)}")
+            logger.info(f"     Strict approved: {len(strict_providers)}")
+            logger.info(f"     Provider order: {[config.name for _, config in providers]}")
+            
+            # Log each provider's status
+            for provider_instance, config in providers:
+                status_emoji = "✅" if config.is_available() else "❌"
+                strict_emoji = "🔒" if config.strict_mode_approved else "⚠️"
+                
+                logger.info(f"       {config.priority:2d}. {config.name:<20} {status_emoji} {strict_emoji} [{config.provider_type.value}]")
+                
+                # Log issues if any
+                if not config.is_available() and config.requires_api_key:
+                    logger.info(f"          └─ Missing API key: {config.api_key_env_var}")
+        
+        # Log configuration fingerprint for environment comparison
+        fingerprint = self.validation_service.generate_configuration_fingerprint()
+        logger.info(f"🆔 Configuration fingerprint: {fingerprint}")
+        logger.info(f"🔧 Environment: {os.getenv('ENVIRONMENT', 'development')}")
+        logger.info(f"🔒 Strict mode: {StrictLiveConfig.ENABLED}")
     
     def _get_asset_class(self, symbol: str) -> str:
         """Determine asset class for intelligent provider routing using instrument metadata"""
@@ -210,34 +262,25 @@ class SignalEngine:
             return 'forex'
     
     def _get_providers_for_asset_class(self, asset_class: str) -> List[tuple]:
-        """Get prioritized list of providers for specific asset class"""
-        # Provider tuples: (provider_instance, provider_name)
-        if asset_class == 'crypto':
-            # Crypto: Use providers that support crypto symbols (Coinbase primary for real OHLC data)
-            return [
-                (self.coinbase_provider, 'Coinbase'),  # Primary crypto provider with real OHLC data
-                (self.binance_provider, 'Binance'),  # Secondary (may be geo-blocked) 
-                (self.coingecko_provider, 'CoinGecko'),  # Tertiary crypto API 
-                (self.exchangerate_provider, 'ExchangeRate.host'),  # Has crypto hardcoded rates
-                (self.mt5_provider, 'MT5'),  # May support crypto
-            ]
-        elif asset_class == 'metals_oil':
-            # Metals/Oil: Use providers that support commodity symbols  
-            return [
-                (self.mt5_provider, 'MT5'),  # Professional metals/oil data
-                (self.exchangerate_provider, 'ExchangeRate.host'),  # Has metals hardcoded rates
-                (self.polygon_provider, 'Polygon.io'),  # May support some commodities
-            ]
-        else:  # forex
-            # Forex: All providers support forex, prioritize by quality
-            return [
-                (self.polygon_provider, 'Polygon.io'),  # Professional forex data
-                (self.mt5_provider, 'MT5'),  # Professional trading platform
-                (self.exchangerate_provider, 'ExchangeRate.host'),  # Free unlimited forex
-                (self.finnhub_provider, 'Finnhub'),  # Real-time forex (OANDA)
-                (self.freecurrency_provider, 'FreeCurrency'),  # Live forex rates
-                (self.alphavantage_provider, 'AlphaVantage'),  # Traditional forex API
-            ]
+        """Get deterministically ordered providers for specific asset class"""
+        # Use strict mode filtering if enabled
+        if StrictLiveConfig.ENABLED:
+            providers = self.provider_config.get_approved_providers_for_asset_class(
+                asset_class, strict_mode=True
+            )
+            if providers:
+                logger.debug(f"🔒 STRICT MODE: Using {len(providers)} approved providers for {asset_class}")
+                return providers
+            else:
+                logger.warning(f"🔒 STRICT MODE: No approved providers available for {asset_class}")
+                return []
+        else:
+            # Use all available providers in deterministic order
+            providers = self.provider_config.get_approved_providers_for_asset_class(
+                asset_class, strict_mode=False
+            )
+            logger.debug(f"Using {len(providers)} available providers for {asset_class}")
+            return providers
     
     def _is_market_open_for_symbol(self, symbol: str) -> bool:
         """Check if market is open for the specific symbol type using instrument metadata"""
@@ -295,11 +338,17 @@ class SignalEngine:
                     logger.warning(f"No data available for {symbol}")
                 return
             
-            # Add a new bar to simulate real-time updates
-            if hasattr(self.mock_provider, 'add_new_bar'):
-                self.mock_provider.add_new_bar(symbol)
-                # Refresh data with new bar
-                data = await self._get_market_data(symbol)
+            # Add a new bar to simulate real-time updates (if mock provider is enabled)
+            mock_provider_config = self.provider_config.get_provider_config('MockDataProvider')
+            if mock_provider_config and mock_provider_config.is_enabled:
+                # Get mock provider from configuration
+                mock_providers = self.provider_config.get_providers_for_asset_class('forex')
+                for provider_instance, config in mock_providers:
+                    if config.name == 'MockDataProvider' and hasattr(provider_instance, 'add_new_bar'):
+                        provider_instance.add_new_bar(symbol)
+                        # Refresh data with new bar
+                        data = await self._get_market_data(symbol)
+                        break
                 
             # Check data sufficiency after refresh
             if data is None or len(data) < 30:
@@ -550,14 +599,20 @@ class SignalEngine:
         
         logger.info(f"Getting {asset_class} data for {symbol} using {len(providers)} compatible providers")
         
+        # Log the specific providers being used for transparency
+        provider_names = [config.name for _, config in providers]
+        logger.info(f"🔍 Provider sequence for {symbol}: {' → '.join(provider_names)}")
+        
         # Track attempts for cross-provider validation
         validation_attempts = []
         successful_data = None
         
         # Try providers in priority order for this asset class
-        for provider_instance, provider_name in providers:
+        for provider_instance, config in providers:
+            provider_name = config.name
+            logger.info(f"🔄 Attempting {provider_name} for {symbol}...")
             if not provider_instance.is_available():
-                logger.debug(f"{provider_name} not available for {symbol}")
+                logger.warning(f"❌ {provider_name} not available for {symbol}")
                 continue
                 
             try:

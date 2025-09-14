@@ -154,17 +154,28 @@ def call_api(endpoint: str, method: str = "GET", data: Optional[Dict[str, Any]] 
         return get_demo_data(endpoint)
 
 def is_forex_market_open():
-    """Simple market hours check"""
+    """Forex market hours check: Sunday 21:00 UTC - Friday 21:00 UTC"""
     now = datetime.utcnow()
     weekday = now.weekday()  # Monday = 0, Sunday = 6
+    hour = now.hour
     
-    # Market closed on weekends
-    if weekday >= 5:  # Saturday = 5, Sunday = 6
+    # Saturday = Market CLOSED
+    if weekday == 5:  # Saturday
         return False
-    elif weekday == 4:  # Friday - close at 22:00 UTC
-        return now.hour < 22
-    else:
+    
+    # Sunday = Market OPEN after 21:00 UTC
+    elif weekday == 6:  # Sunday
+        return hour >= 21
+    
+    # Monday to Thursday = Market OPEN
+    elif weekday in [0, 1, 2, 3]:  # Monday-Thursday
         return True
+    
+    # Friday = Market OPEN until 21:00 UTC
+    elif weekday == 4:  # Friday
+        return hour < 21
+    
+    return False
 
 def get_demo_data(endpoint):
     """Provide simple demo data with FIXED signal structure matching Signal model"""

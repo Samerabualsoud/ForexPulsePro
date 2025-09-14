@@ -43,9 +43,15 @@ class PolygonProvider(BaseDataProvider):
             'EURGBP': 'C:EURGBP',
             'EURJPY': 'C:EURJPY',
             'GBPJPY': 'C:GBPJPY',
-            # Crypto mapping
+            # Crypto mapping - all supported crypto pairs
             'BTCUSD': 'X:BTCUSD',
             'ETHUSD': 'X:ETHUSD',
+            'ADAUSD': 'X:ADAUSD',
+            'DOGEUSD': 'X:DOGEUSD',
+            'SOLUSD': 'X:SOLUSD',
+            'BNBUSD': 'X:BNBUSD',
+            'XRPUSD': 'X:XRPUSD',
+            'MATICUSD': 'X:MATICUSD',
         }
         
         logger.info(f"Polygon.io provider initialized for real live market data")

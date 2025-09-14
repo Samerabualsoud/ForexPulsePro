@@ -4,9 +4,11 @@ Provides sophisticated market analysis and trading insights using DeepSeek AI
 """
 import json
 import asyncio
+import random
 from typing import Dict, Any, Optional, List
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
+import httpx
 
 from ..logs.logger import get_logger
 from ..ai_capabilities import create_deepseek_client, DEEPSEEK_ENABLED
@@ -19,8 +21,18 @@ class DeepSeekAgent:
     """
     
     def __init__(self):
-        self.client = create_deepseek_client()
-        self.available = DEEPSEEK_ENABLED and self.client is not None
+        self.client_config = create_deepseek_client()
+        self.available = DEEPSEEK_ENABLED and self.client_config is not None
+        
+        # Health tracking for fail-fast logic
+        self.consecutive_failures = 0
+        self.last_failure_time = None
+        self.health_check_interval = 300  # 5 minutes
+        self.max_consecutive_failures = 3
+        
+        # HTTP client configuration
+        self.http_client = None
+        self._session_lock = asyncio.Lock()
         
         if self.available:
             logger.info("DeepSeek AI agent initialized successfully")
@@ -78,8 +90,8 @@ Provide a JSON response with:
 
 Focus on technical patterns, momentum, and market structure."""
 
-            # Make API call to DeepSeek
-            response = self._make_api_call(prompt)
+            # Make async API call to DeepSeek
+            response = await self._make_api_call_async(prompt)
             
             if response:
                 return {
@@ -145,7 +157,7 @@ Provide JSON response:
 4. backup_strategy: second choice
 5. avoid_strategies: strategies to avoid in current conditions"""
 
-            response = self._make_api_call(prompt)
+            response = await self._make_api_call_async(prompt)
             
             if response:
                 return {
@@ -165,9 +177,61 @@ Provide JSON response:
                 'reasoning': f'Analysis failed: {str(e)}'
             }
     
-    def _make_api_call(self, prompt: str) -> Optional[Dict[str, Any]]:
+    async def _get_http_client(self) -> httpx.AsyncClient:
+        """Get or create HTTP client with connection pooling"""
+        if self.http_client is None or self.http_client.is_closed:
+            async with self._session_lock:
+                if self.http_client is None or self.http_client.is_closed:
+                    # Create new client with optimized settings
+                    timeout = httpx.Timeout(
+                        connect=10.0,    # Connection timeout: 10s
+                        read=90.0,       # Read timeout: 90s for AI reasoning models  
+                        write=10.0,      # Write timeout: 10s
+                        pool=120.0       # Overall request timeout: 120s
+                    )
+                    
+                    limits = httpx.Limits(
+                        max_keepalive_connections=5,
+                        max_connections=10,
+                        keepalive_expiry=30.0
+                    )
+                    
+                    self.http_client = httpx.AsyncClient(
+                        timeout=timeout,
+                        limits=limits,
+                        follow_redirects=True,
+                        verify=True
+                    )
+        
+        return self.http_client
+
+    def _is_health_check_needed(self) -> bool:
+        """Check if we should temporarily disable due to consecutive failures"""
+        if self.consecutive_failures < self.max_consecutive_failures:
+            return False
+            
+        if self.last_failure_time is None:
+            return False
+            
+        time_since_failure = datetime.now() - self.last_failure_time
+        return time_since_failure.total_seconds() < self.health_check_interval
+
+    def _record_success(self):
+        """Record successful API call"""
+        self.consecutive_failures = 0
+        self.last_failure_time = None
+
+    def _record_failure(self):
+        """Record failed API call"""
+        self.consecutive_failures += 1
+        self.last_failure_time = datetime.now()
+        
+        if self.consecutive_failures >= self.max_consecutive_failures:
+            logger.warning(f"DeepSeek API marked as unhealthy after {self.consecutive_failures} consecutive failures")
+
+    async def _make_api_call_async(self, prompt: str) -> Optional[Dict[str, Any]]:
         """
-        Make API call to DeepSeek with proper error handling
+        Make async API call to DeepSeek with proper error handling and fail-fast logic
         
         Args:
             prompt: Analysis prompt
@@ -175,15 +239,21 @@ Provide JSON response:
         Returns:
             Parsed JSON response or None if failed
         """
-        if not self.client:
+        if not self.client_config:
+            return None
+
+        # Check health before making request
+        if self._is_health_check_needed():
+            logger.warning(f"DeepSeek API temporarily disabled due to {self.consecutive_failures} consecutive failures")
             return None
             
         try:
-            requests = self.client['requests']
+            client = await self._get_http_client()
             
             headers = {
-                'Authorization': f"Bearer {self.client['api_key']}",
-                'Content-Type': 'application/json'
+                'Authorization': f"Bearer {self.client_config['api_key']}",
+                'Content-Type': 'application/json',
+                'User-Agent': 'ForexSignalDashboard/1.0'
             }
             
             data = {
@@ -202,62 +272,115 @@ Provide JSON response:
                 'max_tokens': 1000
             }
             
-            # Retry logic for better reliability with progressive timeouts
-            max_retries = 2
+            # Improved retry logic with exponential backoff and jitter
+            max_retries = 3  # Now matches comment: 2s, 4s, 8s
             response = None
+            
             for attempt in range(max_retries + 1):
                 try:
-                    # Progressive timeout: 15s, 20s, 25s for better reliability
-                    timeout = 15 + (attempt * 5)
-                    response = requests.post(
-                        f"{self.client['base_url']}/chat/completions",
+                    response = await client.post(
+                        f"{self.client_config['base_url']}/chat/completions",
                         headers=headers,
-                        json=data,
-                        timeout=timeout
+                        json=data
                     )
-                    break  # Success, exit retry loop
-                except Exception as e:
-                    # Check if it's a timeout error specifically
-                    is_timeout = "timeout" in str(e).lower() or "read timed out" in str(e).lower()
+                    
+                    # Don't record success yet - validate response first
+                    break
+                    
+                except (httpx.TimeoutException, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.PoolTimeout) as e:
+                    error_type = type(e).__name__
                     if attempt == max_retries:
-                        if is_timeout:
-                            logger.error(f"DeepSeek API timeout after {max_retries + 1} attempts (max timeout: {15 + (max_retries * 5)}s): {e}")
-                        else:
-                            logger.error(f"DeepSeek API failed after {max_retries + 1} attempts: {e}")
+                        logger.error(f"DeepSeek API {error_type} after {max_retries + 1} attempts: {e}")
+                        self._record_failure()
                         return None
-                    if is_timeout:
-                        logger.warning(f"DeepSeek API timeout retry {attempt + 1}/{max_retries} (timeout: {timeout}s): {e}")
-                    else:
-                        logger.warning(f"DeepSeek API retry {attempt + 1}/{max_retries}: {e}")
-                    import time
-                    time.sleep(2 + attempt)  # Increasing delay: 2s, 3s, 4s
+                    
+                    # Exponential backoff with jitter: 2-5s, 4-8s, 8-16s
+                    base_delay = 2 ** (attempt + 1)
+                    jitter = random.uniform(0.0, base_delay)
+                    delay = base_delay + jitter
+                    logger.warning(f"DeepSeek API {error_type} retry {attempt + 1}/{max_retries}, waiting {delay:.1f}s: {e}")
+                    await asyncio.sleep(delay)
+                    
+                except (httpx.ConnectError, httpx.RequestError, httpx.HTTPStatusError) as e:
+                    logger.error(f"DeepSeek API network/request error: {e}")
+                    self._record_failure()
+                    return None
+                    
+                except Exception as e:
+                    if attempt == max_retries:
+                        logger.error(f"DeepSeek API unexpected error after {max_retries + 1} attempts: {e}")
+                        self._record_failure()
+                        return None
+                    
+                    # Exponential backoff with jitter for unexpected errors
+                    base_delay = 2 ** (attempt + 1)
+                    jitter = random.uniform(0.0, base_delay)
+                    delay = base_delay + jitter
+                    logger.warning(f"DeepSeek API retry {attempt + 1}/{max_retries} for error: {e}, waiting {delay:.1f}s")
+                    await asyncio.sleep(delay)
             
             if response is None:
+                self._record_failure()
                 return None
             
+            # Process response
             if response.status_code == 200:
-                result = response.json()
-                content = result['choices'][0]['message']['content']
-                
-                # Try to parse JSON response
                 try:
-                    return json.loads(content)
-                except json.JSONDecodeError:
-                    # If not JSON, extract JSON from text
-                    start = content.find('{')
-                    end = content.rfind('}') + 1
-                    if start >= 0 and end > start:
-                        return json.loads(content[start:end])
-                    else:
-                        logger.warning("DeepSeek response not in JSON format")
-                        return None
+                    result = response.json()
+                    content = result['choices'][0]['message']['content']
+                    
+                    # Try to parse JSON response
+                    try:
+                        parsed_response = json.loads(content)
+                        # Success - record after validation
+                        self._record_success()
+                        return parsed_response
+                    except json.JSONDecodeError:
+                        # If not JSON, extract JSON from text
+                        start = content.find('{')
+                        end = content.rfind('}') + 1
+                        if start >= 0 and end > start:
+                            try:
+                                parsed_response = json.loads(content[start:end])
+                                # Success - record after validation
+                                self._record_success()
+                                return parsed_response
+                            except json.JSONDecodeError:
+                                logger.warning("DeepSeek response JSON extraction failed")
+                                self._record_failure()
+                                return None
+                        else:
+                            logger.warning("DeepSeek response not in JSON format")
+                            self._record_failure()
+                            return None
+                            
+                except Exception as e:
+                    logger.error(f"DeepSeek response parsing failed: {e}")
+                    self._record_failure()
+                    return None
+                    
+            elif response.status_code == 429:
+                logger.warning(f"DeepSeek API rate limited: {response.status_code}")
+                self._record_failure()
+                return None
+            elif response.status_code >= 500:
+                logger.error(f"DeepSeek API server error: {response.status_code} - {response.text}")
+                self._record_failure()
+                return None
             else:
-                logger.error(f"DeepSeek API error: {response.status_code} - {response.text}")
+                logger.error(f"DeepSeek API client error: {response.status_code} - {response.text}")
+                self._record_failure()
                 return None
                 
         except Exception as e:
             logger.error(f"DeepSeek API call failed: {e}")
+            self._record_failure()
             return None
+
+    async def cleanup(self):
+        """Cleanup HTTP client resources"""
+        if self.http_client and not self.http_client.is_closed:
+            await self.http_client.aclose()
     
     def is_available(self) -> bool:
         """Check if DeepSeek agent is available"""

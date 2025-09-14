@@ -33,9 +33,34 @@ from contextlib import asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     metrics.update_system_metrics()
-    yield
-    # Shutdown
-    pass
+    
+    # Initialize AI agents for proper cleanup tracking
+    ai_agents = []
+    try:
+        from .services.multi_ai_consensus import MultiAIConsensus
+        consensus_system = MultiAIConsensus()
+        if consensus_system.deepseek_agent:
+            ai_agents.append(consensus_system.deepseek_agent)
+        if consensus_system.groq_agent:
+            ai_agents.append(consensus_system.groq_agent)
+        logger.info(f"Initialized {len(ai_agents)} AI agents for resource management")
+    except Exception as e:
+        logger.warning(f"Could not initialize AI agents for cleanup: {e}")
+    
+    try:
+        yield
+    finally:
+        # Shutdown - cleanup AI agent resources
+        logger.info("Starting AI agent cleanup...")
+        for agent in ai_agents:
+            try:
+                if hasattr(agent, 'cleanup'):
+                    await agent.cleanup()
+                    logger.info(f"Cleaned up {agent.__class__.__name__}")
+            except Exception as e:
+                logger.error(f"Error cleaning up {agent.__class__.__name__}: {e}")
+        
+        logger.info("Shutdown complete")
 
 # Initialize FastAPI app with lifespan
 app = FastAPI(

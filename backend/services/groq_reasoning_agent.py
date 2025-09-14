@@ -4,6 +4,7 @@ Provides sophisticated market reasoning and analysis using Groq's fast inference
 """
 import json
 import asyncio
+import httpx
 from typing import Dict, Any, Optional, List
 import pandas as pd
 from datetime import datetime
@@ -54,15 +55,55 @@ class GroqReasoningAgent:
             }
         
         try:
-            # Prepare market data summary
-            recent_data = market_data.tail(20)
-            price_change = ((current_price - recent_data['close'].iloc[0]) / recent_data['close'].iloc[0]) * 100
-            volatility = recent_data['close'].pct_change().std() * 100
+            # Input validation: Check for empty or insufficient data
+            if market_data is None or market_data.empty:
+                logger.warning(f"Empty market data provided for {symbol}")
+                return {
+                    'available': False,
+                    'sentiment': 'neutral',
+                    'confidence': 0.1,
+                    'reasoning': 'Insufficient market data for analysis'
+                }
             
-            # Calculate additional market metrics
-            high_20 = recent_data['high'].max()
-            low_20 = recent_data['low'].min()
-            position_in_range = (current_price - low_20) / (high_20 - low_20) if high_20 != low_20 else 0.5
+            if len(market_data) < 5:
+                logger.warning(f"Insufficient market data for {symbol}: only {len(market_data)} periods")
+                return {
+                    'available': False,
+                    'sentiment': 'neutral', 
+                    'confidence': 0.2,
+                    'reasoning': f'Insufficient data: only {len(market_data)} periods available (minimum 5 required)'
+                }
+            
+            # Prepare market data summary with safe data access
+            recent_data = market_data.tail(20)
+            
+            # Safe price change calculation with fallback
+            if len(recent_data) > 0 and 'close' in recent_data.columns:
+                first_close = recent_data['close'].iloc[0]
+                if first_close != 0:
+                    price_change = ((current_price - first_close) / first_close) * 100
+                else:
+                    price_change = 0.0
+            else:
+                price_change = 0.0
+                
+            # Safe volatility calculation
+            if len(recent_data) > 1 and 'close' in recent_data.columns:
+                volatility = recent_data['close'].pct_change().std() * 100
+                if pd.isna(volatility):
+                    volatility = 0.0
+            else:
+                volatility = 0.0
+            
+            # Calculate additional market metrics with safety checks
+            if len(recent_data) > 0 and all(col in recent_data.columns for col in ['high', 'low']):
+                high_20 = recent_data['high'].max()
+                low_20 = recent_data['low'].min()
+                position_in_range = (current_price - low_20) / (high_20 - low_20) if high_20 != low_20 else 0.5
+            else:
+                high_20 = current_price
+                low_20 = current_price
+                position_in_range = 0.5
             
             # Create analysis prompt focused on logical reasoning
             prompt = f"""As an expert quantitative analyst, perform a logical market analysis for {symbol}:
@@ -90,7 +131,7 @@ Provide a structured JSON response with:
 Focus on logical price action analysis, support/resistance, and market structure."""
 
             # Make API call to Groq
-            response = self._make_api_call(prompt)
+            response = await self._make_api_call(prompt)
             
             if response:
                 return {
@@ -153,7 +194,7 @@ Provide JSON response with:
 
 Consider market conditions, volatility, and currency-specific risks."""
 
-            response = self._make_api_call(prompt)
+            response = await self._make_api_call(prompt)
             
             if response:
                 return {
@@ -173,9 +214,9 @@ Consider market conditions, volatility, and currency-specific risks."""
                 'reasoning': f'Risk analysis failed: {str(e)}'
             }
     
-    def _make_api_call(self, prompt: str) -> Optional[Dict[str, Any]]:
+    async def _make_api_call(self, prompt: str) -> Optional[Dict[str, Any]]:
         """
-        Make API call to Groq with proper error handling
+        Make async API call to Groq with proper error handling
         
         Args:
             prompt: Analysis prompt
@@ -187,8 +228,6 @@ Consider market conditions, volatility, and currency-specific risks."""
             return None
             
         try:
-            requests = self.client['requests']
-            
             headers = {
                 'Authorization': f"Bearer {self.client['api_key']}",
                 'Content-Type': 'application/json'
@@ -211,48 +250,52 @@ Consider market conditions, volatility, and currency-specific risks."""
                 'top_p': 0.9
             }
             
-            # Retry logic for better reliability
+            # Async retry logic for better reliability
             max_retries = 2
-            response = None
             for attempt in range(max_retries + 1):
                 try:
-                    response = requests.post(
-                        f"{self.client['base_url']}/chat/completions",
-                        headers=headers,
-                        json=data,
-                        timeout=10  # Groq is fast, but allow reasonable timeout
-                    )
-                    break  # Success, exit retry loop
-                except Exception as e:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        response = await client.post(
+                            f"{self.client['base_url']}/chat/completions",
+                            headers=headers,
+                            json=data
+                        )
+                        
+                        if response.status_code == 200:
+                            result = response.json()
+                            content = result['choices'][0]['message']['content']
+                            
+                            # Try to parse JSON response
+                            try:
+                                return json.loads(content)
+                            except json.JSONDecodeError:
+                                # If not JSON, extract JSON from text
+                                start = content.find('{')
+                                end = content.rfind('}') + 1
+                                if start >= 0 and end > start:
+                                    return json.loads(content[start:end])
+                                else:
+                                    logger.warning("Groq response not in JSON format")
+                                    return None
+                        else:
+                            logger.error(f"Groq API error: {response.status_code} - {response.text}")
+                            if attempt == max_retries:
+                                return None
+                            
+                except (httpx.RequestError, httpx.HTTPStatusError) as e:
                     if attempt == max_retries:
                         logger.error(f"Groq API failed after {max_retries + 1} attempts: {e}")
                         return None
                     logger.warning(f"Groq API retry {attempt + 1}/{max_retries}: {e}")
-                    import time
-                    time.sleep(0.5)  # Brief delay before retry
-            
-            if response is None:
-                return None
-            
-            if response.status_code == 200:
-                result = response.json()
-                content = result['choices'][0]['message']['content']
-                
-                # Try to parse JSON response
-                try:
-                    return json.loads(content)
-                except json.JSONDecodeError:
-                    # If not JSON, extract JSON from text
-                    start = content.find('{')
-                    end = content.rfind('}') + 1
-                    if start >= 0 and end > start:
-                        return json.loads(content[start:end])
-                    else:
-                        logger.warning("Groq response not in JSON format")
+                    await asyncio.sleep(0.5)  # Brief async delay before retry
+                except Exception as e:
+                    if attempt == max_retries:
+                        logger.error(f"Groq API unexpected error after {max_retries + 1} attempts: {e}")
                         return None
-            else:
-                logger.error(f"Groq API error: {response.status_code} - {response.text}")
-                return None
+                    logger.warning(f"Groq API unexpected error retry {attempt + 1}/{max_retries}: {e}")
+                    await asyncio.sleep(0.5)
+            
+            return None
                 
         except Exception as e:
             logger.error(f"Groq API call failed: {e}")

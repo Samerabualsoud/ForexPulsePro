@@ -4,7 +4,7 @@ Using Hugging Face ProsusAI/finbert model for sophisticated financial sentiment 
 """
 import os
 import json
-import requests
+import httpx
 import asyncio
 from typing import Dict, Any, Optional, List
 from datetime import datetime
@@ -139,27 +139,31 @@ class FinBERTSentimentAgent:
         }
         
         try:
-            response = requests.post(
-                self.base_url,
-                headers=headers,
-                json=payload,
-                timeout=15
-            )
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            # Handle different response formats
-            if isinstance(result, list) and len(result) > 0:
-                return result  # Return the list directly for sentiment classification
-            elif isinstance(result, dict):
-                return [result]  # Wrap single dict in list for consistency
-            else:
-                logger.warning(f"Unexpected FinBERT response format: {type(result)}")
-                return None
+            # Use async httpx client with proper timeout and retry logic
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.post(
+                    self.base_url,
+                    headers=headers,
+                    json=payload
+                )
+                response.raise_for_status()
                 
-        except requests.exceptions.RequestException as e:
+                result = response.json()
+                
+                # Handle different response formats
+                if isinstance(result, list) and len(result) > 0:
+                    return result  # Return the list directly for sentiment classification
+                elif isinstance(result, dict):
+                    return [result]  # Wrap single dict in list for consistency
+                else:
+                    logger.warning(f"Unexpected FinBERT response format: {type(result)}")
+                    return None
+                    
+        except httpx.RequestError as e:
             logger.error(f"FinBERT API request failed: {e}")
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.error(f"FinBERT API HTTP error: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
             logger.error(f"FinBERT API call failed: {e}")

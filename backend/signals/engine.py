@@ -66,6 +66,7 @@ from ..providers.mt5_data import MT5DataProvider
 from ..providers.finnhub_provider import FinnhubProvider
 from ..providers.exchangerate_provider import ExchangeRateProvider
 from ..providers.polygon_provider import PolygonProvider
+from ..providers.coingecko_provider import CoinGeckoProvider
 from ..risk.guards import RiskManager
 from ..regime.detector import regime_detector
 from ..providers.execution.mt5_bridge import MT5BridgeExecutionProvider
@@ -102,7 +103,8 @@ class SignalEngine:
     """Main signal generation engine"""
     
     def __init__(self):
-        # Initialize data providers (priority order: Polygon.io -> ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)
+        # Initialize data providers (priority order: CoinGecko -> Polygon.io -> ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)
+        self.coingecko_provider = CoinGeckoProvider()
         self.polygon_provider = PolygonProvider()
         self.exchangerate_provider = ExchangeRateProvider()
         self.finnhub_provider = FinnhubProvider()
@@ -202,7 +204,8 @@ class SignalEngine:
         if asset_class == 'crypto':
             # Crypto: Use providers that support crypto symbols
             return [
-                (self.polygon_provider, 'Polygon.io'),  # Best for crypto (X: prefix)
+                (self.coingecko_provider, 'CoinGecko'),  # Best free crypto API
+                (self.polygon_provider, 'Polygon.io'),  # Professional crypto data (X: prefix)
                 (self.exchangerate_provider, 'ExchangeRate.host'),  # Has crypto hardcoded rates
                 (self.mt5_provider, 'MT5'),  # May support crypto
             ]
@@ -458,7 +461,7 @@ class SignalEngine:
                     logger.info(f"🔒 STRICT MODE APPROVED {symbol}: Data source '{data_source}' validation passed")
             else:
                 # Legacy validation for non-strict mode
-                verified_live_sources = ['Polygon.io', 'Finnhub', 'MT5', 'FreeCurrencyAPI']
+                verified_live_sources = ['Polygon.io', 'Finnhub', 'MT5', 'FreeCurrencyAPI', 'CoinGecko']
                 cached_sources = ['ExchangeRate.host', 'AlphaVantage']  # These may have cached data
                 
                 if data_source in verified_live_sources and is_live_source:

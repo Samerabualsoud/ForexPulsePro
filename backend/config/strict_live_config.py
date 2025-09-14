@@ -34,7 +34,7 @@ class StrictLiveConfig:
     APPROVED_LIVE_SOURCES = [
         source.strip() for source in os.getenv(
             'STRICT_LIVE_APPROVED_SOURCES',
-            'Polygon.io,Finnhub,MT5,FreeCurrencyAPI'
+            'Polygon.io,Finnhub,MT5,FreeCurrencyAPI,CoinGecko'
         ).split(',')
     ]
     

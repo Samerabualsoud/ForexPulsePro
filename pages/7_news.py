@@ -397,8 +397,16 @@ with col3:
 
 # Footer
 st.markdown("---")
+
+# Get Saudi local time for display
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent / "utils"))
+from timezone_utils import get_saudi_now
+
+saudi_time = get_saudi_now()
 st.markdown(f"""
 <div style="text-align: center; color: #7f8c8d; font-size: 0.9rem;">
-    News data last updated: {datetime.now().strftime('%H:%M:%S')} | Updates every 5 minutes
+    News data last updated: {saudi_time.strftime('%H:%M:%S AST')} | Updates every 5 minutes
 </div>
 """, unsafe_allow_html=True)

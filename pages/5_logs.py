@@ -284,8 +284,16 @@ if filtered_logs:
             icon = "🟢"
         
         with st.container():
-            # Main log entry
-            time_str = log['timestamp'].strftime("%Y-%m-%d %H:%M:%S UTC")
+            # Main log entry - convert to Saudi Arabia local time
+            import sys
+            from pathlib import Path
+            sys.path.append(str(Path(__file__).parent.parent / "utils"))
+            from timezone_utils import format_saudi_time_full
+            
+            try:
+                time_str = format_saudi_time_full(log['timestamp'])
+            except:
+                time_str = log['timestamp'].strftime("%Y-%m-%d %H:%M:%S UTC")
             
             col1, col2 = st.columns([1, 5])
             

@@ -296,53 +296,117 @@ class SignalEngine:
         except Exception as e:
             logger.error(f"Error processing symbol {symbol}: {e}")
     
+    def _validate_real_data(self, data: pd.DataFrame, symbol: str) -> bool:
+        """Strict validation to ensure only real market data is used"""
+        if data is None or data.empty:
+            logger.warning(f"Data validation failed for {symbol}: No data or empty dataset")
+            return False
+            
+        # Check for synthetic data markers in attributes
+        if hasattr(data, 'attrs'):
+            # Reject if explicitly marked as synthetic/mock
+            if data.attrs.get('is_synthetic', False) or data.attrs.get('is_mock', False):
+                logger.warning(f"Data validation failed for {symbol}: Contains synthetic/mock data markers")
+                return False
+                
+            # Accept only if explicitly marked as real data
+            if not data.attrs.get('is_real_data', False):
+                logger.warning(f"Data validation failed for {symbol}: No real data marker found")
+                return False
+                
+            # Check data freshness (must be updated within last 15 minutes)
+            last_updated = data.attrs.get('last_updated')
+            if last_updated:
+                try:
+                    from datetime import datetime
+                    update_time = datetime.fromisoformat(last_updated.replace('Z', '+00:00'))
+                    time_diff = (datetime.now().replace(tzinfo=update_time.tzinfo) - update_time).total_seconds()
+                    if time_diff > 900:  # 15 minutes
+                        logger.warning(f"Data validation failed for {symbol}: Data too old ({time_diff:.0f}s)")
+                        return False
+                except Exception as e:
+                    logger.warning(f"Data validation warning for {symbol}: Could not parse timestamp: {e}")
+            
+            # Validate data source is from a real provider
+            valid_sources = ['Polygon.io', 'ExchangeRate.host', 'Finnhub', 'FreeCurrencyAPI', 'AlphaVantage', 'MT5']
+            data_source = data.attrs.get('data_source', 'Unknown')
+            if data_source not in valid_sources:
+                logger.warning(f"Data validation failed for {symbol}: Invalid data source '{data_source}'")
+                return False
+        else:
+            logger.warning(f"Data validation failed for {symbol}: No data attributes found")
+            return False
+            
+        # Validate data structure and content
+        required_columns = ['open', 'high', 'low', 'close']
+        missing_columns = [col for col in required_columns if col not in data.columns]
+        if missing_columns:
+            logger.warning(f"Data validation failed for {symbol}: Missing required columns {missing_columns}")
+            return False
+            
+        # Check for reasonable price values (no zeros, negatives, or extreme outliers)
+        for col in required_columns:
+            if (data[col] <= 0).any():
+                logger.warning(f"Data validation failed for {symbol}: Invalid {col} values (zero or negative)")
+                return False
+                
+        logger.info(f"Data validation passed for {symbol}: Real data from {data_source}")
+        return True
+
     async def _get_market_data(self, symbol: str) -> Optional[pd.DataFrame]:
-        """Get market data from available providers (priority: Polygon.io -> ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)"""
+        """Get ONLY real market data from available providers - STRICT REAL-DATA-ONLY POLICY"""
         # Try Polygon.io first for real live market data
         if self.polygon_provider.is_available():
             # Convert timeframe format for Polygon.io
             timeframe_mapping = {'1H': 'H1', '4H': 'H4', '1D': 'D1', '1M': 'M1', '5M': 'M5'}
             converted_tf = timeframe_mapping.get("1H", 'H1')
             data = await self.polygon_provider.get_ohlc_data(symbol, timeframe=converted_tf, limit=200)
-            if data is not None:
+            if data is not None and self._validate_real_data(data, symbol):
                 logger.info(f"Using Polygon.io real live market data for {symbol}")
                 return data
+            elif data is not None:
+                logger.warning(f"Rejected Polygon.io data for {symbol}: Failed real data validation")
         
-        # Try ExchangeRate.host for free unlimited forex data
-        if self.exchangerate_provider.is_available():
-            data = await self.exchangerate_provider.get_ohlc_data(symbol, limit=200)
-            if data is not None:
-                logger.info(f"Using ExchangeRate.host live forex data for {symbol}")
+        # Try MT5 for professional real-time data
+        if self.mt5_provider.is_available():
+            data = await self.mt5_provider.get_ohlc_data(symbol, limit=200)
+            if data is not None and self._validate_real_data(data, symbol):
+                logger.info(f"Using MT5 professional real-time data for {symbol}")
                 return data
+            elif data is not None:
+                logger.warning(f"Rejected MT5 data for {symbol}: Failed real data validation")
         
         # Try Finnhub for real-time data (if available)
         if self.finnhub_provider.is_available():
             data = await self.finnhub_provider.get_ohlc_data(symbol, limit=200)
-            if data is not None:
+            if data is not None and self._validate_real_data(data, symbol):
                 logger.info(f"Using Finnhub real-time forex data for {symbol}")
                 return data
+            elif data is not None:
+                logger.warning(f"Rejected Finnhub data for {symbol}: Failed real data validation")
         
         # Try FreeCurrencyAPI for live data
         if self.freecurrency_provider.is_available():
             data = await self.freecurrency_provider.get_ohlc_data(symbol, limit=200)
-            if data is not None:
-                logger.debug(f"Using FreeCurrency live data for {symbol}")
+            if data is not None and self._validate_real_data(data, symbol):
+                logger.info(f"Using FreeCurrency live data for {symbol}")
                 return data
+            elif data is not None:
+                logger.warning(f"Rejected FreeCurrency data for {symbol}: Failed real data validation")
         
         # Try Alpha Vantage if available
         if self.alphavantage_provider.is_available():
             data = await self.alphavantage_provider.get_ohlc_data(symbol, limit=200)
-            if data is not None:
-                logger.debug(f"Using Alpha Vantage data for {symbol}")
+            if data is not None and self._validate_real_data(data, symbol):
+                logger.info(f"Using Alpha Vantage real data for {symbol}")
                 return data
+            elif data is not None:
+                logger.warning(f"Rejected Alpha Vantage data for {symbol}: Failed real data validation")
         
-        # Fallback to mock data
-        data = await self.mock_provider.get_ohlc_data(symbol, limit=200)
-        if data is not None:
-            logger.debug(f"Using mock data for {symbol}")
-            return data
-        
-        logger.error(f"No data available for {symbol}")
+        # CRITICAL: NO FALLBACK TO MOCK/SYNTHETIC DATA FOR LIVE TRADING
+        # All data must be real market data or signal generation is blocked
+        logger.error(f"CRITICAL: No real market data available for {symbol} - Signal generation BLOCKED for safety")
+        logger.error(f"Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.")
         return None
     
     async def _process_strategy(

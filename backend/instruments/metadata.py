@@ -1,10 +1,13 @@
 """
 Comprehensive Instrument Metadata Database
 Provides accurate specifications for forex, crypto, and metals trading
+Includes FX pair normalization to prevent inversion issues
 """
-from typing import Dict, Any, Optional, Literal
+from typing import Dict, Any, Optional, Literal, Tuple, List
 from dataclasses import dataclass
 from enum import Enum
+import pandas as pd
+import structlog
 
 class AssetClass(Enum):
     """Asset class classification"""
@@ -503,6 +506,352 @@ class InstrumentMetadataDB:
             symbol for symbol, metadata in self._instruments.items()
             if metadata.asset_class == asset_class
         ]
+
+
+class ForexPairNormalizer:
+    """
+    Comprehensive FX pair normalization system to prevent AUDUSD inversion issues.
+    
+    Ensures all providers return data in consistent orientation (e.g., always AUDUSD, never USDAUD)
+    to prevent pricing and signal discrepancies between development and production environments.
+    """
+    
+    def __init__(self):
+        self.logger = structlog.get_logger(__name__)
+        
+        # CANONICAL STANDARD PAIRS - These are the ONLY accepted orientations
+        # All data providers MUST return data in these exact orientations
+        self.standard_pairs = {
+            # Major USD pairs (USD is quote currency - standardized format)
+            'EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD',
+            
+            # USD base pairs (USD is base currency - standardized format)  
+            'USDJPY', 'USDCHF', 'USDCAD',
+            
+            # Cross pairs (standardized orientations based on currency hierarchy)
+            'EURGBP', 'EURJPY', 'EURCHF', 'EURAUD', 'EURCAD', 'EURNZD',
+            'GBPJPY', 'GBPCHF', 'GBPAUD', 'GBPCAD', 'GBPNZD',
+            'AUDJPY', 'AUDCHF', 'AUDCAD', 'AUDNZD',
+            'NZDJPY', 'NZDCHF', 'NZDCAD',
+            'CHFJPY', 'CADJPY',
+            
+            # Metals (always vs USD)
+            'XAUUSD',  # Gold
+            'XAGUSD',  # Silver
+            
+            # Oil
+            'USOIL'    # WTI Crude Oil
+        }
+        
+        # INVERSION MAPPING - Maps inverted pairs to their standard counterparts
+        # When providers return data for these pairs, we need to invert the prices
+        self.inversion_mapping = {
+            # USD pairs inversions
+            'USDEUR': 'EURUSD',
+            'USDGBP': 'GBPUSD', 
+            'USDAUD': 'AUDUSD',
+            'USDNZD': 'NZDUSD',
+            
+            # Cross pair inversions
+            'GBPEUR': 'EURGBP',
+            'JPYEUR': 'EURJPY',
+            'CHFEUR': 'EURCHF',
+            'AUDEUR': 'EURAUD',
+            'CADEUR': 'EURCAD',
+            'NZDEUR': 'EURNZD',
+            
+            'JPYGBP': 'GBPJPY',
+            'CHFGBP': 'GBPCHF',
+            'AUDGBP': 'GBPAUD',
+            'CADGBP': 'GBPCAD',
+            'NZDGBP': 'GBPNZD',
+            
+            'JPYAUD': 'AUDJPY',
+            'CHFAUD': 'AUDCHF',
+            'CADAUD': 'AUDCAD',
+            'NZDAUD': 'AUDNZD',
+            
+            'JPYNZD': 'NZDJPY',
+            'CHFNZD': 'NZDCHF',
+            'CADNZD': 'NZDCAD',
+            
+            'JPYCHF': 'CHFJPY',
+            'JPYCAD': 'CADJPY',
+            
+            # Metals inversions
+            'USDXAU': 'XAUUSD',
+            'USDXAG': 'XAGUSD'
+        }
+        
+        # CURRENCY HIERARCHY - Defines standard base currency priority
+        # Higher priority currencies appear as base currency in standard pairs
+        self.currency_hierarchy = [
+            'EUR',  # Euro - highest priority
+            'GBP',  # British Pound
+            'AUD',  # Australian Dollar
+            'NZD',  # New Zealand Dollar  
+            'USD',  # US Dollar - middle priority for crosses
+            'CHF',  # Swiss Franc
+            'CAD',  # Canadian Dollar
+            'JPY'   # Japanese Yen - lowest priority (usually quote)
+        ]
+        
+        self.logger.info(f"ForexPairNormalizer initialized with {len(self.standard_pairs)} standard pairs")
+
+    def normalize_symbol(self, symbol: str) -> str:
+        """
+        Normalize a forex symbol to its standard canonical form.
+        
+        This is the main normalization function that ensures all symbols
+        are consistently oriented across all data providers.
+        
+        Args:
+            symbol: Raw symbol from data provider (e.g., 'USDAUD', 'aud/usd', 'AUD-USD')
+            
+        Returns:
+            Standardized symbol (e.g., 'AUDUSD') or original if not forex
+        """
+        if not symbol:
+            return symbol
+            
+        # Step 1: Clean and standardize format
+        cleaned = symbol.upper().replace('/', '').replace('-', '').replace('_', '').strip()
+        
+        # Step 2: Check if it's already a standard pair
+        if cleaned in self.standard_pairs:
+            return cleaned
+            
+        # Step 3: Check if it's an inverted pair that needs normalization
+        if cleaned in self.inversion_mapping:
+            standard_pair = self.inversion_mapping[cleaned]
+            self.logger.info(f"🔄 Normalized inverted pair: {symbol} → {standard_pair}")
+            return standard_pair
+            
+        # Step 4: For unknown pairs, try to construct standard orientation
+        if len(cleaned) == 6:
+            base_curr = cleaned[:3]
+            quote_curr = cleaned[3:]
+            standard_pair = self._determine_standard_orientation(base_curr, quote_curr)
+            
+            if standard_pair != cleaned:
+                self.logger.info(f"🔄 Normalized unknown pair: {symbol} → {standard_pair}")
+                
+            return standard_pair
+        
+        # Return original if not a recognizable forex pair
+        return cleaned
+
+    def _determine_standard_orientation(self, curr1: str, curr2: str) -> str:
+        """
+        Determine the standard orientation for a currency pair based on hierarchy.
+        
+        Args:
+            curr1: First currency
+            curr2: Second currency
+            
+        Returns:
+            Standard pair orientation (e.g., 'AUDUSD')
+        """
+        # Get hierarchy positions (lower index = higher priority)
+        try:
+            pos1 = self.currency_hierarchy.index(curr1)
+        except ValueError:
+            pos1 = 999  # Unknown currency gets low priority
+            
+        try:
+            pos2 = self.currency_hierarchy.index(curr2)  
+        except ValueError:
+            pos2 = 999  # Unknown currency gets low priority
+        
+        # Higher priority currency (lower index) becomes base currency
+        if pos1 < pos2:
+            return f"{curr1}{curr2}"
+        else:
+            return f"{curr2}{curr1}"
+    
+    def is_inverted(self, original_symbol: str, normalized_symbol: str) -> bool:
+        """
+        Check if the normalization resulted in pair inversion.
+        
+        Args:
+            original_symbol: Original symbol from provider
+            normalized_symbol: Normalized standard symbol
+            
+        Returns:
+            True if data needs to be inverted, False otherwise
+        """
+        cleaned_original = original_symbol.upper().replace('/', '').replace('-', '').replace('_', '').strip()
+        
+        # Check if the original was in our known inversion mapping
+        if cleaned_original in self.inversion_mapping:
+            return True
+            
+        # Check if currencies are swapped
+        if len(cleaned_original) == 6 and len(normalized_symbol) == 6:
+            orig_base, orig_quote = cleaned_original[:3], cleaned_original[3:]
+            norm_base, norm_quote = normalized_symbol[:3], normalized_symbol[3:]
+            
+            # If currencies are swapped, inversion is needed
+            if orig_base == norm_quote and orig_quote == norm_base:
+                return True
+                
+        return False
+    
+    def normalize_ohlc_data(self, df: pd.DataFrame, original_symbol: str, normalized_symbol: str) -> pd.DataFrame:
+        """
+        Normalize OHLC data to match the standard pair orientation.
+        
+        If the provider returned inverted data (e.g., USDAUD instead of AUDUSD),
+        this function inverts all OHLC prices to match the standard orientation.
+        
+        Args:
+            df: OHLC DataFrame with columns: open, high, low, close
+            original_symbol: Original symbol from provider
+            normalized_symbol: Normalized standard symbol
+            
+        Returns:
+            DataFrame with potentially inverted OHLC data
+        """
+        if df is None or df.empty:
+            return df
+            
+        # Check if inversion is needed
+        if not self.is_inverted(original_symbol, normalized_symbol):
+            # No inversion needed
+            return df
+            
+        # Create inverted DataFrame
+        df_inverted = df.copy()
+        
+        # Invert OHLC prices: new_price = 1 / old_price
+        price_columns = ['open', 'high', 'low', 'close']
+        
+        for col in price_columns:
+            if col in df_inverted.columns:
+                # Avoid division by zero
+                df_inverted[col] = df_inverted[col].replace(0, float('nan'))
+                df_inverted[col] = 1.0 / df_inverted[col]
+                
+        # For inverted data, high becomes low and low becomes high
+        if 'high' in df_inverted.columns and 'low' in df_inverted.columns:
+            df_inverted['high'], df_inverted['low'] = df_inverted['low'].copy(), df_inverted['high'].copy()
+            
+        # Volume and timestamp remain unchanged
+        # Update metadata to reflect inversion
+        if hasattr(df, 'attrs'):
+            df_inverted.attrs = df.attrs.copy()
+            df_inverted.attrs['pair_inverted'] = True
+            df_inverted.attrs['original_symbol'] = original_symbol
+            df_inverted.attrs['normalized_symbol'] = normalized_symbol
+            
+        self.logger.info(f"📊 Inverted OHLC data: {original_symbol} → {normalized_symbol} ({len(df_inverted)} bars)")
+        
+        return df_inverted
+    
+    def normalize_price(self, price: float, original_symbol: str, normalized_symbol: str) -> float:
+        """
+        Normalize a single price value to match the standard pair orientation.
+        
+        Args:
+            price: Original price from provider
+            original_symbol: Original symbol from provider  
+            normalized_symbol: Normalized standard symbol
+            
+        Returns:
+            Normalized price (inverted if necessary)
+        """
+        if price is None or price == 0:
+            return price
+            
+        # Check if inversion is needed
+        if self.is_inverted(original_symbol, normalized_symbol):
+            inverted_price = 1.0 / price
+            self.logger.debug(f"💰 Inverted price: {original_symbol} {price} → {normalized_symbol} {inverted_price}")
+            return inverted_price
+            
+        return price
+    
+    def get_normalization_info(self, symbol: str) -> Dict[str, Any]:
+        """
+        Get detailed information about symbol normalization.
+        
+        Useful for debugging and validation.
+        
+        Args:
+            symbol: Symbol to analyze
+            
+        Returns:
+            Dictionary with normalization details
+        """
+        normalized = self.normalize_symbol(symbol)
+        needs_inversion = self.is_inverted(symbol, normalized)
+        
+        info = {
+            'original_symbol': symbol,
+            'normalized_symbol': normalized,
+            'needs_inversion': needs_inversion,
+            'is_standard_pair': normalized in self.standard_pairs,
+            'is_known_inversion': symbol.upper().replace('/', '').replace('-', '').strip() in self.inversion_mapping,
+        }
+        
+        if len(symbol.replace('/', '').replace('-', '').strip()) == 6:
+            clean_symbol = symbol.upper().replace('/', '').replace('-', '').strip()
+            info['base_currency'] = clean_symbol[:3]  
+            info['quote_currency'] = clean_symbol[3:]
+        
+        return info
+    
+    def validate_provider_consistency(self, provider_data: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
+        """
+        Validate that multiple providers return consistent data after normalization.
+        
+        Used for development and debugging to ensure all providers behave identically.
+        
+        Args:
+            provider_data: Dict mapping provider_name to OHLC DataFrame
+            
+        Returns:
+            Validation results with any inconsistencies found
+        """
+        validation_results = {
+            'consistent': True,
+            'issues': [],
+            'provider_count': len(provider_data),
+            'normalized_data': {}
+        }
+        
+        # Normalize data from each provider
+        for provider_name, df in provider_data.items():
+            if df is not None and not df.empty and 'symbol' in df.attrs:
+                original_symbol = df.attrs['symbol']
+                normalized_symbol = self.normalize_symbol(original_symbol)
+                normalized_df = self.normalize_ohlc_data(df, original_symbol, normalized_symbol)
+                
+                validation_results['normalized_data'][provider_name] = {
+                    'original_symbol': original_symbol,
+                    'normalized_symbol': normalized_symbol,
+                    'latest_close': normalized_df['close'].iloc[-1] if len(normalized_df) > 0 else None
+                }
+        
+        # Check for consistency in latest prices
+        latest_prices = [data['latest_close'] for data in validation_results['normalized_data'].values() 
+                        if data['latest_close'] is not None]
+        
+        if len(latest_prices) > 1:
+            # Check if all prices are within 1% of each other (allowing for small bid/ask differences)
+            min_price = min(latest_prices)
+            max_price = max(latest_prices)
+            price_variance = (max_price - min_price) / min_price
+            
+            if price_variance > 0.01:  # More than 1% difference
+                validation_results['consistent'] = False
+                validation_results['issues'].append(f"Price inconsistency: {price_variance:.2%} variance between providers")
+        
+        return validation_results
+
+
+# Global FX pair normalizer instance
+forex_normalizer = ForexPairNormalizer()
 
 # Global singleton instance
 instrument_db = InstrumentMetadataDB()

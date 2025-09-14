@@ -1,11 +1,14 @@
 """
 Base Data Provider Interface with Real-Time Validation Support
+Includes FX pair normalization to prevent inversion issues
 """
 from abc import ABC, abstractmethod
 import pandas as pd
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 import time
+from ..instruments.metadata import forex_normalizer
+import structlog
 
 class BaseDataProvider(ABC):
     """Abstract base class for data providers with real-time validation support"""
@@ -13,6 +16,7 @@ class BaseDataProvider(ABC):
     def __init__(self):
         self.name = getattr(self, 'name', 'Unknown Provider')
         self.is_live_source = getattr(self, 'is_live_source', False)
+        self.logger = structlog.get_logger(f"{self.__class__.__name__}")
     
     @abstractmethod
     async def get_ohlc_data(
@@ -121,3 +125,131 @@ class BaseDataProvider(ABC):
                 return False
                 
         return True
+    
+    def normalize_symbol(self, symbol: str) -> str:
+        """
+        Normalize a forex symbol to its standard canonical form.
+        
+        This ensures all providers use consistent symbol orientations,
+        preventing AUDUSD vs USDAUD inversion issues.
+        
+        Args:
+            symbol: Raw symbol from provider
+            
+        Returns:
+            Normalized standard symbol
+        """
+        normalized = forex_normalizer.normalize_symbol(symbol)
+        
+        if normalized != symbol:
+            self.logger.info(f"🔄 {self.name}: Normalized symbol {symbol} → {normalized}")
+        
+        return normalized
+    
+    def normalize_ohlc_data(self, df: pd.DataFrame, original_symbol: str) -> pd.DataFrame:
+        """
+        Apply FX pair normalization to OHLC data.
+        
+        If the provider returned inverted data (e.g., USDAUD instead of AUDUSD),
+        this function inverts all OHLC prices to match the standard orientation.
+        
+        Args:
+            df: OHLC DataFrame from provider
+            original_symbol: Original symbol from provider
+            
+        Returns:
+            DataFrame with normalized OHLC data and updated metadata
+        """
+        if df is None or df.empty:
+            return df
+            
+        # Get normalized symbol
+        normalized_symbol = self.normalize_symbol(original_symbol)
+        
+        # Apply OHLC normalization if needed
+        normalized_df = forex_normalizer.normalize_ohlc_data(df, original_symbol, normalized_symbol)
+        
+        # Update DataFrame metadata with normalization info
+        if hasattr(normalized_df, 'attrs'):
+            normalized_df.attrs['original_symbol'] = original_symbol
+            normalized_df.attrs['normalized_symbol'] = normalized_symbol
+            normalized_df.attrs['pair_inverted'] = forex_normalizer.is_inverted(original_symbol, normalized_symbol)
+            normalized_df.attrs['normalization_applied'] = True
+            normalized_df.attrs['provider_name'] = self.name
+        
+        return normalized_df
+    
+    def normalize_price(self, price: float, original_symbol: str) -> float:
+        """
+        Apply FX pair normalization to a single price value.
+        
+        Args:
+            price: Original price from provider
+            original_symbol: Original symbol from provider
+            
+        Returns:
+            Normalized price (inverted if necessary)
+        """
+        if price is None:
+            return price
+            
+        normalized_symbol = self.normalize_symbol(original_symbol)
+        normalized_price = forex_normalizer.normalize_price(price, original_symbol, normalized_symbol)
+        
+        return normalized_price
+    
+    def get_normalization_info(self, symbol: str) -> Dict[str, Any]:
+        """
+        Get detailed normalization information for debugging.
+        
+        Args:
+            symbol: Symbol to analyze
+            
+        Returns:
+            Dictionary with normalization details
+        """
+        return forex_normalizer.get_normalization_info(symbol)
+    
+    def validate_normalized_data(self, symbol: str, df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Validate that data has been properly normalized.
+        
+        Used for debugging and ensuring data consistency.
+        
+        Args:
+            symbol: Expected normalized symbol
+            df: DataFrame to validate
+            
+        Returns:
+            Validation results
+        """
+        validation_results = {
+            'symbol': symbol,
+            'is_normalized': False,
+            'has_metadata': False,
+            'inversion_applied': False,
+            'issues': []
+        }
+        
+        # Check if DataFrame has normalization metadata
+        if hasattr(df, 'attrs'):
+            validation_results['has_metadata'] = True
+            
+            if 'normalized_symbol' in df.attrs:
+                validation_results['is_normalized'] = True
+                normalized_symbol = df.attrs['normalized_symbol']
+                
+                if normalized_symbol != symbol:
+                    validation_results['issues'].append(f"Symbol mismatch: expected {symbol}, got {normalized_symbol}")
+                    
+                if df.attrs.get('pair_inverted', False):
+                    validation_results['inversion_applied'] = True
+                    
+        else:
+            validation_results['issues'].append("DataFrame missing normalization metadata")
+        
+        # Check for data integrity after normalization
+        if not self._validate_price_data(df, symbol):
+            validation_results['issues'].append("Price data validation failed after normalization")
+            
+        return validation_results

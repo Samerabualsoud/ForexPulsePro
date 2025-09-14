@@ -13,7 +13,7 @@ from ..models import Signal, Strategy
 from ..logs.logger import get_logger
 from ..ai_capabilities import get_ai_capabilities, OPENAI_ENABLED
 from ..services.manus_ai import ManusAI
-from ..instruments.metadata import instrument_db, AssetClass, get_instrument_metadata, get_pip_size, format_price
+from ..instruments.metadata import instrument_db, AssetClass, get_instrument_metadata, get_pip_size, format_price, forex_normalizer
 from ..config.strict_live_config import StrictLiveConfig
 from ..config.provider_config import deterministic_provider_config
 from ..config.provider_validation import get_provider_validation_service
@@ -592,12 +592,23 @@ class SignalEngine:
         return True
 
     async def _get_market_data(self, symbol: str) -> Optional[pd.DataFrame]:
-        """Get ONLY real market data from available providers with cross-provider validation"""
+        """Get ONLY real market data from available providers with cross-provider validation and FX normalization"""
+        # STEP 1: Apply FX pair normalization to prevent inversion issues
+        original_symbol = symbol
+        normalized_symbol = forex_normalizer.normalize_symbol(symbol)
+        
+        # Log normalization if it occurred
+        if normalized_symbol != original_symbol:
+            logger.info(f"🔄 FX Normalization: {original_symbol} → {normalized_symbol} for consistent data orientation")
+            
+        # Use normalized symbol for all provider requests to ensure consistency
+        symbol_for_providers = normalized_symbol
+        
         # Determine asset class for intelligent provider routing
-        asset_class = self._get_asset_class(symbol)
+        asset_class = self._get_asset_class(symbol_for_providers)
         providers = self._get_providers_for_asset_class(asset_class)
         
-        logger.info(f"Getting {asset_class} data for {symbol} using {len(providers)} compatible providers")
+        logger.info(f"Getting {asset_class} data for {symbol_for_providers} using {len(providers)} compatible providers")
         
         # Log the specific providers being used for transparency
         provider_names = [config.name for _, config in providers]
@@ -620,9 +631,28 @@ class SignalEngine:
                 if provider_name == 'Polygon.io':
                     timeframe_mapping = {'1H': 'H1', '4H': 'H4', '1D': 'D1', '1M': 'M1', '5M': 'M5'}
                     converted_tf = timeframe_mapping.get("1H", 'H1')
-                    data = await provider_instance.get_ohlc_data(symbol, timeframe=converted_tf, limit=200)
+                    data = await provider_instance.get_ohlc_data(symbol_for_providers, timeframe=converted_tf, limit=200)
                 else:
-                    data = await provider_instance.get_ohlc_data(symbol, limit=200)
+                    data = await provider_instance.get_ohlc_data(symbol_for_providers, limit=200)
+                
+                # STEP 2: Apply FX pair normalization to OHLC data if received
+                if data is not None and hasattr(provider_instance, 'normalize_ohlc_data'):
+                    # Use BaseDataProvider normalization if available
+                    data = provider_instance.normalize_ohlc_data(data, original_symbol)
+                elif data is not None:
+                    # Apply normalization directly using forex_normalizer
+                    data = forex_normalizer.normalize_ohlc_data(data, original_symbol, normalized_symbol)
+                    
+                    # Add normalization metadata
+                    if hasattr(data, 'attrs'):
+                        data.attrs['original_symbol'] = original_symbol
+                        data.attrs['normalized_symbol'] = normalized_symbol
+                        data.attrs['pair_inverted'] = forex_normalizer.is_inverted(original_symbol, normalized_symbol)
+                        data.attrs['normalization_applied'] = True
+                        
+                    # Log normalization if inversion was applied
+                    if forex_normalizer.is_inverted(original_symbol, normalized_symbol):
+                        logger.info(f"📊 Applied price inversion to {provider_name} data: {original_symbol} → {normalized_symbol}")
                 
                 # Track validation attempts
                 validation_attempt = {
@@ -645,6 +675,13 @@ class SignalEngine:
                         validation_attempt['validation_passed'] = True
                         successful_data = data
                         validation_attempts.append(validation_attempt)
+                        
+                        # STEP 3: Validate normalization was applied correctly
+                        normalization_validation = self._validate_fx_normalization(data, original_symbol, normalized_symbol)
+                        if normalization_validation.get('issues'):
+                            logger.warning(f"⚠️ Normalization validation issues for {symbol}: {normalization_validation['issues']}")
+                        else:
+                            logger.debug(f"✅ FX normalization validation passed for {symbol}")
                         
                         # Use first successful provider (priority order)
                         logger.info(f"Using {provider_name} real {asset_class} data for {symbol}")
@@ -677,6 +714,68 @@ class SignalEngine:
         logger.error(f"Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.")
         logger.error(f"Tried {len(providers)} compatible providers for {asset_class} asset class")
         return None
+    
+    def _validate_fx_normalization(self, data: pd.DataFrame, original_symbol: str, normalized_symbol: str) -> Dict[str, Any]:
+        """
+        Validate that FX pair normalization was applied correctly.
+        
+        This ensures data integrity and helps debug normalization issues.
+        
+        Args:
+            data: OHLC DataFrame after normalization
+            original_symbol: Original symbol from provider
+            normalized_symbol: Expected normalized symbol
+            
+        Returns:
+            Validation results with any issues found
+        """
+        validation_results = {
+            'normalized_correctly': True,
+            'has_metadata': False,
+            'inversion_applied': False,
+            'expected_inversion': False,
+            'issues': []
+        }
+        
+        # Check if normalization metadata exists
+        if hasattr(data, 'attrs'):
+            validation_results['has_metadata'] = True
+            
+            # Validate normalized symbol matches expectation
+            if 'normalized_symbol' in data.attrs:
+                actual_normalized = data.attrs['normalized_symbol']
+                if actual_normalized != normalized_symbol:
+                    validation_results['issues'].append(f"Symbol mismatch: expected {normalized_symbol}, got {actual_normalized}")
+                    validation_results['normalized_correctly'] = False
+                    
+            # Check inversion metadata
+            if data.attrs.get('pair_inverted', False):
+                validation_results['inversion_applied'] = True
+                
+            # Check if inversion was expected
+            validation_results['expected_inversion'] = forex_normalizer.is_inverted(original_symbol, normalized_symbol)
+            
+            # Validate inversion consistency
+            if validation_results['inversion_applied'] != validation_results['expected_inversion']:
+                if validation_results['expected_inversion']:
+                    validation_results['issues'].append(f"Missing inversion: {original_symbol} should be inverted to {normalized_symbol}")
+                else:
+                    validation_results['issues'].append(f"Unexpected inversion: {original_symbol} should not be inverted")
+                validation_results['normalized_correctly'] = False
+                
+        else:
+            validation_results['issues'].append("Missing normalization metadata")
+            validation_results['normalized_correctly'] = False
+        
+        # Validate data integrity
+        if data is None or data.empty:
+            validation_results['issues'].append("Empty data after normalization")
+            validation_results['normalized_correctly'] = False
+        elif not all(col in data.columns for col in ['open', 'high', 'low', 'close']):
+            validation_results['issues'].append("Missing OHLC columns after normalization")
+            validation_results['normalized_correctly'] = False
+        
+        return validation_results
     
     def _log_cross_provider_validation(self, symbol: str, validation_attempts: List[Dict]):
         """Log detailed cross-provider validation results"""

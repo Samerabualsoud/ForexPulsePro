@@ -292,6 +292,76 @@ with col4:
     success_rate = stats.get('success_rate', 0)
     st.metric("Success Rate", f"{success_rate}%")
 
+# System Activity Timestamps
+st.markdown('<div class="section-header">⏰ System Activity Monitor</div>', unsafe_allow_html=True)
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    # Last signal generation time
+    if signals:
+        latest_signal = max(signals, key=lambda s: s.get('issued_at', '2000-01-01T00:00:00Z'))
+        signal_time = latest_signal.get('issued_at', 'Unknown')
+        if signal_time and signal_time != 'Unknown':
+            try:
+                # Parse ISO format timestamp
+                if 'T' in signal_time:
+                    parsed_time = datetime.fromisoformat(signal_time.replace('Z', '+00:00'))
+                    local_time = parsed_time.strftime('%H:%M:%S')
+                    signal_status = f"🟢 {local_time}"
+                else:
+                    signal_status = "🟡 Parsing..."
+            except:
+                signal_status = "⚠️ Invalid"
+        else:
+            signal_status = "❌ None"
+    else:
+        signal_status = "❌ No Signals"
+    st.metric("Last Signal Generated", signal_status)
+
+with col2:
+    # Market data freshness
+    current_time = datetime.now()
+    market_time = current_time.strftime('%H:%M:%S')
+    if market_open:
+        market_data_status = f"🟢 {market_time}"
+    else:
+        market_data_status = f"🔴 Market Closed"
+    st.metric("Market Data", market_data_status)
+
+with col3:
+    # System uptime/activity
+    system_activity = "🟢 Running" if not kill_switch else "🔴 Stopped"
+    st.metric("System Status", system_activity)
+
+with col4:
+    # Signal generation frequency
+    if signals:
+        recent_signals = [s for s in signals if s.get('issued_at', '')]
+        if len(recent_signals) >= 2:
+            # Calculate time between last two signals
+            times = sorted([s['issued_at'] for s in recent_signals if s.get('issued_at')], reverse=True)
+            if len(times) >= 2:
+                try:
+                    latest = datetime.fromisoformat(times[0].replace('Z', '+00:00'))
+                    previous = datetime.fromisoformat(times[1].replace('Z', '+00:00'))
+                    diff = latest - previous
+                    minutes = int(diff.total_seconds() / 60)
+                    if minutes < 60:
+                        freq_status = f"⚡ {minutes}m ago"
+                    else:
+                        hours = minutes // 60
+                        freq_status = f"🕐 {hours}h ago"
+                except:
+                    freq_status = "⚠️ Error"
+            else:
+                freq_status = "📊 Active"
+        else:
+            freq_status = "⏳ Starting"
+    else:
+        freq_status = "❌ Inactive"
+    st.metric("Signal Frequency", freq_status)
+
 st.markdown("---")
 
 # Separate signals by type

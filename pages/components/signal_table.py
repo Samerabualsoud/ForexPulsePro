@@ -166,12 +166,19 @@ def _render_simple_table(signals: List[Dict[str, Any]]) -> None:
         else:
             cols[4].info(status_text)
         
-        # Time
+        # Generated time - enhanced with date and time
         try:
             issued_time = datetime.fromisoformat(signal['issued_at'].replace('Z', '+00:00'))
-            time_str = issued_time.strftime("%H:%M")
+            # Show both date and time
+            today = datetime.now().date()
+            signal_date = issued_time.date()
+            
+            if signal_date == today:
+                time_str = f"⏰ {issued_time.strftime('%H:%M:%S')}"
+            else:
+                time_str = f"📅 {issued_time.strftime('%m/%d %H:%M')}"
         except:
-            time_str = "N/A"
+            time_str = "⚠️ Error"
         cols[5].write(time_str)
         
         # Actions - RESTORED critical functionality

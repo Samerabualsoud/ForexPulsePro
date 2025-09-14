@@ -114,15 +114,15 @@ def _render_detailed_table(signals: List[Dict[str, Any]]) -> None:
     # Use st.data_editor for better reliability
     table_data = []
     for signal in signals:
-        # Format time in Saudi local time
+        # Format time in Saudi local time with AST suffix
         try:
-            time_str = format_saudi_time(signal['issued_at'])
+            time_str = format_saudi_time(signal['issued_at'], "%m/%d %H:%M AST")
         except:
             time_str = "N/A"
         
-        # Format expiry time in Saudi local time
+        # Format expiry time in Saudi local time with AST suffix
         try:
-            expires_str = format_saudi_time(signal['expires_at'])
+            expires_str = format_saudi_time(signal['expires_at'], "%m/%d %H:%M AST")
         except:
             expires_str = "N/A"
         

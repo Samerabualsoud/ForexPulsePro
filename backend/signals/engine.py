@@ -202,10 +202,9 @@ class SignalEngine:
         """Get prioritized list of providers for specific asset class"""
         # Provider tuples: (provider_instance, provider_name)
         if asset_class == 'crypto':
-            # Crypto: Use providers that support crypto symbols
+            # Crypto: Use providers that support crypto symbols (CoinGecko only for live data)
             return [
-                (self.coingecko_provider, 'CoinGecko'),  # Best free crypto API
-                (self.polygon_provider, 'Polygon.io'),  # Professional crypto data (X: prefix)
+                (self.coingecko_provider, 'CoinGecko'),  # Primary crypto API for live data
                 (self.exchangerate_provider, 'ExchangeRate.host'),  # Has crypto hardcoded rates
                 (self.mt5_provider, 'MT5'),  # May support crypto
             ]

@@ -27,7 +27,7 @@ class CoinGeckoProvider(BaseDataProvider):
         
         # Rate limiting (30 calls per minute for free tier)
         self.last_request_time = 0
-        self.min_request_interval = 3.0  # ~20 requests per minute with safe buffer (was 2.1)
+        self.min_request_interval = 4.0  # ~15 requests per minute with extra safe buffer to avoid 429 errors (was 3.0)
         
         # Crypto symbol mapping for CoinGecko API
         self.crypto_mapping = {

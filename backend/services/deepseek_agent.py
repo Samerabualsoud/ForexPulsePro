@@ -202,25 +202,35 @@ Provide JSON response:
                 'max_tokens': 1000
             }
             
-            # Retry logic for better reliability
+            # Retry logic for better reliability with progressive timeouts
             max_retries = 2
             response = None
             for attempt in range(max_retries + 1):
                 try:
+                    # Progressive timeout: 15s, 20s, 25s for better reliability
+                    timeout = 15 + (attempt * 5)
                     response = requests.post(
                         f"{self.client['base_url']}/chat/completions",
                         headers=headers,
                         json=data,
-                        timeout=8  # Reduced for faster failures
+                        timeout=timeout
                     )
                     break  # Success, exit retry loop
                 except Exception as e:
+                    # Check if it's a timeout error specifically
+                    is_timeout = "timeout" in str(e).lower() or "read timed out" in str(e).lower()
                     if attempt == max_retries:
-                        logger.error(f"DeepSeek API failed after {max_retries + 1} attempts: {e}")
+                        if is_timeout:
+                            logger.error(f"DeepSeek API timeout after {max_retries + 1} attempts (max timeout: {15 + (max_retries * 5)}s): {e}")
+                        else:
+                            logger.error(f"DeepSeek API failed after {max_retries + 1} attempts: {e}")
                         return None
-                    logger.warning(f"DeepSeek API retry {attempt + 1}/{max_retries}: {e}")
+                    if is_timeout:
+                        logger.warning(f"DeepSeek API timeout retry {attempt + 1}/{max_retries} (timeout: {timeout}s): {e}")
+                    else:
+                        logger.warning(f"DeepSeek API retry {attempt + 1}/{max_retries}: {e}")
                     import time
-                    time.sleep(1)  # Brief delay before retry
+                    time.sleep(2 + attempt)  # Increasing delay: 2s, 3s, 4s
             
             if response is None:
                 return None

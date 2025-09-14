@@ -172,7 +172,7 @@ class SignalEngine:
         
         # AI system configuration
         self.enable_dual_ai = os.getenv('ENABLE_DUAL_AI', 'true').lower() == 'true'
-        self.ai_consensus_threshold = float(os.getenv('AI_CONSENSUS_THRESHOLD', '0.7'))
+        self.ai_consensus_threshold = float(os.getenv('AI_CONSENSUS_THRESHOLD', '0.4'))  # Lowered from 0.7 to 0.4 for better crypto signal generation
         self.enable_ai_backtesting = os.getenv('ENABLE_AI_BACKTESTING', 'true').lower() == 'true'
         
         # Auto-trading configuration
@@ -830,7 +830,7 @@ class SignalEngine:
             final_action = base_signal['action']
             consensus_action = consensus.get('final_action')
             consensus_level = consensus.get('consensus_level', 0.0)
-            ai_consensus_threshold = 0.75  # 75% consensus required for veto
+            ai_consensus_threshold = 0.6  # Lowered from 75% to 60% consensus required for veto
             
             # Handle opposing consensus
             if consensus_action and consensus_action != final_action:

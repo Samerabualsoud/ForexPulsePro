@@ -661,3 +661,215 @@ Failed to get historical data for ADAUSD from Polygon.io: <asyncio.locks.Lock ob
 {"event": "Getting crypto data for XRPUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:33.998549Z"}
 CoinGecko does not provide real OHLC data for XRPUSD - no synthetic data allowed
 Failed to get historical data for XRPUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop
+{"event": "MT5 bridge timeout for ADAUSD", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T17:17:48.893974Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for ADAUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:48.895340Z"}
+{"event": "Total providers tested: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:48.895518Z"}
+{"event": "Live data sources: 2 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:48.895671Z"}
+{"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:48.895813Z"}
+{"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:48.895970Z"}
+{"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:48.896118Z"}
+{"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:48.896263Z"}
+{"event": "\u274c NO VALID DATA: All providers failed real-time validation for ADAUSD", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:48.896407Z"}
+{"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:48.896621Z"}
+{"event": "CRITICAL: No real crypto data available for ADAUSD - Signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:48.896829Z"}
+{"event": "Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:48.897125Z"}
+{"event": "Tried 4 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:48.897329Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED ADAUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:48.897538Z"}
+{"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:48.897769Z"}
+{"event": "Getting crypto data for DOGEUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:48.898489Z"}
+CoinGecko does not provide real OHLC data for DOGEUSD - no synthetic data allowed
+Failed to get historical data for DOGEUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop
+{"event": "MT5 bridge timeout for XRPUSD", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T17:17:49.021279Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for XRPUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:49.022465Z"}
+{"event": "Total providers tested: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:49.022611Z"}
+{"event": "Live data sources: 2 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:49.022743Z"}
+{"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:49.022890Z"}
+{"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:49.023088Z"}
+{"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:49.023216Z"}
+{"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:49.023341Z"}
+{"event": "\u274c NO VALID DATA: All providers failed real-time validation for XRPUSD", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:49.023458Z"}
+{"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:49.023631Z"}
+{"event": "CRITICAL: No real crypto data available for XRPUSD - Signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:49.023764Z"}
+{"event": "Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:49.023965Z"}
+{"event": "Tried 4 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:49.024117Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED XRPUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:49.024272Z"}
+{"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:17:49.024442Z"}
+{"event": "Getting crypto data for MATICUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:17:49.024668Z"}
+CoinGecko does not provide real OHLC data for MATICUSD - no synthetic data allowed
+Failed to get historical data for MATICUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop
+Running job "Generate Forex & Crypto Signals (trigger: interval[0:01:00], next run at: 2025-09-14 17:19:03 UTC)" (scheduled at 2025-09-14 17:18:03.796124+00:00)
+Running job "Evaluate Signals (trigger: interval[0:01:00], next run at: 2025-09-14 17:19:03 UTC)" (scheduled at 2025-09-14 17:18:03.796544+00:00)
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED EURUSD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.797607Z"}
+Job "Generate Forex & Crypto Signals (trigger: interval[0:01:00], next run at: 2025-09-14 17:19:03 UTC)" executed successfully
+Job "Evaluate Signals (trigger: interval[0:01:00], next run at: 2025-09-14 17:19:03 UTC)" executed successfully
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED GBPUSD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.799116Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED USDJPY: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.799615Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED USDCHF: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.799783Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED AUDUSD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.800003Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED USDCAD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.800162Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED NZDUSD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.800388Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED EURGBP: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.800533Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED EURJPY: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.800706Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED EURCHF: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.800860Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED EURAUD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.801008Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED EURCAD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.801128Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED GBPJPY: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.801265Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED GBPAUD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.801399Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED GBPCHF: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.801529Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED GBPCAD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.801665Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED AUDJPY: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.801801Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED CADJPY: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.801976Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED CHFJPY: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.802112Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED NZDJPY: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.802241Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED AUDCAD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.802369Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED AUDCHF: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.802507Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED AUDNZD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.802638Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED CADCHF: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.802772Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED NZDCAD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.802929Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED NZDCHF: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T17:18:03.803066Z"}
+{"event": "Getting crypto data for BTCUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:03.803216Z"}
+CoinGecko does not provide real OHLC data for BTCUSD - no synthetic data allowed
+Failed to get historical data for BTCUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop
+{"event": "Signal evaluation completed: {'evaluated_count': 0, 'expired_count': 0, 'success_count': 0, 'loss_count': 0}", "logger": "backend.scheduler", "level": "info", "timestamp": "2025-09-14T17:18:03.878005Z"}
+{"event": "MT5 bridge timeout for DOGEUSD", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T17:18:03.926340Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for DOGEUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:03.927706Z"}
+{"event": "Total providers tested: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:03.927864Z"}
+{"event": "Live data sources: 2 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:03.928146Z"}
+{"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:03.928321Z"}
+{"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:03.928485Z"}
+{"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:03.928796Z"}
+{"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:03.929264Z"}
+{"event": "\u274c NO VALID DATA: All providers failed real-time validation for DOGEUSD", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:03.929382Z"}
+{"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:03.929919Z"}
+{"event": "CRITICAL: No real crypto data available for DOGEUSD - Signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:03.930235Z"}
+{"event": "Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:03.930823Z"}
+{"event": "Tried 4 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:03.931607Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED DOGEUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:03.931990Z"}
+{"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:03.932223Z"}
+{"event": "Getting crypto data for SOLUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:03.932444Z"}
+CoinGecko does not provide real OHLC data for SOLUSD - no synthetic data allowed
+Failed to get historical data for SOLUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop
+{"event": "MT5 bridge timeout for MATICUSD", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T17:18:04.052693Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for MATICUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:04.054213Z"}
+{"event": "Total providers tested: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:04.054493Z"}
+{"event": "Live data sources: 2 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:04.054670Z"}
+{"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:04.054817Z"}
+{"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:04.055009Z"}
+{"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:04.055139Z"}
+{"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:04.055266Z"}
+{"event": "\u274c NO VALID DATA: All providers failed real-time validation for MATICUSD", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:04.055392Z"}
+{"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:04.055707Z"}
+{"event": "CRITICAL: No real crypto data available for MATICUSD - Signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:04.055907Z"}
+{"event": "Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:04.056116Z"}
+{"event": "Tried 4 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:04.056288Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED MATICUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:04.056457Z"}
+{"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:04.056645Z"}
+{"event": "Forex & Crypto signal generation completed for 26 forex + 8 crypto = 34 total pairs at 2025-09-14 17:18:04.056808", "logger": "backend.scheduler", "level": "info", "timestamp": "2025-09-14T17:18:04.056821Z"}
+{"event": "MT5 bridge timeout for BTCUSD", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T17:18:18.826384Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for BTCUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.828060Z"}
+{"event": "Total providers tested: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.828250Z"}
+{"event": "Live data sources: 2 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.828479Z"}
+{"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.828669Z"}
+{"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.828822Z"}
+{"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.829015Z"}
+{"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.829221Z"}
+{"event": "\u274c NO VALID DATA: All providers failed real-time validation for BTCUSD", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.829367Z"}
+{"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.829532Z"}
+{"event": "CRITICAL: No real crypto data available for BTCUSD - Signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.829640Z"}
+{"event": "Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.829816Z"}
+{"event": "Tried 4 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.830226Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED BTCUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.830440Z"}
+{"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.830614Z"}
+{"event": "Getting crypto data for ETHUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.830940Z"}
+CoinGecko does not provide real OHLC data for ETHUSD - no synthetic data allowed
+Failed to get historical data for ETHUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop
+{"event": "MT5 bridge timeout for SOLUSD", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T17:18:18.965847Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for SOLUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.966915Z"}
+{"event": "Total providers tested: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.967055Z"}
+{"event": "Live data sources: 2 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.967183Z"}
+{"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.967297Z"}
+{"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.967560Z"}
+{"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.967705Z"}
+{"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.967825Z"}
+{"event": "\u274c NO VALID DATA: All providers failed real-time validation for SOLUSD", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.968027Z"}
+{"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.968292Z"}
+{"event": "CRITICAL: No real crypto data available for SOLUSD - Signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.968402Z"}
+{"event": "Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.968541Z"}
+{"event": "Tried 4 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.968744Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED SOLUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.968939Z"}
+{"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:18.969105Z"}
+{"event": "Getting crypto data for BNBUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:18.969302Z"}
+CoinGecko does not provide real OHLC data for BNBUSD - no synthetic data allowed
+Failed to get historical data for BNBUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop
+{"event": "MT5 bridge timeout for ETHUSD", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T17:18:33.854277Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for ETHUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.856100Z"}
+{"event": "Total providers tested: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.856315Z"}
+{"event": "Live data sources: 2 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.856795Z"}
+{"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.857061Z"}
+{"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.857366Z"}
+{"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.857650Z"}
+{"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.857927Z"}
+{"event": "\u274c NO VALID DATA: All providers failed real-time validation for ETHUSD", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.858190Z"}
+{"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.858497Z"}
+{"event": "CRITICAL: No real crypto data available for ETHUSD - Signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.858789Z"}
+{"event": "Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.859100Z"}
+{"event": "Tried 4 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.859491Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED ETHUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.859697Z"}
+{"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.860018Z"}
+{"event": "Getting crypto data for ADAUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.860655Z"}
+CoinGecko does not provide real OHLC data for ADAUSD - no synthetic data allowed
+Failed to get historical data for ADAUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop
+{"event": "MT5 bridge timeout for BNBUSD", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T17:18:33.993709Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for BNBUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.995030Z"}
+{"event": "Total providers tested: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.996159Z"}
+{"event": "Live data sources: 2 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.996313Z"}
+{"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.996465Z"}
+{"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.996592Z"}
+{"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.996726Z"}
+{"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.996858Z"}
+{"event": "\u274c NO VALID DATA: All providers failed real-time validation for BNBUSD", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.997051Z"}
+{"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.997427Z"}
+{"event": "CRITICAL: No real crypto data available for BNBUSD - Signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.997631Z"}
+{"event": "Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.997798Z"}
+{"event": "Tried 4 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.997975Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED BNBUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.998125Z"}
+{"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:33.998273Z"}
+{"event": "Getting crypto data for XRPUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:33.998540Z"}
+CoinGecko does not provide real OHLC data for XRPUSD - no synthetic data allowed
+Failed to get historical data for XRPUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop
+{"event": "MT5 bridge timeout for ADAUSD", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T17:18:48.890379Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for ADAUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:48.891697Z"}
+{"event": "Total providers tested: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:48.891841Z"}
+{"event": "Live data sources: 2 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:48.892010Z"}
+{"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:48.892147Z"}
+{"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:48.892283Z"}
+{"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:48.892421Z"}
+{"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:48.892547Z"}
+{"event": "\u274c NO VALID DATA: All providers failed real-time validation for ADAUSD", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:48.892673Z"}
+{"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:48.892965Z"}
+{"event": "CRITICAL: No real crypto data available for ADAUSD - Signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:48.893104Z"}
+{"event": "Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:48.893279Z"}
+{"event": "Tried 4 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:48.893453Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED ADAUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:48.893633Z"}
+{"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:48.893803Z"}
+{"event": "Getting crypto data for DOGEUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:48.894050Z"}
+CoinGecko does not provide real OHLC data for DOGEUSD - no synthetic data allowed
+Failed to get historical data for DOGEUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop
+{"event": "MT5 bridge timeout for XRPUSD", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T17:18:49.022400Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for XRPUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:49.023541Z"}
+{"event": "Total providers tested: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:49.023719Z"}
+{"event": "Live data sources: 2 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:49.023851Z"}
+{"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:49.024007Z"}
+{"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:49.024157Z"}
+{"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:49.024313Z"}
+{"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:49.024559Z"}
+{"event": "\u274c NO VALID DATA: All providers failed real-time validation for XRPUSD", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:49.025586Z"}
+{"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:49.026257Z"}
+{"event": "CRITICAL: No real crypto data available for XRPUSD - Signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:49.026457Z"}
+{"event": "Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:49.026748Z"}
+{"event": "Tried 4 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:49.027044Z"}
+{"event": "\ud83d\udd12 STRICT MODE BLOCKED XRPUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:49.027368Z"}
+{"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T17:18:49.027879Z"}
+{"event": "Getting crypto data for MATICUSD using 4 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T17:18:49.028331Z"}
+CoinGecko does not provide real OHLC data for MATICUSD - no synthetic data allowed
+Failed to get historical data for MATICUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f75c630c310 [unlocked, waiters:1]> is bound to a different event loop

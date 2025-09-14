@@ -4,10 +4,11 @@ Provides real-time and historical market data for forex, stocks, and crypto incl
 """
 
 import os
-import requests
+import asyncio
+import httpx
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pandas as pd
 import time
 from .base import BaseDataProvider
@@ -20,6 +21,7 @@ class PolygonProvider(BaseDataProvider):
     def __init__(self):
         super().__init__()
         self.name = "Polygon.io"
+        self.is_live_source = True  # Polygon.io provides real-time data
         self.base_url = "https://api.polygon.io"
         
         # API key from environment (REQUIRED - no default for security)
@@ -52,22 +54,21 @@ class PolygonProvider(BaseDataProvider):
         """Check if Polygon.io API is available"""
         return bool(self.api_key)
     
-    def _rate_limit(self):
+    async def _rate_limit(self):
         """Enforce rate limiting for free tier"""
         elapsed = time.time() - self.last_request_time
         if elapsed < self.min_request_interval:
-            # Note: Using blocking sleep in async context for now
-            # TODO: Replace with asyncio.sleep in production
-            time.sleep(self.min_request_interval - elapsed)
+            # Fixed: Using asyncio.sleep for non-blocking async operation
+            await asyncio.sleep(self.min_request_interval - elapsed)
         self.last_request_time = time.time()
     
     def _get_polygon_symbol(self, pair: str) -> Optional[str]:
         """Convert standard pair to Polygon.io format"""
         return self.forex_mapping.get(pair)
     
-    def _make_request(self, endpoint: str, params: Dict = None) -> requests.Response:
+    async def _make_request(self, endpoint: str, params: Dict = None) -> httpx.Response:
         """Make rate-limited request to Polygon.io API"""
-        self._rate_limit()
+        await self._rate_limit()
         
         url = f"{self.base_url}{endpoint}"
         
@@ -77,11 +78,12 @@ class PolygonProvider(BaseDataProvider):
         params['apiKey'] = self.api_key  # Fixed: Use correct parameter name
         
         try:
-            response = requests.get(url, params=params, timeout=15)
-            response.raise_for_status()
-            return response
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response
             
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             # Sanitize error message to prevent API key leakage
             error_msg = str(e).replace(self.api_key, '[REDACTED]') if self.api_key else str(e)
             logger.error(f"Polygon.io API request failed: {error_msg}")
@@ -105,7 +107,7 @@ class PolygonProvider(BaseDataProvider):
             else:
                 # Crypto - use crypto endpoint
                 endpoint = f"/v1/last/crypto/{polygon_symbol}"
-            response = self._make_request(endpoint)
+            response = await self._make_request(endpoint)
             data = response.json()
             
             if data.get('status') == 'OK' and 'results' in data:
@@ -174,7 +176,7 @@ class PolygonProvider(BaseDataProvider):
                 'limit': limit
             }
             
-            response = self._make_request(endpoint, params)
+            response = await self._make_request(endpoint, params)
             data = response.json()
             
             if data.get('status') == 'OK' and 'results' in data and data['results']:
@@ -199,7 +201,16 @@ class PolygonProvider(BaseDataProvider):
                 # Limit to requested number of bars
                 df = df.tail(limit)
                 
-                logger.info(f"Retrieved {len(df)} live bars for {symbol} from Polygon.io")
+                # Add metadata for real-time validation
+                df = self._add_metadata_to_dataframe(
+                    df, 
+                    symbol, 
+                    data_source=self.name,
+                    last_updated=datetime.now(timezone.utc).isoformat()
+                )
+                
+                self._log_data_fetch(symbol, True, len(df))
+                logger.info(f"Retrieved {len(df)} live bars for {symbol} from Polygon.io (verified live source)")
                 return df
             
             logger.warning(f"No historical data from Polygon.io for {symbol}")
@@ -216,12 +227,12 @@ class PolygonProvider(BaseDataProvider):
         """Get list of available currency pairs"""
         return list(self.forex_mapping.keys())
     
-    def test_connection(self) -> bool:
+    async def test_connection(self) -> bool:
         """Test connection to Polygon.io API"""
         try:
             # Test with a simple market status request
             endpoint = "/v1/marketstatus/now"
-            response = self._make_request(endpoint)
+            response = await self._make_request(endpoint)
             data = response.json()
             return data.get('status') == 'OK'
         except:

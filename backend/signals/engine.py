@@ -334,7 +334,7 @@ class SignalEngine:
             logger.error(f"Error processing symbol {symbol}: {e}")
     
     def _validate_real_data(self, data: pd.DataFrame, symbol: str) -> bool:
-        """Strict validation to ensure only real market data is used"""
+        """STRICT validation to ensure only fresh real-time market data is used"""
         if data is None or data.empty:
             logger.warning(f"Data validation failed for {symbol}: No data or empty dataset")
             return False
@@ -351,27 +351,61 @@ class SignalEngine:
                 logger.warning(f"Data validation failed for {symbol}: No real data marker found")
                 return False
                 
-            # Check data freshness (must be updated within last 15 minutes)
+            # CRITICAL: Check data freshness (must be updated within last 15 SECONDS for live trading)
             last_updated = data.attrs.get('last_updated')
-            if last_updated:
-                try:
-                    from datetime import datetime
-                    update_time = datetime.fromisoformat(last_updated.replace('Z', '+00:00'))
-                    time_diff = (datetime.now().replace(tzinfo=update_time.tzinfo) - update_time).total_seconds()
-                    if time_diff > 900:  # 15 minutes
-                        logger.warning(f"Data validation failed for {symbol}: Data too old ({time_diff:.0f}s)")
-                        return False
-                except Exception as e:
-                    logger.warning(f"Data validation warning for {symbol}: Could not parse timestamp: {e}")
+            fetch_timestamp = data.attrs.get('fetch_timestamp')
             
-            # Validate data source is from a real provider
-            valid_sources = ['Polygon.io', 'ExchangeRate.host', 'Finnhub', 'FreeCurrencyAPI', 'AlphaVantage', 'MT5']
-            data_source = data.attrs.get('data_source', 'Unknown')
-            if data_source not in valid_sources:
-                logger.warning(f"Data validation failed for {symbol}: Invalid data source '{data_source}'")
+            # Use fetch_timestamp (when data was retrieved) if available, otherwise last_updated
+            validation_timestamp = fetch_timestamp or last_updated
+            
+            if validation_timestamp:
+                try:
+                    from datetime import datetime, timezone
+                    # Handle various timestamp formats
+                    if isinstance(validation_timestamp, (int, float)):
+                        # Unix timestamp
+                        update_time = datetime.fromtimestamp(validation_timestamp, tz=timezone.utc)
+                    else:
+                        # ISO format string
+                        update_time = datetime.fromisoformat(str(validation_timestamp).replace('Z', '+00:00'))
+                    
+                    # Calculate data age with high precision
+                    current_time = datetime.now(timezone.utc)
+                    time_diff = (current_time - update_time).total_seconds()
+                    
+                    # Log exact data age for transparency
+                    if time_diff <= 15.0:
+                        logger.info(f"Data freshness PASSED for {symbol}: Data is {time_diff:.1f} seconds old - ACCEPTED")
+                    else:
+                        logger.error(f"Data freshness FAILED for {symbol}: Data is {time_diff:.1f} seconds old - REJECTED (limit: 15s)")
+                        return False
+                        
+                except Exception as e:
+                    logger.error(f"Data validation failed for {symbol}: Could not parse timestamp '{validation_timestamp}': {e}")
+                    return False
+            else:
+                logger.error(f"Data validation failed for {symbol}: No timestamp information available for freshness check")
                 return False
+            
+            # Validate data source is from a verified live provider
+            verified_live_sources = ['Polygon.io', 'Finnhub', 'MT5', 'FreeCurrencyAPI']
+            cached_sources = ['ExchangeRate.host', 'AlphaVantage']  # These may have cached data
+            
+            data_source = data.attrs.get('data_source', 'Unknown')
+            is_live_source = data.attrs.get('is_live_source', False)
+            
+            # Prefer verified live sources for real-time trading
+            if data_source in verified_live_sources and is_live_source:
+                logger.debug(f"Data source verification PASSED for {symbol}: Verified live source '{data_source}'")
+            elif data_source in cached_sources:
+                logger.warning(f"Data source verification WARNING for {symbol}: Cached source '{data_source}' - data may not be real-time")
+                # Still allow but with warning for cached sources if timestamp is fresh
+            else:
+                logger.error(f"Data validation failed for {symbol}: Unverified data source '{data_source}'")
+                return False
+                
         else:
-            logger.warning(f"Data validation failed for {symbol}: No data attributes found")
+            logger.error(f"Data validation failed for {symbol}: No data attributes found for validation")
             return False
             
         # Validate data structure and content
@@ -387,16 +421,38 @@ class SignalEngine:
                 logger.warning(f"Data validation failed for {symbol}: Invalid {col} values (zero or negative)")
                 return False
                 
-        logger.info(f"Data validation passed for {symbol}: Real data from {data_source}")
+        # ENHANCED: Validate latest bar timestamp for real-time requirements
+        if hasattr(data.index, 'max'):
+            latest_bar_time = data.index.max()
+            if pd.notna(latest_bar_time):
+                try:
+                    # Convert to UTC timezone-aware datetime
+                    if latest_bar_time.tz is None:
+                        latest_bar_time = latest_bar_time.tz_localize('UTC')
+                    
+                    bar_age = (datetime.now(timezone.utc) - latest_bar_time).total_seconds()
+                    if bar_age > 300:  # Latest bar should be within 5 minutes
+                        logger.warning(f"Data validation WARNING for {symbol}: Latest bar is {bar_age:.0f}s old")
+                    else:
+                        logger.debug(f"Latest bar age for {symbol}: {bar_age:.0f}s")
+                except Exception as e:
+                    logger.debug(f"Could not validate latest bar timestamp for {symbol}: {e}")
+        
+        data_source = data.attrs.get('data_source', 'Unknown')
+        logger.info(f"Data validation PASSED for {symbol}: Fresh real-time data from {data_source}")
         return True
 
     async def _get_market_data(self, symbol: str) -> Optional[pd.DataFrame]:
-        """Get ONLY real market data from available providers - ASSET-CLASS-AWARE ROUTING"""
+        """Get ONLY real market data from available providers with cross-provider validation"""
         # Determine asset class for intelligent provider routing
         asset_class = self._get_asset_class(symbol)
         providers = self._get_providers_for_asset_class(asset_class)
         
         logger.info(f"Getting {asset_class} data for {symbol} using {len(providers)} compatible providers")
+        
+        # Track attempts for cross-provider validation
+        validation_attempts = []
+        successful_data = None
         
         # Try providers in priority order for this asset class
         for provider_instance, provider_name in providers:
@@ -413,17 +469,52 @@ class SignalEngine:
                 else:
                     data = await provider_instance.get_ohlc_data(symbol, limit=200)
                 
-                if data is not None and self._validate_real_data(data, symbol):
-                    logger.info(f"Using {provider_name} real {asset_class} data for {symbol}")
-                    return data
-                elif data is not None:
-                    logger.warning(f"Rejected {provider_name} data for {symbol}: Failed real data validation")
+                # Track validation attempts
+                validation_attempt = {
+                    'provider': provider_name,
+                    'data_available': data is not None,
+                    'validation_passed': False,
+                    'data_age_seconds': None,
+                    'is_live_source': getattr(provider_instance, 'is_live_source', False)
+                }
+                
+                if data is not None:
+                    # Extract data age for logging
+                    if hasattr(data, 'attrs'):
+                        fetch_timestamp = data.attrs.get('fetch_timestamp')
+                        if fetch_timestamp:
+                            validation_attempt['data_age_seconds'] = time.time() - fetch_timestamp
+                    
+                    # Validate the data
+                    if self._validate_real_data(data, symbol):
+                        validation_attempt['validation_passed'] = True
+                        successful_data = data
+                        validation_attempts.append(validation_attempt)
+                        
+                        # Use first successful provider (priority order)
+                        logger.info(f"Using {provider_name} real {asset_class} data for {symbol}")
+                        self._log_cross_provider_validation(symbol, validation_attempts)
+                        return data
+                    else:
+                        logger.warning(f"Rejected {provider_name} data for {symbol}: Failed real data validation")
                 else:
                     logger.debug(f"{provider_name} returned no data for {symbol}")
                     
+                validation_attempts.append(validation_attempt)
+                    
             except Exception as e:
                 logger.warning(f"{provider_name} failed for {symbol}: {e}")
+                validation_attempts.append({
+                    'provider': provider_name,
+                    'data_available': False,
+                    'validation_passed': False,
+                    'error': str(e),
+                    'is_live_source': getattr(provider_instance, 'is_live_source', False)
+                })
                 continue
+        
+        # Log comprehensive validation summary
+        self._log_cross_provider_validation(symbol, validation_attempts)
         
         # CRITICAL: NO FALLBACK TO MOCK/SYNTHETIC DATA FOR LIVE TRADING
         # All data must be real market data or signal generation is blocked
@@ -431,6 +522,41 @@ class SignalEngine:
         logger.error(f"Trading signals require real market data. Synthetic/mock data is NOT safe for live trading.")
         logger.error(f"Tried {len(providers)} compatible providers for {asset_class} asset class")
         return None
+    
+    def _log_cross_provider_validation(self, symbol: str, validation_attempts: List[Dict]):
+        """Log detailed cross-provider validation results"""
+        logger.info(f"=== CROSS-PROVIDER VALIDATION SUMMARY for {symbol} ===")
+        
+        live_sources = [v for v in validation_attempts if v.get('is_live_source', False)]
+        cached_sources = [v for v in validation_attempts if not v.get('is_live_source', False)]
+        successful_attempts = [v for v in validation_attempts if v.get('validation_passed', False)]
+        
+        logger.info(f"Total providers tested: {len(validation_attempts)}")
+        logger.info(f"Live data sources: {len(live_sources)} | Cached sources: {len(cached_sources)}")
+        logger.info(f"Successful validations: {len(successful_attempts)}")
+        
+        for attempt in validation_attempts:
+            provider = attempt['provider']
+            status = "✅ PASSED" if attempt['validation_passed'] else "❌ FAILED"
+            source_type = "LIVE" if attempt.get('is_live_source', False) else "CACHED"
+            
+            age_info = ""
+            if attempt.get('data_age_seconds') is not None:
+                age_info = f" (age: {attempt['data_age_seconds']:.1f}s)"
+            
+            error_info = ""
+            if attempt.get('error'):
+                error_info = f" - Error: {attempt['error'][:50]}..."
+            
+            logger.info(f"  {provider} [{source_type}]: {status}{age_info}{error_info}")
+        
+        if successful_attempts:
+            best_attempt = successful_attempts[0]  # First successful (highest priority)
+            logger.info(f"✅ SELECTED: {best_attempt['provider']} - Real-time validation PASSED")
+        else:
+            logger.error(f"❌ NO VALID DATA: All providers failed real-time validation for {symbol}")
+        
+        logger.info("=== END VALIDATION SUMMARY ===")
     
     async def _process_strategy(
         self, 

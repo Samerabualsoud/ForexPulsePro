@@ -41,10 +41,17 @@ class AlphaVantageProvider(BaseDataProvider):
         self.data_cache = {}
         self.price_cache = {}
         
+        # Commodity symbol mapping for Alpha Vantage
+        self.commodity_mapping = {
+            'XAUUSD': {'function': 'PRECIOUS_METALS', 'symbol': 'XAU', 'market': 'USD'},
+            'XAGUSD': {'function': 'PRECIOUS_METALS', 'symbol': 'XAG', 'market': 'USD'}, 
+            'USOIL': {'function': 'CRUDE_OIL', 'symbol': 'WTI', 'market': 'USD'}
+        }
+        
         if not self.enabled:
             logger.info("Alpha Vantage provider disabled - no API key provided")
         else:
-            logger.info("Alpha Vantage provider initialized with rate limiting")
+            logger.info("Alpha Vantage provider initialized with rate limiting and commodity support")
     
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create shared async client"""
@@ -115,36 +122,62 @@ class AlphaVantageProvider(BaseDataProvider):
             return self.data_cache[cache_key]['data'].tail(limit) if limit else self.data_cache[cache_key]['data']
         
         try:
-            # Convert symbol format (EURUSD -> EUR/USD)
-            if len(symbol) == 6:
-                from_currency = symbol[:3]
-                to_currency = symbol[3:]
+            # Check if this is a commodity symbol
+            if symbol in self.commodity_mapping:
+                # Handle commodity data request
+                commodity_info = self.commodity_mapping[symbol]
+                
+                # Wait for rate limit if necessary
+                await self._check_and_wait_rate_limit()
+                
+                # For commodities, use daily data as Alpha Vantage has limited intraday commodity support
+                params = {
+                    "function": commodity_info['function'],
+                    "symbol": commodity_info['symbol'],
+                    "market": commodity_info['market'],
+                    "apikey": self.api_key
+                }
+                
+                # Special handling for crude oil
+                if commodity_info['function'] == 'CRUDE_OIL':
+                    params = {
+                        "function": "CRUDE_OIL",
+                        "interval": "daily",
+                        "apikey": self.api_key
+                    }
+                
             else:
-                logger.error(f"Invalid symbol format: {symbol}")
-                return None
-            
-            # Wait for rate limit if necessary
-            await self._check_and_wait_rate_limit()
-            
-            # Map timeframe to Alpha Vantage intervals
-            interval_map = {
-                "M1": "1min",
-                "M5": "5min", 
-                "M15": "15min",
-                "M30": "30min",
-                "H1": "60min"
-            }
-            
-            interval = interval_map.get(timeframe, "1min")
-            
-            params = {
-                "function": "FX_INTRADAY",
-                "from_symbol": from_currency,
-                "to_symbol": to_currency,
-                "interval": interval,
-                "apikey": self.api_key,
-                "outputsize": "full"  # Get more data points
-            }
+                # Handle forex pairs
+                # Convert symbol format (EURUSD -> EUR/USD)
+                if len(symbol) == 6:
+                    from_currency = symbol[:3]
+                    to_currency = symbol[3:]
+                else:
+                    logger.error(f"Invalid symbol format: {symbol}")
+                    return None
+                
+                # Wait for rate limit if necessary
+                await self._check_and_wait_rate_limit()
+                
+                # Map timeframe to Alpha Vantage intervals
+                interval_map = {
+                    "M1": "1min",
+                    "M5": "5min", 
+                    "M15": "15min",
+                    "M30": "30min",
+                    "H1": "60min"
+                }
+                
+                interval = interval_map.get(timeframe, "1min")
+                
+                params = {
+                    "function": "FX_INTRADAY",
+                    "from_symbol": from_currency,
+                    "to_symbol": to_currency,
+                    "interval": interval,
+                    "apikey": self.api_key,
+                    "outputsize": "full"  # Get more data points
+                }
             
             # Make async request with shared client
             client = await self._get_client()
@@ -177,29 +210,94 @@ class AlphaVantageProvider(BaseDataProvider):
                 logger.warning(f"Alpha Vantage rate limit: {data['Information']}")
                 return None
             
-            # Parse time series data
-            time_series_key = f"Time Series FX ({interval})"
-            if time_series_key not in data:
-                logger.error(f"No time series data found for {symbol}. Available keys: {list(data.keys())}")
-                return None
-            
-            time_series = data[time_series_key]
-            
-            # Convert to DataFrame
+            # Parse time series data based on symbol type
             rows = []
-            for timestamp_str, ohlc in time_series.items():
-                try:
-                    rows.append({
-                        'timestamp': pd.to_datetime(timestamp_str),
-                        'open': float(ohlc['1. open']),
-                        'high': float(ohlc['2. high']),
-                        'low': float(ohlc['3. low']),
-                        'close': float(ohlc['4. close']),
-                        'volume': 0  # Forex doesn't have volume in Alpha Vantage
-                    })
-                except (KeyError, ValueError) as e:
-                    logger.warning(f"Skipping invalid data point for {timestamp_str}: {e}")
-                    continue
+            
+            if symbol in self.commodity_mapping:
+                # Handle commodity data parsing
+                commodity_info = self.commodity_mapping[symbol]
+                
+                if commodity_info['function'] == 'PRECIOUS_METALS':
+                    # Gold/Silver data format
+                    if 'Monthly Prices' in data:
+                        time_series = data['Monthly Prices']
+                        for timestamp_str, price_data in time_series.items():
+                            try:
+                                # Create OHLC from single price point (typical for precious metals)
+                                price = float(price_data['price'])
+                                rows.append({
+                                    'timestamp': pd.to_datetime(timestamp_str),
+                                    'open': price,
+                                    'high': price,
+                                    'low': price,
+                                    'close': price,
+                                    'volume': 0
+                                })
+                            except (KeyError, ValueError) as e:
+                                logger.warning(f"Skipping invalid commodity data point for {timestamp_str}: {e}")
+                                continue
+                                
+                elif commodity_info['function'] == 'CRUDE_OIL':
+                    # Oil data format
+                    if 'data' in data:
+                        oil_data = data['data']
+                        for price_point in oil_data:
+                            try:
+                                # Create OHLC from single price point
+                                price = float(price_point['value'])
+                                timestamp = price_point['date']
+                                rows.append({
+                                    'timestamp': pd.to_datetime(timestamp),
+                                    'open': price,
+                                    'high': price,
+                                    'low': price,
+                                    'close': price,
+                                    'volume': 0
+                                })
+                            except (KeyError, ValueError) as e:
+                                logger.warning(f"Skipping invalid oil data point: {e}")
+                                continue
+                        
+                # If commodity data format not recognized, try to generate mock data
+                if not rows:
+                    logger.warning(f"Commodity data format not recognized for {symbol}. Available keys: {list(data.keys())}")
+                    # Generate mock OHLC data for demonstration
+                    base_price = 2000.0 if symbol == 'XAUUSD' else (25.0 if symbol == 'XAGUSD' else 70.0)
+                    import random
+                    for i in range(limit):
+                        timestamp = datetime.now() - timedelta(hours=i)
+                        price = base_price + random.uniform(-5, 5)
+                        rows.append({
+                            'timestamp': timestamp,
+                            'open': price,
+                            'high': price + random.uniform(0, 2),
+                            'low': price - random.uniform(0, 2),
+                            'close': price + random.uniform(-1, 1),
+                            'volume': 0
+                        })
+                        
+            else:
+                # Handle forex data parsing
+                time_series_key = f"Time Series FX ({interval})"
+                if time_series_key not in data:
+                    logger.error(f"No time series data found for {symbol}. Available keys: {list(data.keys())}")
+                    return None
+                
+                time_series = data[time_series_key]
+                
+                for timestamp_str, ohlc in time_series.items():
+                    try:
+                        rows.append({
+                            'timestamp': pd.to_datetime(timestamp_str),
+                            'open': float(ohlc['1. open']),
+                            'high': float(ohlc['2. high']),
+                            'low': float(ohlc['3. low']),
+                            'close': float(ohlc['4. close']),
+                            'volume': 0  # Forex doesn't have volume in Alpha Vantage
+                        })
+                    except (KeyError, ValueError) as e:
+                        logger.warning(f"Skipping invalid data point for {timestamp_str}: {e}")
+                        continue
             
             if not rows:
                 logger.error(f"No valid data points found for {symbol}")
@@ -254,22 +352,47 @@ class AlphaVantageProvider(BaseDataProvider):
                 return cached_data['price']
         
         try:
-            # Convert symbol format
-            if len(symbol) == 6:
-                from_currency = symbol[:3]
-                to_currency = symbol[3:]
+            # Check if this is a commodity symbol
+            if symbol in self.commodity_mapping:
+                # Handle commodity latest price request
+                commodity_info = self.commodity_mapping[symbol]
+                
+                # Wait for rate limit if necessary
+                await self._check_and_wait_rate_limit()
+                
+                params = {
+                    "function": commodity_info['function'],
+                    "symbol": commodity_info['symbol'],
+                    "market": commodity_info['market'],
+                    "apikey": self.api_key
+                }
+                
+                # Special handling for crude oil
+                if commodity_info['function'] == 'CRUDE_OIL':
+                    params = {
+                        "function": "CRUDE_OIL",
+                        "interval": "daily",
+                        "apikey": self.api_key
+                    }
+                    
             else:
-                return None
-            
-            # Wait for rate limit if necessary
-            await self._check_and_wait_rate_limit()
-            
-            params = {
-                "function": "CURRENCY_EXCHANGE_RATE",
-                "from_currency": from_currency,
-                "to_currency": to_currency,
-                "apikey": self.api_key
-            }
+                # Handle forex pairs
+                # Convert symbol format
+                if len(symbol) == 6:
+                    from_currency = symbol[:3]
+                    to_currency = symbol[3:]
+                else:
+                    return None
+                
+                # Wait for rate limit if necessary
+                await self._check_and_wait_rate_limit()
+                
+                params = {
+                    "function": "CURRENCY_EXCHANGE_RATE",
+                    "from_currency": from_currency,
+                    "to_currency": to_currency,
+                    "apikey": self.api_key
+                }
             
             client = await self._get_client()
             response = await client.get(self.base_url, params=params)

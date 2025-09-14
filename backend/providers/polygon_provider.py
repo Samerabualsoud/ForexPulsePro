@@ -31,8 +31,9 @@ class PolygonProvider(BaseDataProvider):
         self.last_request_time = 0
         self.min_request_interval = 12.1  # ~5 requests per minute with buffer
         
-        # Forex symbol mapping for Polygon.io
-        self.forex_mapping = {
+        # Symbol mapping for Polygon.io (Forex, Crypto, Commodities)
+        self.symbol_mapping = {
+            # Forex pairs
             'EURUSD': 'C:EURUSD',
             'GBPUSD': 'C:GBPUSD', 
             'USDJPY': 'C:USDJPY',
@@ -43,7 +44,7 @@ class PolygonProvider(BaseDataProvider):
             'EURGBP': 'C:EURGBP',
             'EURJPY': 'C:EURJPY',
             'GBPJPY': 'C:GBPJPY',
-            # Crypto mapping - all supported crypto pairs
+            # Crypto pairs
             'BTCUSD': 'X:BTCUSD',
             'ETHUSD': 'X:ETHUSD',
             'ADAUSD': 'X:ADAUSD',
@@ -52,6 +53,16 @@ class PolygonProvider(BaseDataProvider):
             'BNBUSD': 'X:BNBUSD',
             'XRPUSD': 'X:XRPUSD',
             'MATICUSD': 'X:MATICUSD',
+            # Commodity pairs
+            'XAUUSD': 'C:XAUUSD',  # Gold
+            'XAGUSD': 'C:XAGUSD',  # Silver
+            'USOIL': 'C:USOIL',    # WTI Crude Oil
+        }
+        
+        # Asset type mapping for API endpoints
+        self.asset_types = {
+            'C:': 'forex',     # Currency (forex and commodities) 
+            'X:': 'crypto'     # Crypto
         }
         
         logger.info(f"Polygon.io provider initialized for real live market data")
@@ -70,7 +81,7 @@ class PolygonProvider(BaseDataProvider):
     
     def _get_polygon_symbol(self, pair: str) -> Optional[str]:
         """Convert standard pair to Polygon.io format"""
-        return self.forex_mapping.get(pair)
+        return self.symbol_mapping.get(pair)
     
     async def _make_request(self, endpoint: str, params: Dict = None) -> httpx.Response:
         """Make rate-limited request to Polygon.io API"""

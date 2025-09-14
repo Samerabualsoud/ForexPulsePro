@@ -72,8 +72,8 @@ def create_default_data():
             db.add(viewer_user)
             logger.info("Created default viewer user")
         
-        # Create default strategies
-        symbols = ['EURUSD', 'GBPUSD', 'USDJPY']
+        # Create default strategies for forex and commodities
+        symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'XAGUSD', 'USOIL']
         strategies = [
             {
                 'name': 'ema_rsi',

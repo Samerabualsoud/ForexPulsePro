@@ -385,9 +385,43 @@ class InstrumentMetadataDB:
             )
         }
         
-        # Combine forex and crypto instruments for comprehensive trading coverage
+        # === COMMODITY INSTRUMENTS ===
+        # Professional precious metals and oil trading specifications
+        # Commodities have extended market hours but close on weekends
+        commodity_pairs = {
+            'XAUUSD': InstrumentMetadata(
+                symbol='XAUUSD', asset_class=AssetClass.METALS,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # Gold precision: $0.01 per troy ounce
+                min_lot_size=0.01, max_lot_size=100.0, lot_step=0.01,
+                pip_value_per_lot=0.01, contract_size=100,  # 100 troy ounces per lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(22,21), is_24_7=False,  # Sun 22:00 - Fri 21:00 UTC
+                margin_percentage=0.05, description="Gold vs US Dollar",
+                base_currency='XAU', quote_currency='USD'
+            ),
+            'XAGUSD': InstrumentMetadata(
+                symbol='XAGUSD', asset_class=AssetClass.METALS,
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Silver precision: $0.001 per troy ounce
+                min_lot_size=0.01, max_lot_size=500.0, lot_step=0.01,
+                pip_value_per_lot=0.001, contract_size=5000,  # 5000 troy ounces per lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(22,21), is_24_7=False,  # Sun 22:00 - Fri 21:00 UTC
+                margin_percentage=0.07, description="Silver vs US Dollar",
+                base_currency='XAG', quote_currency='USD'
+            ),
+            'USOIL': InstrumentMetadata(
+                symbol='USOIL', asset_class=AssetClass.OIL,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # WTI Crude Oil precision: $0.01 per barrel
+                min_lot_size=0.01, max_lot_size=100.0, lot_step=0.01,
+                pip_value_per_lot=0.01, contract_size=1000,  # 1000 barrels per lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(22,21), is_24_7=False,  # Sun 22:00 - Fri 21:00 UTC
+                margin_percentage=0.10, description="WTI Crude Oil",
+                base_currency='OIL', quote_currency='USD'
+            )
+        }
+        
+        # Combine forex, crypto, and commodity instruments for comprehensive trading coverage
         instruments.update(forex_pairs)
         instruments.update(crypto_pairs)
+        instruments.update(commodity_pairs)
         
         return instruments
     

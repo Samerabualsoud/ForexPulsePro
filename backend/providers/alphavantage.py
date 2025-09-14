@@ -29,7 +29,7 @@ class AlphaVantageProvider(BaseDataProvider):
         # Rate limiting (Alpha Vantage allows 5 calls per minute for free tier)
         self.calls_per_minute = 5
         self.call_timestamps = []
-        self._rate_limit_lock = asyncio.Lock()
+        self._rate_limit_lock = None  # Lazy initialization to avoid event loop binding issues
         
         # Shared async client for connection reuse
         self._client = None
@@ -52,6 +52,20 @@ class AlphaVantageProvider(BaseDataProvider):
             logger.info("Alpha Vantage provider disabled - no API key provided")
         else:
             logger.info("Alpha Vantage provider initialized with rate limiting and commodity support")
+
+    @property
+    def rate_limit_lock(self) -> asyncio.Lock:
+        """Get rate limiting lock, creating it lazily in the current event loop"""
+        if self._rate_limit_lock is None:
+            try:
+                # This will create the lock in the current event loop
+                self._rate_limit_lock = asyncio.Lock()
+            except RuntimeError:
+                # No event loop running, this should not happen in async context
+                # but we'll handle it gracefully
+                logger.warning("No event loop running when creating rate limit lock")
+                raise
+        return self._rate_limit_lock
     
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create shared async client"""
@@ -61,7 +75,7 @@ class AlphaVantageProvider(BaseDataProvider):
     
     async def _check_and_wait_rate_limit(self) -> None:
         """Thread-safe rate limiting with token bucket algorithm"""
-        async with self._rate_limit_lock:
+        async with self.rate_limit_lock:
             now = time.time()
             
             # Remove timestamps older than 1 minute (token bucket refill)

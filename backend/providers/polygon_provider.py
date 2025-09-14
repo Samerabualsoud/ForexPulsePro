@@ -29,7 +29,7 @@ class PolygonProvider(BaseDataProvider):
         self.api_key = os.getenv('POLYGON_API_KEY')
         
         # Enhanced rate limiting with token bucket approach
-        self._rate_limit_lock = asyncio.Lock()
+        self._rate_limit_lock = None  # Lazy initialization to avoid event loop binding issues
         self.call_timestamps = []  # Track request timestamps
         self.calls_per_minute = 4  # Very conservative limit for free tier
         
@@ -73,6 +73,20 @@ class PolygonProvider(BaseDataProvider):
         }
         
         logger.info(f"Polygon.io provider initialized for real live market data")
+
+    @property 
+    def rate_limit_lock(self) -> asyncio.Lock:
+        """Get rate limiting lock, creating it lazily in the current event loop"""
+        if self._rate_limit_lock is None:
+            try:
+                # This will create the lock in the current event loop
+                self._rate_limit_lock = asyncio.Lock()
+            except RuntimeError:
+                # No event loop running, this should not happen in async context
+                # but we'll handle it gracefully
+                logger.warning("No event loop running when creating rate limit lock")
+                raise
+        return self._rate_limit_lock
         
     def is_available(self) -> bool:
         """Check if Polygon.io API is available"""
@@ -80,7 +94,7 @@ class PolygonProvider(BaseDataProvider):
     
     async def _check_and_wait_rate_limit(self):
         """Advanced rate limiting with token bucket approach"""
-        async with self._rate_limit_lock:
+        async with self.rate_limit_lock:
             now = time.time()
             
             # Remove timestamps older than 1 minute (token bucket refill)

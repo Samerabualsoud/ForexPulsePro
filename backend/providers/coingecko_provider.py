@@ -27,7 +27,7 @@ class CoinGeckoProvider(BaseDataProvider):
         self.base_url = "https://api.coingecko.com/api/v3"
         
         # Enhanced rate limiting with token bucket approach
-        self._rate_limit_lock = asyncio.Lock()
+        self._rate_limit_lock = None  # Lazy initialization to avoid event loop binding issues
         self.call_timestamps = []  # Track request timestamps
         self.calls_per_minute = 12  # Conservative limit (down from 30 to avoid 429)
         
@@ -38,7 +38,7 @@ class CoinGeckoProvider(BaseDataProvider):
         
         # Batch optimization for multiple requests
         self._batch_queue = []  # Queue for batch processing
-        self._batch_lock = asyncio.Lock()
+        self._batch_lock = None  # Lazy initialization to avoid event loop binding issues
         self._batch_cache = {}  # Global batch cache
         self._last_batch_time = 0
         
@@ -65,6 +65,34 @@ class CoinGeckoProvider(BaseDataProvider):
         self.reverse_mapping = {v: k for k, v in self.crypto_mapping.items()}
         
         logger.info(f"CoinGecko provider initialized for real crypto market data")
+
+    @property
+    def rate_limit_lock(self) -> asyncio.Lock:
+        """Get rate limiting lock, creating it lazily in the current event loop"""
+        if self._rate_limit_lock is None:
+            try:
+                # This will create the lock in the current event loop
+                self._rate_limit_lock = asyncio.Lock()
+            except RuntimeError:
+                # No event loop running, this should not happen in async context
+                # but we'll handle it gracefully
+                logger.warning("No event loop running when creating rate limit lock")
+                raise
+        return self._rate_limit_lock
+
+    @property
+    def batch_lock(self) -> asyncio.Lock:
+        """Get batch processing lock, creating it lazily in the current event loop"""
+        if self._batch_lock is None:
+            try:
+                # This will create the lock in the current event loop
+                self._batch_lock = asyncio.Lock()
+            except RuntimeError:
+                # No event loop running, this should not happen in async context
+                # but we'll handle it gracefully
+                logger.warning("No event loop running when creating batch lock")
+                raise
+        return self._batch_lock
         
     def is_available(self) -> bool:
         """Check if CoinGecko API is available (no API key required)"""
@@ -72,7 +100,7 @@ class CoinGeckoProvider(BaseDataProvider):
     
     async def _check_and_wait_rate_limit(self):
         """Advanced rate limiting with token bucket approach"""
-        async with self._rate_limit_lock:
+        async with self.rate_limit_lock:
             now = time.time()
             
             # Remove timestamps older than 1 minute (token bucket refill)

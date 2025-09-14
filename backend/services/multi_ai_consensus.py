@@ -9,7 +9,6 @@ from datetime import datetime
 
 from .manus_ai import ManusAI
 from .perplexity_news_agent import PerplexityNewsAgent
-from .gemini_correlation_agent import GeminiCorrelationAgent
 from ..logs.logger import get_logger
 
 logger = get_logger(__name__)
@@ -26,7 +25,6 @@ class MultiAIConsensus:
     Advanced multi-AI consensus system that combines insights from:
     - Manus AI (Primary strategy recommendations)
     - Perplexity AI (Market intelligence)
-    - Gemini AI (Cross-asset correlations)
     - DeepSeek AI (Advanced reasoning and sentiment analysis)
     """
     
@@ -34,7 +32,6 @@ class MultiAIConsensus:
         # Initialize all AI agents
         self.manus_ai = ManusAI()
         self.perplexity_agent = PerplexityNewsAgent()
-        self.gemini_agent = GeminiCorrelationAgent()
         self.deepseek_agent = DeepSeekAgent() if DeepSeekAgent else None
         
         # Track agent availability
@@ -72,9 +69,6 @@ class MultiAIConsensus:
         
         if self.available_agents.get('perplexity_news') and base_signal:
             tasks.append(self._run_perplexity_analysis(symbol, base_signal.get('action', 'BUY')))
-        
-        if self.available_agents.get('gemini_correlation') and base_signal:
-            tasks.append(self._run_gemini_analysis(symbol, base_signal.get('action', 'BUY')))
         
         if self.available_agents.get('deepseek_reasoning'):
             current_price = market_data['close'].iloc[-1] if len(market_data) > 0 else 0
@@ -143,14 +137,6 @@ class MultiAIConsensus:
             logger.error(f"Perplexity analysis failed: {e}")
             return {}
     
-    async def _run_gemini_analysis(self, symbol: str, signal_action: str) -> Dict[str, Any]:
-        """Run Gemini correlation analysis"""
-        try:
-            analysis = self.gemini_agent.analyze_cross_asset_correlations(symbol, signal_action)
-            return {'gemini_correlation': analysis}
-        except Exception as e:
-            logger.error(f"Gemini analysis failed: {e}")
-            return {}
     
     async def _run_deepseek_analysis(self, symbol: str, market_data: pd.DataFrame, current_price: float) -> Dict[str, Any]:
         """Run DeepSeek sentiment and reasoning analysis"""
@@ -204,18 +190,6 @@ class MultiAIConsensus:
                 'weight': 0.2
             }
         
-        # Process Gemini correlation insights
-        if 'gemini_correlation' in analyses:
-            gemini = analyses['gemini_correlation']
-            correlation_impact = gemini.get('correlation_impact', 0.0)
-            confidence_adjustments.append(('gemini_correlation', correlation_impact, 0.25))
-            
-            agent_insights['gemini_correlation'] = {
-                'usd_strength': gemini.get('usd_strength', 'neutral'),
-                'risk_sentiment': gemini.get('risk_sentiment', 'neutral'),
-                'market_regime': gemini.get('market_regime', 'unknown'),
-                'weight': 0.25
-            }
         
         # Process DeepSeek reasoning insights  
         if 'deepseek_reasoning' in analyses:
@@ -230,10 +204,10 @@ class MultiAIConsensus:
                 'weight': 0.25
             }
         
-        # **QUALITY REQUIREMENT**: Minimum 3 out of 4 agents required for valid signals
+        # **QUALITY REQUIREMENT**: Minimum 2 out of 3 agents required for valid signals
         available_agents = len(agent_insights)
-        if available_agents < 3:
-            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/4 (minimum 3 required)")
+        if available_agents < 2:
+            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/3 (minimum 2 required)")
             return {
                 'final_confidence': 0.0,
                 'consensus_action': 'INSUFFICIENT_CONSENSUS',
@@ -288,7 +262,7 @@ class MultiAIConsensus:
             'risk_assessment': self._assess_overall_risk(agent_insights),
             'timestamp': datetime.now().isoformat(),
             'multi_ai_enabled': True,
-            'multi_ai_valid': actual_participating_agents >= 3 and consensus_strength >= 0.5
+            'multi_ai_valid': actual_participating_agents >= 2 and consensus_strength >= 0.5
         }
         
         return consensus
@@ -370,7 +344,6 @@ class MultiAIConsensus:
         return {
             'manus_ai': True,  # Always available
             'perplexity_news': self.perplexity_agent.is_available(),
-            'gemini_correlation': self.gemini_agent.is_available(),
             'deepseek_reasoning': bool(self.deepseek_agent and self.deepseek_agent.is_available())
         }
     

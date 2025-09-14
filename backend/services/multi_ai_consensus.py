@@ -349,8 +349,8 @@ class MultiAIConsensus:
             final_confidence = min(1.0, final_confidence + consensus_boost)
         
         # **ADJUSTED FOR 2-AGENT CONSENSUS**: Lower threshold when DeepSeek is disabled
-        # With 2 agents: 65% threshold, with 3+ agents: 80% threshold
-        min_confidence_threshold = 0.65 if available_agents == 2 else 0.8
+        # With 2 agents: 50% threshold (temporary fix for Perplexity API issues), with 3+ agents: 80% threshold
+        min_confidence_threshold = 0.50 if available_agents == 2 else 0.8
         if final_confidence < min_confidence_threshold:
             logger.warning(f"Multi-AI consensus blocked signal due to insufficient confidence: {final_confidence:.1%} < {min_confidence_threshold:.0%} minimum threshold")
             return {

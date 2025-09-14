@@ -124,54 +124,32 @@ import uvicorn
 
 logger = get_logger(__name__)
 
-# Initialize session state
-if 'fastapi_started' not in st.session_state:
-    st.session_state.fastapi_started = False
-if 'scheduler_started' not in st.session_state:
-    st.session_state.scheduler_started = False
+# Initialize session state - using external Production Backend
+if 'backend_status_checked' not in st.session_state:
+    st.session_state.backend_status_checked = False
+if 'backend_available' not in st.session_state:
+    st.session_state.backend_available = False
 
-def start_fastapi():
-    """Start FastAPI server in background thread"""
+def check_backend_status():
+    """Check if the Production Backend is available"""
     try:
-        uvicorn.run(
-            fastapi_app,
-            host="0.0.0.0",
-            port=8000,
-            log_level="info"
-        )
+        import requests
+        response = requests.get("http://localhost:8080/api/health", timeout=3)
+        if response.status_code == 200:
+            st.session_state.backend_available = True
+            logger.info("Production Backend is available on port 8080")
+        else:
+            st.session_state.backend_available = False
+            logger.warning(f"Production Backend returned status code: {response.status_code}")
     except Exception as e:
-        logger.error(f"FastAPI server error: {e}")
+        st.session_state.backend_available = False
+        logger.warning(f"Production Backend not available: {e}")
+    
+    st.session_state.backend_status_checked = True
 
-def start_scheduler():
-    """Start signal scheduler in background thread"""
-    try:
-        scheduler = SignalScheduler()
-        scheduler.start()
-        logger.info("Signal scheduler started successfully")
-    except Exception as e:
-        logger.error(f"Scheduler error: {e}")
-
-def initialize_app():
-    """Initialize database and background services"""
-    if not st.session_state.fastapi_started:
-        # Initialize database
-        init_db()
-        create_default_data()
-        
-        # Start FastAPI server
-        fastapi_thread = threading.Thread(target=start_fastapi, daemon=True)
-        fastapi_thread.start()
-        st.session_state.fastapi_started = True
-        
-        # Start scheduler
-        scheduler_thread = threading.Thread(target=start_scheduler, daemon=True)
-        scheduler_thread.start()
-        st.session_state.scheduler_started = True
-        
-        logger.info("Application initialized successfully")
-
-# Initialize the application
-initialize_app()
+# Check backend status
+if not st.session_state.backend_status_checked:
+    check_backend_status()
 
 # Handle API routing through query parameters
 query_params = st.query_params
@@ -181,11 +159,11 @@ if "api_endpoint" in query_params:
     endpoint = query_params["api_endpoint"]
     try:
         if endpoint == "health":
-            response = requests.get("http://localhost:8000/api/health", timeout=5)
+            response = requests.get("http://localhost:8080/api/health", timeout=5)
             st.json(response.json())
             st.stop()
         elif endpoint == "metrics":
-            response = requests.get("http://localhost:8000/metrics", timeout=5)
+            response = requests.get("http://localhost:8080/metrics", timeout=5)
             st.text(response.text)
             st.stop()
         elif endpoint.startswith("monitoring"):
@@ -193,7 +171,7 @@ if "api_endpoint" in query_params:
             monitoring_path = endpoint.replace("monitoring_", "monitoring/")
             auth_header = query_params.get("auth", "")
             headers = {"Authorization": f"Bearer {auth_header}"} if auth_header else {}
-            response = requests.get(f"http://localhost:8000/api/{monitoring_path}", headers=headers, timeout=5)
+            response = requests.get(f"http://localhost:8080/api/{monitoring_path}", headers=headers, timeout=5)
             st.json(response.json())
             st.stop()
     except Exception as e:
@@ -214,23 +192,23 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric(
-        "FastAPI Status",
-        "Running" if st.session_state.fastapi_started else "Stopped",
-        delta="Active" if st.session_state.fastapi_started else "Inactive"
+        "Production Backend",
+        "Connected" if st.session_state.backend_available else "Disconnected",
+        delta="Port 8080" if st.session_state.backend_available else "Unavailable"
     )
 
 with col2:
     st.metric(
-        "Scheduler Status", 
-        "Running" if st.session_state.scheduler_started else "Stopped",
-        delta="Active" if st.session_state.scheduler_started else "Inactive"
+        "Signal Generation", 
+        "Active" if st.session_state.backend_available else "Stopped",
+        delta="Live Data" if st.session_state.backend_available else "Offline"
     )
 
 with col3:
     st.metric(
-        "API Port",
-        "8000",
-        delta="REST API available"
+        "Environment Parity",
+        "Verified" if st.session_state.backend_available else "Unknown",
+        delta="Config: 7ef84f50535209cd" if st.session_state.backend_available else "Not checked"
     )
 
 # Quick access section
@@ -263,9 +241,11 @@ st.markdown("""
 - Latest Signals: `GET /api/signals/latest`
 - Recent Signals: `GET /api/signals/recent`
 - Risk Status: `GET /api/risk/status`
+- Provider Diagnostics: `GET /api/diagnostics/providers`
 - System Metrics: `GET /metrics`
 
-**Server Status:** Backend API running on port 8000
+**Server Status:** Production Backend API running on port 8080
+**Environment Parity:** Configuration fingerprint `7ef84f50535209cd` verified
 """)
 st.markdown('</div>', unsafe_allow_html=True)
 

@@ -55,16 +55,17 @@ class InstrumentMetadataDB:
         """Build the complete instrument metadata database"""
         instruments = {}
         
-        # === MAJOR FOREX PAIRS ONLY CONFIGURATION ===
-        # Focus on the 3 most liquid and reliable forex pairs
-        # Standard institutional forex trading specifications
+        # === ALL MAJOR FOREX PAIRS CONFIGURATION ===
+        # Complete set of major forex pairs for comprehensive trading coverage
+        # Standard institutional forex trading specifications with modern 5/3 decimal precision
         
-        # === MAJOR FOREX PAIRS ===
-        # Using standard forex specifications for professional trading
+        # === MAJOR USD FOREX PAIRS ===
+        # Using modern forex specifications (5 decimal for standard pairs, 3 for JPY pairs)
         forex_pairs = {
+            # USD Major Pairs
             'EURUSD': InstrumentMetadata(
                 symbol='EURUSD', asset_class=AssetClass.FOREX,
-                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Standard 5-decimal EUR/USD
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal EUR/USD
                 min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
                 pip_value_per_lot=1.0, contract_size=100000,  # $1 per pip per standard lot
                 market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,  # Sun 21:00 - Fri 21:00 UTC
@@ -73,7 +74,7 @@ class InstrumentMetadataDB:
             ),
             'GBPUSD': InstrumentMetadata(
                 symbol='GBPUSD', asset_class=AssetClass.FOREX,
-                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Standard 5-decimal GBP/USD
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal GBP/USD
                 min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
                 pip_value_per_lot=1.0, contract_size=100000,  # $1 per pip per standard lot
                 market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,  # Sun 21:00 - Fri 21:00 UTC
@@ -82,12 +83,227 @@ class InstrumentMetadataDB:
             ),
             'USDJPY': InstrumentMetadata(
                 symbol='USDJPY', asset_class=AssetClass.FOREX,
-                pip_size=0.001, decimal_places=3, quote_precision=3,  # Standard 3-decimal USD/JPY
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Modern 3-decimal USD/JPY
                 min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
                 pip_value_per_lot=0.67, contract_size=100000,  # ~$0.67 per pip per standard lot (varies with JPY rate)
                 market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,  # Sun 21:00 - Fri 21:00 UTC
                 margin_percentage=0.02, description="US Dollar vs Japanese Yen",
                 base_currency='USD', quote_currency='JPY'
+            ),
+            'USDCHF': InstrumentMetadata(
+                symbol='USDCHF', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal USD/CHF
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=1.08, contract_size=100000,  # ~$1.08 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.02, description="US Dollar vs Swiss Franc",
+                base_currency='USD', quote_currency='CHF'
+            ),
+            'AUDUSD': InstrumentMetadata(
+                symbol='AUDUSD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal AUD/USD
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=1.0, contract_size=100000,  # $1 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="Australian Dollar vs US Dollar",
+                base_currency='AUD', quote_currency='USD'
+            ),
+            'USDCAD': InstrumentMetadata(
+                symbol='USDCAD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal USD/CAD
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.74, contract_size=100000,  # ~$0.74 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.02, description="US Dollar vs Canadian Dollar",
+                base_currency='USD', quote_currency='CAD'
+            ),
+            'NZDUSD': InstrumentMetadata(
+                symbol='NZDUSD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal NZD/USD
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=1.0, contract_size=100000,  # $1 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="New Zealand Dollar vs US Dollar",
+                base_currency='NZD', quote_currency='USD'
+            ),
+            
+            # === EUR CROSS PAIRS ===
+            'EURGBP': InstrumentMetadata(
+                symbol='EURGBP', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal EUR/GBP
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=1.27, contract_size=100000,  # ~$1.27 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.02, description="Euro vs British Pound",
+                base_currency='EUR', quote_currency='GBP'
+            ),
+            'EURJPY': InstrumentMetadata(
+                symbol='EURJPY', asset_class=AssetClass.FOREX,
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Modern 3-decimal EUR/JPY
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.67, contract_size=100000,  # ~$0.67 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.02, description="Euro vs Japanese Yen",
+                base_currency='EUR', quote_currency='JPY'
+            ),
+            'EURCHF': InstrumentMetadata(
+                symbol='EURCHF', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal EUR/CHF
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=1.08, contract_size=100000,  # ~$1.08 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.02, description="Euro vs Swiss Franc",
+                base_currency='EUR', quote_currency='CHF'
+            ),
+            'EURAUD': InstrumentMetadata(
+                symbol='EURAUD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal EUR/AUD
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.66, contract_size=100000,  # ~$0.66 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="Euro vs Australian Dollar",
+                base_currency='EUR', quote_currency='AUD'
+            ),
+            'EURCAD': InstrumentMetadata(
+                symbol='EURCAD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal EUR/CAD
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.74, contract_size=100000,  # ~$0.74 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="Euro vs Canadian Dollar",
+                base_currency='EUR', quote_currency='CAD'
+            ),
+            
+            # === GBP CROSS PAIRS ===
+            'GBPJPY': InstrumentMetadata(
+                symbol='GBPJPY', asset_class=AssetClass.FOREX,
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Modern 3-decimal GBP/JPY
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.67, contract_size=100000,  # ~$0.67 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="British Pound vs Japanese Yen",
+                base_currency='GBP', quote_currency='JPY'
+            ),
+            'GBPAUD': InstrumentMetadata(
+                symbol='GBPAUD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal GBP/AUD
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.66, contract_size=100000,  # ~$0.66 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="British Pound vs Australian Dollar",
+                base_currency='GBP', quote_currency='AUD'
+            ),
+            'GBPCHF': InstrumentMetadata(
+                symbol='GBPCHF', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal GBP/CHF
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=1.08, contract_size=100000,  # ~$1.08 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="British Pound vs Swiss Franc",
+                base_currency='GBP', quote_currency='CHF'
+            ),
+            'GBPCAD': InstrumentMetadata(
+                symbol='GBPCAD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal GBP/CAD
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.74, contract_size=100000,  # ~$0.74 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="British Pound vs Canadian Dollar",
+                base_currency='GBP', quote_currency='CAD'
+            ),
+            
+            # === JPY CROSS PAIRS ===
+            'AUDJPY': InstrumentMetadata(
+                symbol='AUDJPY', asset_class=AssetClass.FOREX,
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Modern 3-decimal AUD/JPY
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.67, contract_size=100000,  # ~$0.67 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="Australian Dollar vs Japanese Yen",
+                base_currency='AUD', quote_currency='JPY'
+            ),
+            'CADJPY': InstrumentMetadata(
+                symbol='CADJPY', asset_class=AssetClass.FOREX,
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Modern 3-decimal CAD/JPY
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.67, contract_size=100000,  # ~$0.67 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="Canadian Dollar vs Japanese Yen",
+                base_currency='CAD', quote_currency='JPY'
+            ),
+            'CHFJPY': InstrumentMetadata(
+                symbol='CHFJPY', asset_class=AssetClass.FOREX,
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Modern 3-decimal CHF/JPY
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.67, contract_size=100000,  # ~$0.67 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="Swiss Franc vs Japanese Yen",
+                base_currency='CHF', quote_currency='JPY'
+            ),
+            'NZDJPY': InstrumentMetadata(
+                symbol='NZDJPY', asset_class=AssetClass.FOREX,
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Modern 3-decimal NZD/JPY
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.67, contract_size=100000,  # ~$0.67 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="New Zealand Dollar vs Japanese Yen",
+                base_currency='NZD', quote_currency='JPY'
+            ),
+            
+            # === OTHER MAJOR CROSS PAIRS ===
+            'AUDCAD': InstrumentMetadata(
+                symbol='AUDCAD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal AUD/CAD
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.74, contract_size=100000,  # ~$0.74 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="Australian Dollar vs Canadian Dollar",
+                base_currency='AUD', quote_currency='CAD'
+            ),
+            'AUDCHF': InstrumentMetadata(
+                symbol='AUDCHF', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal AUD/CHF
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=1.08, contract_size=100000,  # ~$1.08 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="Australian Dollar vs Swiss Franc",
+                base_currency='AUD', quote_currency='CHF'
+            ),
+            'AUDNZD': InstrumentMetadata(
+                symbol='AUDNZD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal AUD/NZD
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.62, contract_size=100000,  # ~$0.62 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="Australian Dollar vs New Zealand Dollar",
+                base_currency='AUD', quote_currency='NZD'
+            ),
+            'CADCHF': InstrumentMetadata(
+                symbol='CADCHF', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal CAD/CHF
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=1.08, contract_size=100000,  # ~$1.08 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="Canadian Dollar vs Swiss Franc",
+                base_currency='CAD', quote_currency='CHF'
+            ),
+            'NZDCAD': InstrumentMetadata(
+                symbol='NZDCAD', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal NZD/CAD
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.74, contract_size=100000,  # ~$0.74 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="New Zealand Dollar vs Canadian Dollar",
+                base_currency='NZD', quote_currency='CAD'
+            ),
+            'NZDCHF': InstrumentMetadata(
+                symbol='NZDCHF', asset_class=AssetClass.FOREX,
+                pip_size=0.00001, decimal_places=5, quote_precision=5,  # Modern 5-decimal NZD/CHF
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=1.08, contract_size=100000,  # ~$1.08 per pip per standard lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(21,21), is_24_7=False,
+                margin_percentage=0.03, description="New Zealand Dollar vs Swiss Franc",
+                base_currency='NZD', quote_currency='CHF'
             )
         }
         

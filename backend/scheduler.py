@@ -92,8 +92,19 @@ class SignalScheduler:
         """Generate signals specifically for major forex pairs with institutional analysis"""
         db = self.SessionLocal()
         try:
-            # Required major forex pairs only
-            forex_symbols = ['EURUSD', 'GBPUSD', 'USDJPY']
+            # All major forex pairs for comprehensive trading coverage
+            forex_symbols = [
+                # USD Major Pairs
+                'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD',
+                # EUR Cross Pairs
+                'EURGBP', 'EURJPY', 'EURCHF', 'EURAUD', 'EURCAD',
+                # GBP Cross Pairs
+                'GBPJPY', 'GBPAUD', 'GBPCHF', 'GBPCAD',
+                # JPY Cross Pairs
+                'AUDJPY', 'CADJPY', 'CHFJPY', 'NZDJPY',
+                # Other Major Cross Pairs
+                'AUDCAD', 'AUDCHF', 'AUDNZD', 'CADCHF', 'NZDCAD', 'NZDCHF'
+            ]
             
             for symbol in forex_symbols:
                 try:
@@ -102,7 +113,7 @@ class SignalScheduler:
                 except Exception as e:
                     logger.error(f"Error processing forex {symbol}: {e}")
             
-            logger.info(f"Forex signal generation completed at {datetime.utcnow()}")
+            logger.info(f"Forex signal generation completed for {len(forex_symbols)} pairs at {datetime.utcnow()}")
             
         except Exception as e:
             logger.error(f"Forex signal generation failed: {e}")

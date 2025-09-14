@@ -65,10 +65,6 @@ localPort = 36239
 externalPort = 4200
 
 [[ports]]
-localPort = 36625
-externalPort = 5173
-
-[[ports]]
 localPort = 39105
 externalPort = 3002
 
@@ -83,6 +79,10 @@ externalPort = 3001
 [[ports]]
 localPort = 42473
 externalPort = 5000
+
+[[ports]]
+localPort = 43077
+externalPort = 5173
 
 [agent]
 integrations = ["python_openai:1.0.0", "python_anthropic:1.0.0", "perplexity_v0:1.0.0", "python_gemini:1.0.0"]

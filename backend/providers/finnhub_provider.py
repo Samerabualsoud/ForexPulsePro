@@ -24,11 +24,43 @@ class FinnhubProvider:
             logger.info("No Finnhub API key found")
         
         # Forex symbol mapping (Finnhub format)
-        # Using OANDA exchange for major forex pairs
+        # Using OANDA exchange for all major forex pairs
         self.symbol_mapping = {
+            # USD Major Pairs
             'EURUSD': 'OANDA:EUR_USD',
             'GBPUSD': 'OANDA:GBP_USD',
-            'USDJPY': 'OANDA:USD_JPY'
+            'USDJPY': 'OANDA:USD_JPY',
+            'USDCHF': 'OANDA:USD_CHF',
+            'AUDUSD': 'OANDA:AUD_USD',
+            'USDCAD': 'OANDA:USD_CAD',
+            'NZDUSD': 'OANDA:NZD_USD',
+            
+            # EUR Cross Pairs
+            'EURGBP': 'OANDA:EUR_GBP',
+            'EURJPY': 'OANDA:EUR_JPY',
+            'EURCHF': 'OANDA:EUR_CHF',
+            'EURAUD': 'OANDA:EUR_AUD',
+            'EURCAD': 'OANDA:EUR_CAD',
+            
+            # GBP Cross Pairs
+            'GBPJPY': 'OANDA:GBP_JPY',
+            'GBPAUD': 'OANDA:GBP_AUD',
+            'GBPCHF': 'OANDA:GBP_CHF',
+            'GBPCAD': 'OANDA:GBP_CAD',
+            
+            # JPY Cross Pairs
+            'AUDJPY': 'OANDA:AUD_JPY',
+            'CADJPY': 'OANDA:CAD_JPY',
+            'CHFJPY': 'OANDA:CHF_JPY',
+            'NZDJPY': 'OANDA:NZD_JPY',
+            
+            # Other Major Cross Pairs
+            'AUDCAD': 'OANDA:AUD_CAD',
+            'AUDCHF': 'OANDA:AUD_CHF',
+            'AUDNZD': 'OANDA:AUD_NZD',
+            'CADCHF': 'OANDA:CAD_CHF',
+            'NZDCAD': 'OANDA:NZD_CAD',
+            'NZDCHF': 'OANDA:NZD_CHF'
         }
         
         logger.info(f"Finnhub provider initialized with API key: {'✓' if self.api_key else '✗'}")
@@ -210,7 +242,12 @@ class FinnhubProvider:
             
         try:
             # For major forex pairs, get forex news
-            if symbol.upper() in ['EURUSD', 'GBPUSD', 'USDJPY']:
+            major_forex_pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD',
+                                 'EURGBP', 'EURJPY', 'EURCHF', 'EURAUD', 'EURCAD',
+                                 'GBPJPY', 'GBPAUD', 'GBPCHF', 'GBPCAD',
+                                 'AUDJPY', 'CADJPY', 'CHFJPY', 'NZDJPY',
+                                 'AUDCAD', 'AUDCHF', 'AUDNZD', 'CADCHF', 'NZDCAD', 'NZDCHF']
+            if symbol.upper() in major_forex_pairs:
                 # Get forex news for major forex pairs
                 return await self.get_news('forex', limit)
             elif len(symbol) == 6 and symbol.isalpha():

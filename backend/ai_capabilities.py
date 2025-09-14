@@ -23,6 +23,8 @@ DEEPSEEK_AVAILABLE = False
 DEEPSEEK_ENABLED = False
 HUGGINGFACE_AVAILABLE = False
 HUGGINGFACE_ENABLED = False
+GROQ_AVAILABLE = False
+GROQ_ENABLED = False
 
 # Try to import OpenAI package
 try:
@@ -90,9 +92,24 @@ if HUGGINGFACE_API_TOKEN:
 else:
     logger.info("Hugging Face API token not provided (HUGGINGFACE_API_TOKEN)")
 
+# Check Groq availability (uses requests with OpenAI-compatible API)
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+if GROQ_API_KEY:
+    try:
+        import requests
+        GROQ_AVAILABLE = True
+        GROQ_ENABLED = True
+        logger.info("Groq integration enabled with API key")
+    except ImportError:
+        logger.warning("Groq requires requests library")
+        GROQ_AVAILABLE = False
+        GROQ_ENABLED = False
+else:
+    logger.info("Groq API key not provided (GROQ_API_KEY)")
+
 # Calculate overall AI capabilities
-MULTI_AI_ENABLED = sum([OPENAI_ENABLED, PERPLEXITY_ENABLED, DEEPSEEK_ENABLED, HUGGINGFACE_ENABLED]) > 1
-TOTAL_AI_AGENTS = sum([True, PERPLEXITY_ENABLED, DEEPSEEK_ENABLED, HUGGINGFACE_ENABLED])  # Manus AI always available
+MULTI_AI_ENABLED = sum([OPENAI_ENABLED, PERPLEXITY_ENABLED, DEEPSEEK_ENABLED, HUGGINGFACE_ENABLED, GROQ_ENABLED]) > 1
+TOTAL_AI_AGENTS = sum([True, PERPLEXITY_ENABLED, DEEPSEEK_ENABLED, HUGGINGFACE_ENABLED, GROQ_ENABLED])  # Manus AI always available
 
 logger.info(f"Multi-AI System Status: {TOTAL_AI_AGENTS} agents available, Multi-AI: {MULTI_AI_ENABLED}")
 
@@ -112,6 +129,8 @@ def get_ai_capabilities() -> Dict[str, Any]:
         'deepseek_enabled': DEEPSEEK_ENABLED,
         'huggingface_available': HUGGINGFACE_AVAILABLE,
         'huggingface_enabled': HUGGINGFACE_ENABLED,
+        'groq_available': GROQ_AVAILABLE,
+        'groq_enabled': GROQ_ENABLED,
         'multi_ai_enabled': MULTI_AI_ENABLED,
         'total_ai_agents': TOTAL_AI_AGENTS,
         'dual_ai_mode': OPENAI_ENABLED,  # Legacy compatibility
@@ -126,6 +145,7 @@ def get_ai_capabilities() -> Dict[str, Any]:
             'perplexity_news': PERPLEXITY_ENABLED,
             'deepseek_reasoning': DEEPSEEK_ENABLED,
             'finbert_sentiment': HUGGINGFACE_ENABLED,
+            'groq_reasoning': GROQ_ENABLED,
             'fallback_manus_ai': True  # Always available
         }
     }
@@ -192,6 +212,28 @@ def create_finbert_client() -> Optional[Any]:
         logger.error(f"Failed to create FinBERT client: {e}")
         return None
 
+def create_groq_client() -> Optional[Any]:
+    """
+    Create Groq client if available and enabled
+    
+    Returns:
+        Simple requests-based client for Groq API or None if not available
+    """
+    if not GROQ_ENABLED:
+        return None
+    
+    try:
+        import requests
+        # Return a simple client config dict for Groq API
+        return {
+            'api_key': GROQ_API_KEY,
+            'base_url': 'https://api.groq.com/openai/v1',
+            'requests': requests
+        }
+    except Exception as e:
+        logger.error(f"Failed to create Groq client: {e}")
+        return None
+
 def log_ai_status():
     """Log the current AI capability status"""
     capabilities = get_ai_capabilities()
@@ -202,6 +244,7 @@ def log_ai_status():
         if PERPLEXITY_ENABLED: active_agents.append("Perplexity")
         if DEEPSEEK_ENABLED: active_agents.append("DeepSeek")
         if HUGGINGFACE_ENABLED: active_agents.append("FinBERT")
+        if GROQ_ENABLED: active_agents.append("Groq")
         
         logger.info(f"Multi-AI mode active: Manus AI + {', '.join(active_agents)}")
     elif capabilities['dual_ai_mode']:

@@ -27,6 +27,13 @@ except Exception as e:
     FinBERTSentimentAgent = None
     logger.warning(f"FinBERT disabled: import failed: {e}")
 
+# Optional Groq import with fallback
+try:
+    from .groq_reasoning_agent import GroqReasoningAgent
+except Exception as e:
+    GroqReasoningAgent = None
+    logger.warning(f"Groq disabled: import failed: {e}")
+
 class MultiAIConsensus:
     """
     Advanced multi-AI consensus system that combines insights from:
@@ -34,6 +41,7 @@ class MultiAIConsensus:
     - Perplexity AI (Market intelligence)
     - DeepSeek AI (Advanced reasoning and sentiment analysis)
     - FinBERT AI (Financial news sentiment analysis)
+    - Groq AI (Fast reasoning and market analysis)
     """
     
     def __init__(self):
@@ -42,6 +50,7 @@ class MultiAIConsensus:
         self.perplexity_agent = PerplexityNewsAgent()
         self.deepseek_agent = DeepSeekAgent() if DeepSeekAgent else None
         self.finbert_agent = FinBERTSentimentAgent() if FinBERTSentimentAgent else None
+        self.groq_agent = GroqReasoningAgent() if GroqReasoningAgent else None
         
         # Track agent availability
         self.available_agents = self._check_agent_availability()
@@ -85,6 +94,10 @@ class MultiAIConsensus:
         
         if self.available_agents.get('finbert_sentiment') and base_signal:
             tasks.append(self._run_finbert_analysis(symbol, base_signal.get('action', 'BUY')))
+        
+        if self.available_agents.get('groq_reasoning'):
+            current_price = market_data['close'].iloc[-1] if len(market_data) > 0 else 0
+            tasks.append(self._run_groq_analysis(symbol, market_data, current_price))
         
         # Execute all analyses concurrently
         if tasks:
@@ -174,6 +187,18 @@ class MultiAIConsensus:
             logger.error(f"FinBERT analysis failed: {e}")
             return {}
     
+    async def _run_groq_analysis(self, symbol: str, market_data: pd.DataFrame, current_price: float) -> Dict[str, Any]:
+        """Run Groq fast reasoning and market analysis"""
+        try:
+            if self.groq_agent is None:
+                logger.warning("Groq agent not available")
+                return {}
+            analysis = await self.groq_agent.analyze_market_sentiment(symbol, market_data, current_price)
+            return {'groq_reasoning': analysis}
+        except Exception as e:
+            logger.error(f"Groq analysis failed: {e}")
+            return {}
+    
     def _generate_consensus(self, analyses: Dict[str, Any], base_signal: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Generate final consensus from all AI analyses
@@ -198,7 +223,7 @@ class MultiAIConsensus:
             agent_insights['manus_ai'] = {
                 'regime': manus.get('regime', 'UNKNOWN'),
                 'market_condition': manus.get('market_condition', 'neutral'),
-                'weight': 0.3  # Primary weight for strategy recommendations
+                'weight': 0.2  # Balanced weight for 5-agent system
             }
         
         
@@ -225,7 +250,7 @@ class MultiAIConsensus:
             agent_insights['deepseek_reasoning'] = {
                 'sentiment': deepseek.get('sentiment', 'neutral'),
                 'reasoning': deepseek.get('reasoning', ''),
-                'weight': 0.25
+                'weight': 0.2
             }
         
         # Process FinBERT sentiment insights
@@ -238,13 +263,27 @@ class MultiAIConsensus:
                 'sentiment': finbert.get('sentiment', 'neutral'),
                 'risk_factors': finbert.get('risk_factors', []),
                 'confidence': finbert.get('confidence', 0.0),
-                'weight': 0.25
+                'weight': 0.2
             }
         
-        # **QUALITY REQUIREMENT**: Minimum 2 out of 4 agents required for valid signals
+        # Process Groq reasoning insights
+        if 'groq_reasoning' in analyses:
+            groq = analyses['groq_reasoning']
+            groq_confidence = groq.get('confidence', 0.0)
+            if groq_confidence > 0:
+                confidence_adjustments.append(('groq_reasoning', groq_confidence - 0.5, 0.2))
+            
+            agent_insights['groq_reasoning'] = {
+                'sentiment': groq.get('sentiment', 'neutral'),
+                'reasoning': groq.get('reasoning', ''),
+                'market_structure': groq.get('market_structure', 'ranging'),
+                'weight': 0.2
+            }
+        
+        # **QUALITY REQUIREMENT**: Minimum 2 out of 5 agents required for valid signals
         available_agents = len(agent_insights)
         if available_agents < 2:
-            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/4 (minimum 2 required)")
+            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/5 (minimum 2 required)")
             return {
                 'final_confidence': 0.0,
                 'consensus_action': 'INSUFFICIENT_CONSENSUS',
@@ -316,7 +355,7 @@ class MultiAIConsensus:
         bearish_signals = 0
         
         for agent, insights in agent_insights.items():
-            if agent in ['perplexity_news', 'finbert_sentiment', 'deepseek_reasoning']:
+            if agent in ['perplexity_news', 'finbert_sentiment', 'deepseek_reasoning', 'groq_reasoning']:
                 sentiment = insights.get('sentiment', 'neutral')
                 if sentiment == 'bullish':
                     bullish_signals += 1
@@ -382,7 +421,8 @@ class MultiAIConsensus:
             'manus_ai': True,  # Always available
             'perplexity_news': self.perplexity_agent.is_available(),
             'deepseek_reasoning': bool(self.deepseek_agent and self.deepseek_agent.is_available()),
-            'finbert_sentiment': bool(self.finbert_agent and self.finbert_agent.is_available())
+            'finbert_sentiment': bool(self.finbert_agent and self.finbert_agent.is_available()),
+            'groq_reasoning': bool(self.groq_agent and self.groq_agent.is_available())
         }
     
     def get_agent_status(self) -> Dict[str, Any]:

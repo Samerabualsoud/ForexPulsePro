@@ -10,6 +10,7 @@ from sqlalchemy import and_
 from ..models import Signal
 from ..database import SessionLocal
 from ..logs.logger import get_logger
+from ..instruments.metadata import get_pip_size, get_asset_class, AssetClass
 
 logger = get_logger(__name__)
 
@@ -94,16 +95,40 @@ class SignalEvaluator:
                 signal.tp_reached = True
                 signal.sl_hit = False
                 
-                # Calculate simulated pips result
-                # For forex, 1 pip = 0.0001 for most pairs (except JPY pairs where 1 pip = 0.01)
-                # JPY pairs: 1 pip = 0.01, others: 1 pip = 0.0001
-                if 'JPY' in signal.symbol:
-                    pip_value = 0.01
-                else:
-                    pip_value = 0.0001
+                # Calculate simulated pips result using proper instrument metadata
+                pip_value = get_pip_size(signal.symbol)
+                asset_class = get_asset_class(signal.symbol)
+                
+                # Validate pip_value - ensure we got a valid size from metadata
+                if pip_value <= 0:
+                    self.logger.error(f"Invalid pip_value {pip_value} for {signal.symbol}, using fallback")
+                    # Fallback only when pip_value is invalid
+                    if asset_class == AssetClass.CRYPTO:
+                        pip_value = 1.0  # $1 per pip for crypto
+                    elif asset_class == AssetClass.METALS:
+                        pip_value = 0.1  # $0.1 per pip for metals
+                    elif 'JPY' in signal.symbol:
+                        pip_value = 0.01  # 0.01 for JPY pairs
+                    else:
+                        pip_value = 0.0001  # 0.0001 for regular forex
                 
                 price_diff = abs(signal.tp - signal.price)
                 signal.pips_result = price_diff / pip_value
+                
+                # Enhanced sanity check for unrealistic pip values
+                if abs(signal.pips_result) > 5000:  # Lowered threshold
+                    self.logger.error(f"CRITICAL: Unrealistic pip calculation for {signal.symbol}: {signal.pips_result:.1f} pips")
+                    self.logger.error(f"Details: price_diff={price_diff}, pip_value={pip_value}, asset_class={asset_class}")
+                    
+                    # Apply more conservative caps based on asset class
+                    if asset_class == AssetClass.CRYPTO:
+                        signal.pips_result = min(1000, max(-1000, signal.pips_result))
+                    elif asset_class == AssetClass.METALS:
+                        signal.pips_result = min(500, max(-500, signal.pips_result))
+                    else:  # Forex
+                        signal.pips_result = min(300, max(-300, signal.pips_result))
+                    
+                    self.logger.warning(f"Capped pips_result to {signal.pips_result:.1f} for safety")
                     
             else:
                 # LOSS - SL hit
@@ -111,16 +136,46 @@ class SignalEvaluator:
                 signal.tp_reached = False
                 signal.sl_hit = True
                 
-                # Calculate simulated pips loss
-                # For forex, 1 pip = 0.0001 for most pairs (except JPY pairs where 1 pip = 0.01)
-                # JPY pairs: 1 pip = 0.01, others: 1 pip = 0.0001
-                if 'JPY' in signal.symbol:
-                    pip_value = 0.01
-                else:
-                    pip_value = 0.0001
+                # Calculate simulated pips loss using proper instrument metadata
+                pip_value = get_pip_size(signal.symbol)
+                asset_class = get_asset_class(signal.symbol)
+                
+                # Validate pip_value - ensure we got a valid size from metadata
+                if pip_value <= 0:
+                    self.logger.error(f"Invalid pip_value {pip_value} for {signal.symbol}, using fallback")
+                    # Fallback only when pip_value is invalid
+                    if asset_class == AssetClass.CRYPTO:
+                        pip_value = 1.0  # $1 per pip for crypto
+                    elif asset_class == AssetClass.METALS:
+                        pip_value = 0.1  # $0.1 per pip for metals
+                    elif 'JPY' in signal.symbol:
+                        pip_value = 0.01  # 0.01 for JPY pairs
+                    else:
+                        pip_value = 0.0001  # 0.0001 for regular forex
                 
                 price_diff = abs(signal.price - signal.sl)
                 signal.pips_result = -(price_diff / pip_value)
+                
+                # Enhanced sanity check for unrealistic pip values
+                if abs(signal.pips_result) > 5000:  # Lowered threshold
+                    self.logger.error(f"CRITICAL: Unrealistic pip calculation for {signal.symbol}: {signal.pips_result:.1f} pips")
+                    self.logger.error(f"Details: price_diff={price_diff}, pip_value={pip_value}, asset_class={asset_class}")
+                    
+                    # Apply more conservative caps based on asset class
+                    if asset_class == AssetClass.CRYPTO:
+                        cap = 1000
+                    elif asset_class == AssetClass.METALS:
+                        cap = 500
+                    else:  # Forex
+                        cap = 300
+                    
+                    # Cap both positive and negative values appropriately
+                    if signal.pips_result < 0:
+                        signal.pips_result = max(-cap, signal.pips_result)
+                    else:
+                        signal.pips_result = min(cap, signal.pips_result)
+                    
+                    self.logger.warning(f"Capped pips_result to {signal.pips_result:.1f} for safety")
             
             signal.evaluated_at = datetime.utcnow()
             db.commit()

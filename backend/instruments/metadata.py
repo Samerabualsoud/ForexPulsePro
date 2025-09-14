@@ -203,79 +203,90 @@ class InstrumentMetadataDB:
         }
         
         # === CRYPTOCURRENCY PAIRS ===
+        # Using realistic pip sizes for crypto trading (typical moves = 10-50 pips)
         crypto_pairs = {
             'BTCUSD': InstrumentMetadata(
                 symbol='BTCUSD', asset_class=AssetClass.CRYPTO,
-                pip_size=0.01, decimal_places=2, quote_precision=2,
+                pip_size=2.0, decimal_places=2, quote_precision=2,  # $100 move = 50 pips
                 min_lot_size=0.001, max_lot_size=100.0, lot_step=0.001,
-                pip_value_per_lot=1.0, contract_size=1,
+                pip_value_per_lot=2.0, contract_size=1,
                 market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,
                 margin_percentage=0.10, description="Bitcoin vs US Dollar",
                 base_currency='BTC', quote_currency='USD'
             ),
             'ETHUSD': InstrumentMetadata(
                 symbol='ETHUSD', asset_class=AssetClass.CRYPTO,
-                pip_size=0.001, decimal_places=3, quote_precision=3,
+                pip_size=0.20, decimal_places=3, quote_precision=3,  # $10 move = 50 pips
                 min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
-                pip_value_per_lot=0.1, contract_size=1,
+                pip_value_per_lot=0.20, contract_size=1,
                 market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,
                 margin_percentage=0.10, description="Ethereum vs US Dollar",
                 base_currency='ETH', quote_currency='USD'
             ),
             'LTCUSD': InstrumentMetadata(
                 symbol='LTCUSD', asset_class=AssetClass.CRYPTO,
-                pip_size=0.001, decimal_places=3, quote_precision=3,
+                pip_size=0.10, decimal_places=3, quote_precision=3,  # $5 move = 50 pips
                 min_lot_size=0.1, max_lot_size=1000.0, lot_step=0.1,
-                pip_value_per_lot=0.1, contract_size=1,
+                pip_value_per_lot=0.10, contract_size=1,
                 market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,
                 margin_percentage=0.10, description="Litecoin vs US Dollar",
                 base_currency='LTC', quote_currency='USD'
             ),
             'ADAUSD': InstrumentMetadata(
                 symbol='ADAUSD', asset_class=AssetClass.CRYPTO,
-                pip_size=0.0001, decimal_places=4, quote_precision=4,
+                pip_size=0.005, decimal_places=4, quote_precision=4,  # $0.25 move = 50 pips
                 min_lot_size=1.0, max_lot_size=100000.0, lot_step=1.0,
-                pip_value_per_lot=0.01, contract_size=1,
+                pip_value_per_lot=0.005, contract_size=1,
                 market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,
                 margin_percentage=0.10, description="Cardano vs US Dollar",
                 base_currency='ADA', quote_currency='USD'
+            ),
+            'SOLUSD': InstrumentMetadata(
+                symbol='SOLUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.50, decimal_places=3, quote_precision=3,  # $25 move = 50 pips
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.50, contract_size=1,
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,
+                margin_percentage=0.10, description="Solana vs US Dollar",
+                base_currency='SOL', quote_currency='USD'
             )
         }
         
         # === PRECIOUS METALS ===
+        # Using realistic pip sizes for metals trading (typical moves = 10-50 pips)
         metals = {
             'XAUUSD': InstrumentMetadata(
                 symbol='XAUUSD', asset_class=AssetClass.METALS,
-                pip_size=0.01, decimal_places=2, quote_precision=2,
+                pip_size=0.20, decimal_places=2, quote_precision=2,  # $10 move = 50 pips
                 min_lot_size=0.01, max_lot_size=100.0, lot_step=0.01,
-                pip_value_per_lot=1.0, contract_size=100,
+                pip_value_per_lot=0.20, contract_size=100,
                 market_open_days=[0,1,2,3,4], market_open_hours=(1,23), is_24_7=False,
                 margin_percentage=0.02, description="Gold vs US Dollar",
                 base_currency='XAU', quote_currency='USD'
             ),
             'XAGUSD': InstrumentMetadata(
                 symbol='XAGUSD', asset_class=AssetClass.METALS,
-                pip_size=0.001, decimal_places=3, quote_precision=3,
+                pip_size=0.02, decimal_places=3, quote_precision=3,  # $1 move = 50 pips
                 min_lot_size=0.1, max_lot_size=1000.0, lot_step=0.1,
-                pip_value_per_lot=0.5, contract_size=5000,
+                pip_value_per_lot=0.02, contract_size=5000,
                 market_open_days=[0,1,2,3,4], market_open_hours=(1,23), is_24_7=False,
                 margin_percentage=0.02, description="Silver vs US Dollar",
                 base_currency='XAG', quote_currency='USD'
             ),
             'XPTUSD': InstrumentMetadata(
                 symbol='XPTUSD', asset_class=AssetClass.METALS,
-                pip_size=0.01, decimal_places=2, quote_precision=2,
+                pip_size=0.20, decimal_places=2, quote_precision=2,  # $10 move = 50 pips
                 min_lot_size=0.01, max_lot_size=100.0, lot_step=0.01,
-                pip_value_per_lot=1.0, contract_size=50,
+                pip_value_per_lot=0.20, contract_size=50,
                 market_open_days=[0,1,2,3,4], market_open_hours=(1,23), is_24_7=False,
                 margin_percentage=0.02, description="Platinum vs US Dollar",
                 base_currency='XPT', quote_currency='USD'
             ),
             'XPDUSD': InstrumentMetadata(
                 symbol='XPDUSD', asset_class=AssetClass.METALS,
-                pip_size=0.01, decimal_places=2, quote_precision=2,
+                pip_size=0.20, decimal_places=2, quote_precision=2,  # $10 move = 50 pips
                 min_lot_size=0.01, max_lot_size=100.0, lot_step=0.01,
-                pip_value_per_lot=1.0, contract_size=100,
+                pip_value_per_lot=0.20, contract_size=100,
                 market_open_days=[0,1,2,3,4], market_open_hours=(1,23), is_24_7=False,
                 margin_percentage=0.02, description="Palladium vs US Dollar",
                 base_currency='XPD', quote_currency='USD'

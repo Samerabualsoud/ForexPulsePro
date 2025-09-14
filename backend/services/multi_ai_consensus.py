@@ -48,8 +48,8 @@ class MultiAIConsensus:
         # Initialize all AI agents
         self.manus_ai = ManusAI()
         self.perplexity_agent = PerplexityNewsAgent()
-        # Temporarily disable DeepSeek to avoid failures
-        self.deepseek_agent = None  # DeepSeekAgent() if DeepSeekAgent else None
+        # Enable DeepSeek agent if available
+        self.deepseek_agent = DeepSeekAgent() if DeepSeekAgent else None
         self.finbert_agent = FinBERTSentimentAgent() if FinBERTSentimentAgent else None
         self.groq_agent = GroqReasoningAgent() if GroqReasoningAgent else None
         

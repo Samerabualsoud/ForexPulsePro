@@ -105,7 +105,11 @@ class CircuitBreaker:
                     raise CircuitBreakerOpenError(f"Circuit breaker {self.name} is OPEN")
         
         try:
-            result = await func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func(*args, **kwargs)
+            # Use await-if-awaitable pattern to handle bound methods and partials
+            import inspect
+            result = func(*args, **kwargs)
+            if inspect.isawaitable(result):
+                result = await result
             await self._on_success()
             return result
         except self.config.expected_exception as e:
@@ -237,38 +241,27 @@ class ResilientAPIClient:
         if self.rate_limiter:
             await self.rate_limiter.wait_for_token()
         
-        # Define the request function
-        async def _make_request():
-            if use_httpx:
-                client = await self._get_http_client()
-                return await client.request(
-                    method=method,
-                    url=url,
-                    headers=headers,
-                    json=json_data,
-                    data=data,
-                    params=params
-                )
-            else:
-                # Synchronous requests fallback
-                response = requests.request(
-                    method=method,
-                    url=url,
-                    headers=headers,
-                    json=json_data,
-                    data=data,
-                    params=params,
-                    timeout=(10, 30)  # (connect, read) timeouts
-                )
-                return response
-        
-        # Apply circuit breaker if configured
-        if self.circuit_breaker:
-            return await self._retry_with_backoff(
-                lambda: self.circuit_breaker.call(_make_request)
+        # Define the async request function - always use httpx for consistency
+        async def do_request():
+            client = await self._get_http_client()
+            # CRITICAL FIX: Properly await the httpx request
+            response = await client.request(
+                method=method,
+                url=url,
+                headers=headers,
+                json=json_data,
+                data=data,
+                params=params
             )
+            return response
+        
+        # Apply circuit breaker if configured, with null guard
+        if self.circuit_breaker:
+            async def circuit_wrapped_request():
+                return await self.circuit_breaker.call(do_request)
+            return await self._retry_with_backoff(circuit_wrapped_request)
         else:
-            return await self._retry_with_backoff(_make_request)
+            return await self._retry_with_backoff(do_request)
     
     async def _retry_with_backoff(self, func: Callable) -> Any:
         """Execute function with exponential backoff retry logic"""
@@ -276,7 +269,9 @@ class ResilientAPIClient:
         
         for attempt in range(self.retry_config.max_retries + 1):
             try:
-                return await func() if asyncio.iscoroutinefunction(func) else func()
+                # Always await since we're dealing with async functions
+                result = await func()
+                return result
                 
             except Exception as e:
                 last_exception = e
@@ -298,7 +293,11 @@ class ResilientAPIClient:
                 logger.warning(f"{self.name}: Attempt {attempt + 1} failed: {e}, retrying in {delay:.1f}s")
                 await asyncio.sleep(delay)
         
-        raise last_exception
+        # Safe exception handling with fallback
+        if last_exception:
+            raise last_exception
+        else:
+            raise Exception(f"{self.name}: All retry attempts failed")
     
     async def close(self):
         """Close HTTP client connections"""

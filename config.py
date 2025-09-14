@@ -20,11 +20,30 @@ def get_backend_url() -> str:
     if backend_url:
         return backend_url.rstrip('/')
     
-    # For production deployment, construct URL based on host/port
+    # For development/testing, try localhost first (works in Replit workspace)
     backend_host = os.getenv("BACKEND_HOST", "localhost")
     backend_port = os.getenv("BACKEND_PORT", "8080")
+    localhost_url = f"http://{backend_host}:{backend_port}"
     
-    return f"http://{backend_host}:{backend_port}"
+    # In both development and production, try localhost:8080 first
+    # This works in Replit workspace and published apps where both services run together
+    import requests
+    try:
+        # Quick health check to see if backend is accessible
+        response = requests.get(f"{localhost_url}/api/health", timeout=2)
+        if response.status_code == 200:
+            return localhost_url
+    except:
+        pass
+    
+    # Fallback: Try to construct production URL if we have Replit environment
+    replit_domain = os.getenv("REPL_SLUG") or os.getenv("REPL_ID")
+    if replit_domain:
+        # In Replit published apps, try the .replit.app domain
+        return f"https://{replit_domain}.replit.app:8080"
+    
+    # Final fallback: return localhost (will trigger demo mode if unreachable)
+    return localhost_url
 
 
 def get_frontend_port() -> int:

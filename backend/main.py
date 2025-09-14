@@ -246,7 +246,7 @@ async def get_metrics(db: Session = Depends(get_db)):
     except Exception:
         metrics.update_database_status(False)
     
-    return Response(generate_latest(), media_type="text/plain")
+    return Response(generate_latest(registry=metrics.registry), media_type="text/plain")
 
 # Login endpoint removed - no authentication required
 

@@ -14,6 +14,7 @@ class PrometheusMetrics:
     """Central metrics collection for the Forex Signal Dashboard"""
     
     _instance = None
+    _registry = None
     
     def __new__(cls):
         if cls._instance is None:
@@ -25,6 +26,11 @@ class PrometheusMetrics:
             return
         self._initialized = True
         
+        # Create a custom registry to avoid conflicts
+        if PrometheusMetrics._registry is None:
+            PrometheusMetrics._registry = CollectorRegistry()
+        self.registry = PrometheusMetrics._registry
+        
         # ============================
         # SIGNAL GENERATION METRICS
         # ============================
@@ -33,7 +39,8 @@ class PrometheusMetrics:
         self.signals_generated_total = Counter(
             'forex_signals_generated_total',
             'Total signals generated',
-            ['strategy', 'symbol', 'signal_type']
+            ['strategy', 'symbol', 'signal_type'],
+            registry=self.registry
         )
         
         # Signal confidence distribution
@@ -41,7 +48,8 @@ class PrometheusMetrics:
             'forex_signal_confidence_score',
             'Distribution of signal confidence scores',
             ['strategy', 'symbol'],
-            buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+            buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+            registry=self.registry
         )
         
         # Signal processing time by strategy
@@ -49,14 +57,16 @@ class PrometheusMetrics:
             'forex_signal_processing_seconds',
             'Time spent processing signals by strategy',
             ['strategy', 'symbol'],
-            buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+            buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+            registry=self.registry
         )
         
         # Risk management actions
         self.risk_actions_total = Counter(
             'forex_risk_actions_total',
             'Total risk management actions taken',
-            ['action_type', 'reason']
+            ['action_type', 'reason'],
+            registry=self.registry
         )
         
         # ============================
@@ -67,7 +77,8 @@ class PrometheusMetrics:
         self.api_calls_total = Counter(
             'forex_api_calls_total',
             'Total API calls to data providers',
-            ['provider', 'endpoint', 'status']
+            ['provider', 'endpoint', 'status'],
+            registry=self.registry
         )
         
         # API response time
@@ -75,28 +86,32 @@ class PrometheusMetrics:
             'forex_api_response_seconds',
             'API response time by provider',
             ['provider', 'endpoint'],
-            buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0]
+            buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0],
+            registry=self.registry
         )
         
         # Provider availability
         self.provider_availability = Gauge(
             'forex_provider_availability',
             'Data provider availability status',
-            ['provider']
+            ['provider'],
+            registry=self.registry
         )
         
         # Rate limit status
         self.rate_limit_remaining = Gauge(
             'forex_rate_limit_remaining',
             'Remaining API calls before rate limit',
-            ['provider']
+            ['provider'],
+            registry=self.registry
         )
         
         # Fallback usage
         self.provider_fallback_total = Counter(
             'forex_provider_fallback_total',
             'Total fallback to alternative providers',
-            ['from_provider', 'to_provider', 'reason']
+            ['from_provider', 'to_provider', 'reason'],
+            registry=self.registry
         )
         
         # ============================
@@ -107,7 +122,8 @@ class PrometheusMetrics:
         self.whatsapp_messages_total = Counter(
             'forex_whatsapp_messages_total',
             'Total WhatsApp messages by status',
-            ['status', 'message_type']
+            ['status', 'message_type'],
+            registry=self.registry
         )
         
         # WhatsApp delivery time
@@ -115,14 +131,16 @@ class PrometheusMetrics:
             'forex_whatsapp_delivery_seconds',
             'WhatsApp message delivery time',
             ['message_type'],
-            buckets=[1.0, 2.5, 5.0, 10.0, 30.0, 60.0]
+            buckets=[1.0, 2.5, 5.0, 10.0, 30.0, 60.0],
+            registry=self.registry
         )
         
         # WhatsApp errors by type
         self.whatsapp_errors_total = Counter(
             'forex_whatsapp_errors_total',
             'WhatsApp errors by type',
-            ['error_type', 'error_code']
+            ['error_type', 'error_code'],
+            registry=self.registry
         )
         
         # ============================
@@ -132,13 +150,15 @@ class PrometheusMetrics:
         # Application info
         self.app_info = Info(
             'forex_app_info',
-            'Application information'
+            'Application information',
+            registry=self.registry
         )
         
         # Database connectivity
         self.database_connection_status = Gauge(
             'forex_database_connection_status',
-            'Database connection status (1=connected, 0=disconnected)'
+            'Database connection status (1=connected, 0=disconnected)',
+            registry=self.registry
         )
         
         # Database query time
@@ -146,41 +166,48 @@ class PrometheusMetrics:
             'forex_database_query_seconds',
             'Database query execution time',
             ['query_type'],
-            buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
+            buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0],
+            registry=self.registry
         )
         
         # System resource usage
         self.cpu_usage_percent = Gauge(
             'forex_cpu_usage_percent',
-            'CPU usage percentage'
+            'CPU usage percentage',
+            registry=self.registry
         )
         
         self.memory_usage_bytes = Gauge(
             'forex_memory_usage_bytes',
-            'Memory usage in bytes'
+            'Memory usage in bytes',
+            registry=self.registry
         )
         
         self.memory_usage_percent = Gauge(
             'forex_memory_usage_percent',
-            'Memory usage percentage'
+            'Memory usage percentage',
+            registry=self.registry
         )
         
         # Active database connections
         self.database_connections_active = Gauge(
             'forex_database_connections_active',
-            'Number of active database connections'
+            'Number of active database connections',
+            registry=self.registry
         )
         
         # Kill switch status
         self.kill_switch_status = Gauge(
             'forex_kill_switch_status',
-            'Kill switch status (1=enabled, 0=disabled)'
+            'Kill switch status (1=enabled, 0=disabled)',
+            registry=self.registry
         )
         
         # Application uptime
         self.app_uptime_seconds = Gauge(
             'forex_app_uptime_seconds',
-            'Application uptime in seconds'
+            'Application uptime in seconds',
+            registry=self.registry
         )
         
         # ============================
@@ -191,21 +218,24 @@ class PrometheusMetrics:
         self.strategy_performance = Gauge(
             'forex_strategy_performance_score',
             'Strategy performance score',
-            ['strategy', 'timeframe']
+            ['strategy', 'timeframe'],
+            registry=self.registry
         )
         
         # Market volatility
         self.market_volatility = Gauge(
             'forex_market_volatility',
             'Market volatility by symbol',
-            ['symbol']
+            ['symbol'],
+            registry=self.registry
         )
         
         # Signal accuracy (when backtesting data available)
         self.signal_accuracy_percent = Gauge(
             'forex_signal_accuracy_percent',
             'Signal accuracy percentage',
-            ['strategy', 'symbol', 'timeframe']
+            ['strategy', 'symbol', 'timeframe'],
+            registry=self.registry
         )
         
         # Initialize app info

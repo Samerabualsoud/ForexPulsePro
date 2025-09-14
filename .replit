@@ -28,25 +28,25 @@ args = "FastAPI Backend"
 name = "Forex Signal Dashboard"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "streamlit run app.py --server.port 5000"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "BACKEND_URL=http://localhost:8080 streamlit run app.py --server.port 5000 --server.address 0.0.0.0"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "FastAPI Backend"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000"
-waitForPort = 8000
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "BACKEND_PORT=8080 BACKEND_HOST=0.0.0.0 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8080"
+waitForPort = 8080
 
 [[ports]]
 localPort = 5000
@@ -67,6 +67,10 @@ externalPort = 4200
 [[ports]]
 localPort = 36825
 externalPort = 6000
+
+[[ports]]
+localPort = 37209
+externalPort = 6800
 
 [[ports]]
 localPort = 38013

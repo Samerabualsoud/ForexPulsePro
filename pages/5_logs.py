@@ -6,8 +6,17 @@ import requests
 import pandas as pd
 from datetime import datetime, timedelta
 import json
+import sys
+from pathlib import Path
 
 st.set_page_config(page_title="Logs", page_icon="📋", layout="wide")
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# Import config utility for backend URL
+from config import get_backend_url
 
 st.title("📋 System Logs")
 
@@ -15,7 +24,7 @@ st.title("📋 System Logs")
 def call_api(endpoint, method="GET", data=None, token=None):
     """Call backend API"""
     try:
-        base_url = "http://0.0.0.0:8000"
+        base_url = get_backend_url()
         url = f"{base_url}{endpoint}"
         
         headers = {}
@@ -33,7 +42,8 @@ def call_api(endpoint, method="GET", data=None, token=None):
             st.error(f"API Error: {response.status_code}")
             return None
     except requests.exceptions.RequestException as e:
-        st.error(f"Connection error: {e}")
+        st.warning("⚠️ Backend service unavailable. Please check your connection and try again.")
+        st.info("💡 If the issue persists, the backend service may be starting up or experiencing issues.")
         return None
 
 # Load recent signals for log simulation

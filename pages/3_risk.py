@@ -13,6 +13,9 @@ st.set_page_config(page_title="Risk Management", page_icon="🛡️", layout="wi
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# Import config utility for backend URL
+from config import get_backend_url
+
 # No authentication required
 user_info = {"username": "user", "role": "admin"}
 
@@ -124,25 +127,31 @@ st.markdown("""
 st.markdown('<h1 class="risk-title">🛡️ Risk Management</h1>', unsafe_allow_html=True)
 
 # Helper function for API calls
-def call_api(endpoint, method="GET", data=None):
+def call_api(endpoint, method="GET", data=None, retries=2):
     """Call backend API with fallback to demo data"""
-    try:
-        base_url = "http://0.0.0.0:8000"
-        url = f"{base_url}{endpoint}"
-        
-        if method == "GET":
-            response = requests.get(url, timeout=5)
-        elif method == "POST":
-            response = requests.post(url, json=data, timeout=5)
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise requests.exceptions.ConnectionError("API not available")
+    for attempt in range(retries + 1):
+        try:
+            base_url = get_backend_url()
+            url = f"{base_url}{endpoint}"
             
-    except requests.exceptions.RequestException:
-        st.info("🔄 Running in demo mode")
-        return get_demo_risk_data(endpoint, method, data)
+            if method == "GET":
+                response = requests.get(url, timeout=10)
+            elif method == "POST":
+                response = requests.post(url, json=data, timeout=10)
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise requests.exceptions.ConnectionError("API not available")
+                
+        except requests.exceptions.RequestException as e:
+            if attempt == retries:
+                st.info("🔄 Backend service unavailable - running in demo mode")
+                return get_demo_risk_data(endpoint, method, data)
+            else:
+                # Brief pause before retry
+                import time
+                time.sleep(1)
 
 def get_demo_risk_data(endpoint, method="GET", data=None):
     """Provide demo risk data"""

@@ -4,9 +4,18 @@ API Keys and Configuration Management Page
 import streamlit as st
 import requests
 import os
+import sys
+from pathlib import Path
 from typing import Dict, Any
 
 st.set_page_config(page_title="API Keys", page_icon="🔐", layout="wide")
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# Import config utility for backend URL
+from config import get_backend_url
 
 st.title("🔐 API Keys & Configuration")
 
@@ -14,7 +23,7 @@ st.title("🔐 API Keys & Configuration")
 def call_api(endpoint, method="GET", data=None):
     """Call backend API (no authentication required)"""
     try:
-        base_url = "http://0.0.0.0:8000"
+        base_url = get_backend_url()
         url = f"{base_url}{endpoint}"
         
         if method == "GET":
@@ -28,7 +37,8 @@ def call_api(endpoint, method="GET", data=None):
             st.error(f"API Error: {response.status_code}")
             return None
     except requests.exceptions.RequestException as e:
-        st.error(f"Connection error: {e}")
+        st.warning("⚠️ Backend service unavailable. Please check your connection and try again.")
+        st.info("💡 If the issue persists, the backend service may be starting up or experiencing issues.")
         return None
 
 # No authentication required - direct access to API configuration

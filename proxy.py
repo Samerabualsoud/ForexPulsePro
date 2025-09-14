@@ -5,12 +5,13 @@ import streamlit as st
 import requests
 import json
 from typing import Dict, Any
+from config import get_backend_url
 
 class APIProxy:
     """Proxy API requests from Streamlit to FastAPI backend"""
     
-    def __init__(self, fastapi_base_url: str = "http://localhost:8000"):
-        self.fastapi_base_url = fastapi_base_url
+    def __init__(self, fastapi_base_url: str = None):
+        self.fastapi_base_url = fastapi_base_url or get_backend_url()
     
     def forward_request(self, path: str, method: str = "GET", 
                        headers: Dict[str, str] = None, 
@@ -40,7 +41,9 @@ class APIProxy:
             mock_response = requests.Response()
             mock_response.status_code = 503
             mock_response._content = json.dumps({
-                "detail": f"Backend service unavailable: {str(e)}"
+                "detail": "Backend service unavailable - please check connection",
+                "error_type": "connection_error",
+                "retry_suggestion": "Please try again in a few moments"
             }).encode()
             return mock_response
 

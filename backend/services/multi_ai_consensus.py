@@ -91,6 +91,22 @@ class MultiAIConsensus:
                 elif isinstance(result, dict) and result:
                     analyses.update(result)
         
+        # **CRITICAL VALIDATION**: Ensure we have actual analysis results before proceeding
+        if not analyses:
+            logger.error(f"CRITICAL: No AI analyses succeeded for {symbol} - all agents failed")
+            return {
+                'final_confidence': 0.0,
+                'consensus_action': 'NO_AGENTS_AVAILABLE',
+                'agent_count': 0,
+                'participating_agents': 0,
+                'consensus_strength': 0.0,
+                'consensus_level': 0.0,
+                'risk_level': 'HIGH',
+                'quality_gate': 'FAILED_ALL_AGENTS',
+                'agent_insights': {},
+                'multi_ai_valid': False
+            }
+        
         # Generate consensus analysis
         consensus = self._generate_consensus(analyses, base_signal)
         
@@ -214,18 +230,21 @@ class MultiAIConsensus:
                 'weight': 0.25
             }
         
-        # **QUALITY REQUIREMENT**: Minimum 2 out of 4 agents required for valid signals (temporarily lowered from 3)
+        # **QUALITY REQUIREMENT**: Minimum 3 out of 4 agents required for valid signals
         available_agents = len(agent_insights)
-        if available_agents < 2:
-            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/4 (minimum 2 required)")
+        if available_agents < 3:
+            logger.warning(f"Insufficient AI agents for consensus: {available_agents}/4 (minimum 3 required)")
             return {
                 'final_confidence': 0.0,
                 'consensus_action': 'INSUFFICIENT_CONSENSUS',
                 'agent_count': available_agents,
+                'participating_agents': available_agents,  # Signal engine expects this field
                 'consensus_strength': 0.0,
+                'consensus_level': 0.0,
                 'risk_level': 'HIGH',
                 'quality_gate': 'FAILED_MIN_AGENTS',
-                'agent_insights': agent_insights
+                'agent_insights': agent_insights,
+                'multi_ai_valid': False
             }
 
         # Calculate weighted confidence adjustment
@@ -249,18 +268,27 @@ class MultiAIConsensus:
         # Generate consensus recommendation
         consensus_action = self._determine_consensus_action(agent_insights, base_signal)
         
+        # Calculate consensus metrics
+        consensus_strength = self._calculate_consensus_strength(agent_insights)
+        
+        # **CRITICAL**: Additional validation - ensure we have actual participating agents
+        actual_participating_agents = len(agent_insights)
+        
         # Create detailed consensus analysis
         consensus = {
             'final_confidence': final_confidence,
             'base_confidence': base_confidence,
             'confidence_adjustment': final_confidence - base_confidence,
             'consensus_action': consensus_action,
-            'agent_count': len(analyses),
+            'agent_count': actual_participating_agents,
+            'participating_agents': actual_participating_agents,  # Signal engine expects this field
             'agent_insights': agent_insights,
-            'consensus_strength': self._calculate_consensus_strength(agent_insights),
+            'consensus_strength': consensus_strength,
+            'consensus_level': consensus_strength,  # Signal engine expects this field
             'risk_assessment': self._assess_overall_risk(agent_insights),
             'timestamp': datetime.now().isoformat(),
-            'multi_ai_enabled': True
+            'multi_ai_enabled': True,
+            'multi_ai_valid': actual_participating_agents >= 3 and consensus_strength >= 0.5
         }
         
         return consensus

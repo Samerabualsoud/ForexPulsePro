@@ -566,8 +566,28 @@ class SignalEngine:
             # Run multi-AI consensus analysis
             if self.multi_ai_consensus is not None:
                 consensus = await self.multi_ai_consensus.generate_enhanced_signal_analysis(symbol, data, base_signal)
+                
+                # **CRITICAL**: Enforce multi-AI quality gates
+                if not consensus.get('multi_ai_valid', False):
+                    logger.warning(f"Multi-AI consensus failed quality gates for {symbol}: {consensus.get('quality_gate', 'unknown')}")
+                    return  # Block signal generation
+                    
+                # Additional validation: never allow signals with 0 agents
+                participating_agents = consensus.get('participating_agents', 0)
+                if participating_agents == 0:
+                    logger.error(f"CRITICAL: Multi-AI consensus returned 0 participating agents for {symbol} - blocking signal")
+                    return
+                    
+                logger.info(f"Multi-AI consensus passed quality gates for {symbol}: {participating_agents} agents, consensus: {consensus.get('consensus_level', 0):.1%}")
             else:
-                consensus = {'final_confidence': base_signal.get('confidence', 0.5), 'consensus_level': 0.0}
+                # Fallback when multi-AI is not available
+                consensus = {
+                    'final_confidence': base_signal.get('confidence', 0.5), 
+                    'consensus_level': 0.0,
+                    'participating_agents': 0,
+                    'multi_ai_valid': False
+                }
+                logger.warning(f"Multi-AI consensus not available for {symbol} - using fallback processing")
             
             # Derive final action and confidence from multi-AI consensus
             final_action = base_signal['action']
@@ -658,10 +678,19 @@ class SignalEngine:
             db.add(signal)
             db.commit()
             
-            # Log comprehensive multi-AI analysis results
+            # Log comprehensive multi-AI analysis results with proper validation
+            participating_agents = consensus.get('participating_agents', 0)
+            consensus_strength = consensus.get('consensus_level', 0.0)
+            
+            # **FINAL VALIDATION**: Never log or create signals with 0 agents and high confidence
+            if participating_agents == 0 and signal.confidence > 0.5:
+                logger.error(f"CRITICAL BUG DETECTED: Attempted to create signal with 0 agents and {signal.confidence:.1%} confidence for {symbol} - BLOCKING")
+                db.rollback()
+                return
+                
             logger.info(f"Multi-AI enhanced signal created for {symbol}: {final_action} @ {price} "
-                       f"(confidence: {signal.confidence:.1%}, consensus: {consensus_level:.1%}, "
-                       f"agents: {consensus.get('participating_agents', 0)})")
+                       f"(confidence: {signal.confidence:.1%}, consensus: {consensus_strength:.1%}, "
+                       f"agents: {participating_agents})")
             
         except Exception as e:
             strategy_name = getattr(strategy_config, 'name', 'unknown') if 'strategy_config' in locals() else 'unknown'
@@ -686,12 +715,13 @@ class SignalEngine:
             logger.info(f"Executing auto-trade for signal {signal.id}: {signal.action} {signal.symbol} @ {signal.price} (confidence: {signal.confidence:.1%})")  # type: ignore[misc]
             
             # Determine order type
-            if signal.action == 'BUY':
+            action = str(signal.action)  # Force string conversion from SQLAlchemy column
+            if action == 'BUY':
                 order_type = OrderType.MARKET_BUY
-            elif signal.action == 'SELL':
+            elif action == 'SELL':
                 order_type = OrderType.MARKET_SELL
             else:
-                raise ValueError(f"Unknown signal action: {signal.action}")  # type: ignore[misc]
+                raise ValueError(f"Unknown signal action: {action}")
             
             # Create order request
             order_request = OrderRequest(
@@ -824,6 +854,11 @@ class SignalEngine:
     async def _get_multi_ai_recommendations(self, symbol: str, data: pd.DataFrame, strategy_names: List[str]) -> Dict[str, Any]:
         """Get enhanced recommendations from Multi-AI Consensus system"""
         try:
+            # Check if multi-AI consensus is available
+            if self.multi_ai_consensus is None:
+                logger.warning(f"Multi-AI consensus not available for {symbol}, using fallback")
+                raise Exception("Multi-AI consensus system not initialized")
+                
             # Generate comprehensive multi-AI analysis
             multi_ai_analysis = await self.multi_ai_consensus.generate_enhanced_signal_analysis(
                 symbol=symbol,

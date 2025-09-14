@@ -84,22 +84,29 @@ from .strategies.fibonacci_strategy import FibonacciStrategy
 def is_forex_market_open() -> bool:
     """
     Check if Forex market is currently open
-    Forex markets operate Monday 00:00 UTC to Friday 22:00 UTC
+    Forex markets operate Sunday 21:00 UTC to Friday 21:00 UTC
     """
     now = datetime.utcnow()
     weekday = now.weekday()  # Monday = 0, Sunday = 6
+    hour = now.hour
     
-    # Market closed on weekends (Saturday = 5, Sunday = 6)
+    # Saturday = Market CLOSED
     if weekday == 5:  # Saturday
         return False
+    
+    # Sunday = Market OPEN after 21:00 UTC
     elif weekday == 6:  # Sunday
-        return False
-    elif weekday == 0:  # Monday - open from 00:00 UTC
+        return hour >= 21
+    
+    # Monday to Thursday = Market OPEN
+    elif weekday in [0, 1, 2, 3]:  # Monday-Thursday
         return True
-    elif weekday == 4:  # Friday - close at 22:00 UTC
-        return now.hour < 22
-    else:  # Tuesday, Wednesday, Thursday - fully open
-        return True
+    
+    # Friday = Market OPEN until 21:00 UTC
+    elif weekday == 4:  # Friday
+        return hour < 21
+    
+    return False
 
 class SignalEngine:
     """Main signal generation engine"""

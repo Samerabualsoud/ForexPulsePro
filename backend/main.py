@@ -41,8 +41,7 @@ async def lifespan(app: FastAPI):
     try:
         from .services.multi_ai_consensus import MultiAIConsensus
         consensus_system = MultiAIConsensus()
-        if consensus_system.deepseek_agent:
-            ai_agents.append(consensus_system.deepseek_agent)
+        # DeepSeek agent disabled per user request
         if consensus_system.groq_agent:
             ai_agents.append(consensus_system.groq_agent)
         logger.info(f"Initialized {len(ai_agents)} AI agents for resource management")

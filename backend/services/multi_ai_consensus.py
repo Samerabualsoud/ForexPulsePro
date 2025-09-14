@@ -13,12 +13,9 @@ from ..logs.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Optional DeepSeek import with fallback
-try:
-    from .deepseek_agent import DeepSeekAgent
-except Exception as e:
-    DeepSeekAgent = None
-    logger.warning(f"DeepSeek disabled: import failed: {e}")
+# DeepSeek agent disabled per user request
+DeepSeekAgent = None
+logger.info("DeepSeek agent disabled by configuration")
 
 # Optional FinBERT import with fallback
 try:
@@ -39,17 +36,18 @@ class MultiAIConsensus:
     Advanced multi-AI consensus system that combines insights from:
     - Manus AI (Primary strategy recommendations)
     - Perplexity AI (Market intelligence)
-    - DeepSeek AI (Advanced reasoning and sentiment analysis)
     - FinBERT AI (Financial news sentiment analysis)
     - Groq AI (Fast reasoning and market analysis)
+    
+    Note: DeepSeek AI has been disabled per user configuration
     """
     
     def __init__(self):
         # Initialize all AI agents
         self.manus_ai = ManusAI()
         self.perplexity_agent = PerplexityNewsAgent()
-        # Enable DeepSeek agent if available
-        self.deepseek_agent = DeepSeekAgent() if DeepSeekAgent else None
+        # DeepSeek agent explicitly disabled
+        self.deepseek_agent = None
         self.finbert_agent = FinBERTSentimentAgent() if FinBERTSentimentAgent else None
         self.groq_agent = GroqReasoningAgent() if GroqReasoningAgent else None
         
@@ -102,10 +100,7 @@ class MultiAIConsensus:
             logger.debug(f"Adding Perplexity task for {symbol} with action: {signal_action}")
             tasks.append(self._run_perplexity_analysis(symbol, signal_action))
         
-        if self.available_agents.get('deepseek_reasoning'):
-            current_price = market_data['close'].iloc[-1] if len(market_data) > 0 else 0
-            logger.debug(f"Adding DeepSeek task for {symbol}")
-            tasks.append(self._run_deepseek_analysis(symbol, market_data, current_price))
+        # DeepSeek analysis disabled per user request
         
         if self.available_agents.get('finbert_sentiment'):
             signal_action = base_signal.get('action', 'NEUTRAL') if base_signal else 'NEUTRAL'
@@ -183,17 +178,7 @@ class MultiAIConsensus:
             return {}
     
     
-    async def _run_deepseek_analysis(self, symbol: str, market_data: pd.DataFrame, current_price: float) -> Dict[str, Any]:
-        """Run DeepSeek sentiment and reasoning analysis"""
-        try:
-            if self.deepseek_agent is None:
-                logger.warning("DeepSeek agent not available")
-                return {}
-            analysis = await self.deepseek_agent.analyze_market_sentiment(symbol, market_data, current_price)
-            return {'deepseek_reasoning': analysis}
-        except Exception as e:
-            logger.error(f"DeepSeek analysis failed: {e}")
-            return {}
+    # DeepSeek analysis method removed per user request
     
     async def _run_finbert_analysis(self, symbol: str, signal_action: str) -> Dict[str, Any]:
         """Run FinBERT financial news sentiment analysis"""
@@ -260,18 +245,7 @@ class MultiAIConsensus:
             }
         
         
-        # Process DeepSeek reasoning insights  
-        if 'deepseek_reasoning' in analyses:
-            deepseek = analyses['deepseek_reasoning']
-            deepseek_confidence = deepseek.get('confidence', 0.0)
-            if deepseek_confidence > 0:
-                confidence_adjustments.append(('deepseek_reasoning', deepseek_confidence - 0.5, 0.25))
-            
-            agent_insights['deepseek_reasoning'] = {
-                'sentiment': deepseek.get('sentiment', 'neutral'),
-                'reasoning': deepseek.get('reasoning', ''),
-                'weight': 0.2
-            }
+        # DeepSeek reasoning insights removed per user request
         
         # Process FinBERT sentiment insights
         if 'finbert_sentiment' in analyses:
@@ -410,7 +384,7 @@ class MultiAIConsensus:
         bearish_signals = 0
         
         for agent, insights in agent_insights.items():
-            if agent in ['perplexity_news', 'finbert_sentiment', 'deepseek_reasoning', 'groq_reasoning']:
+            if agent in ['perplexity_news', 'finbert_sentiment', 'groq_reasoning']:
                 sentiment = insights.get('sentiment', 'neutral')
                 if sentiment == 'bullish':
                     bullish_signals += 1
@@ -471,11 +445,10 @@ class MultiAIConsensus:
             return 'LOW'
     
     def _check_agent_availability(self) -> Dict[str, bool]:
-        """Check which AI agents are available"""
+        """Check which AI agents are available - DeepSeek excluded per user request"""
         return {
             'manus_ai': True,  # Always available
             'perplexity_news': self.perplexity_agent.is_available(),
-            'deepseek_reasoning': bool(self.deepseek_agent and self.deepseek_agent.is_available()),
             'finbert_sentiment': bool(self.finbert_agent and self.finbert_agent.is_available()),
             'groq_reasoning': bool(self.groq_agent and self.groq_agent.is_available())
         }

@@ -64,18 +64,10 @@ else:
 
 # Check DeepSeek availability (uses requests with OpenAI-compatible API)
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
-if DEEPSEEK_API_KEY:
-    try:
-        import requests
-        DEEPSEEK_AVAILABLE = True
-        DEEPSEEK_ENABLED = True
-        logger.info("DeepSeek integration enabled with API key")
-    except ImportError:
-        logger.warning("DeepSeek requires requests library")
-        DEEPSEEK_AVAILABLE = False
-        DEEPSEEK_ENABLED = False
-else:
-    logger.info("DeepSeek API key not provided (DEEPSEEK_API_KEY)")
+# DeepSeek integration forcibly disabled per user request
+DEEPSEEK_AVAILABLE = False
+DEEPSEEK_ENABLED = False
+logger.info("DeepSeek integration disabled by configuration")
 
 # Check Hugging Face FinBERT availability (uses requests for inference API)
 HUGGINGFACE_API_TOKEN = os.getenv('HUGGINGFACE_API_TOKEN')

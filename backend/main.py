@@ -47,6 +47,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Could not initialize AI agents for cleanup: {e}")
     
+    # **CRITICAL FIX**: Start the signal generation scheduler
+    signal_scheduler = None
+    try:
+        from .scheduler import SignalScheduler
+        signal_scheduler = SignalScheduler()
+        signal_scheduler.start()
+        logger.info("Signal generation scheduler initialized and started")
+    except Exception as e:
+        logger.error(f"Failed to start signal scheduler: {e}")
+    
     try:
         yield
     finally:

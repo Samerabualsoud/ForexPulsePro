@@ -343,15 +343,12 @@ class CoinGeckoProvider(BaseDataProvider):
             return None
     
     async def _get_ohlc_with_batching(self, symbol: str, timeframe: str, limit: int) -> Optional[pd.DataFrame]:
-        """Generate OHLC data using batching optimization"""
+        """CoinGecko does not provide real OHLC data - only current prices"""
         try:
-            # First try to get the current price from batch cache or batch request
-            current_price = await self.get_latest_price(symbol)
-            if not current_price:
-                return None
-            
-            # Generate synthetic OHLC data using the batched price
-            return self._generate_synthetic_ohlc_from_price(current_price, symbol, timeframe, limit)
+            # CoinGecko API does not provide historical OHLC data for crypto
+            # Only current prices are available through their free tier
+            logger.warning(f"CoinGecko does not provide real OHLC data for {symbol} - no synthetic data allowed")
+            return None
             
         except Exception as e:
             logger.error(f"Failed to get OHLC with batching for {symbol}: {e}")

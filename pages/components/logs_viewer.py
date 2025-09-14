@@ -6,6 +6,12 @@ import pandas as pd
 import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
+import sys
+from pathlib import Path
+
+# Add utils to path
+sys.path.append(str(Path(__file__).parent.parent.parent / "utils"))
+from timezone_utils import format_saudi_time_full, to_saudi_time, time_ago_saudi
 
 def render_logs_viewer(
     logs: List[Dict[str, Any]],
@@ -193,22 +199,19 @@ def render_log_statistics(logs: List[Dict[str, Any]]) -> None:
             st.metric("Most Active", f"{top_source[0]} ({top_source[1]})")
     
     with col4:
-        # Latest log time
+        # Latest log time (using Saudi time)
         if logs:
             latest_log = max(logs, key=lambda x: x.get('timestamp', datetime.min))
             latest_time = latest_log.get('timestamp')
             
-            if isinstance(latest_time, str):
-                latest_time = datetime.fromisoformat(latest_time.replace('Z', '+00:00'))
-            
-            if isinstance(latest_time, datetime):
-                time_ago = now - latest_time
-                if time_ago.total_seconds() < 60:
-                    st.metric("Latest Event", "Just now")
-                elif time_ago.total_seconds() < 3600:
-                    st.metric("Latest Event", f"{int(time_ago.total_seconds() / 60)}m ago")
-                else:
-                    st.metric("Latest Event", f"{int(time_ago.total_seconds() / 3600)}h ago")
+            if latest_time:
+                try:
+                    time_ago_str = time_ago_saudi(latest_time)
+                    st.metric("Latest Event", time_ago_str)
+                except:
+                    st.metric("Latest Event", "Unknown")
+            else:
+                st.metric("Latest Event", "Unknown")
     
     # Level distribution chart
     if logs:
@@ -298,17 +301,14 @@ def render_single_log_entry(log: Dict[str, Any], index: int) -> None:
     timestamp = log.get('timestamp')
     details = log.get('details', {})
     
-    # Format timestamp
-    if isinstance(timestamp, str):
+    # Format timestamp in Saudi local time
+    if timestamp:
         try:
-            timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-        except ValueError:
-            pass
-    
-    if isinstance(timestamp, datetime):
-        time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
+            time_str = format_saudi_time_full(timestamp)
+        except:
+            time_str = str(timestamp) if timestamp else "Unknown time"
     else:
-        time_str = str(timestamp) if timestamp else "Unknown time"
+        time_str = "Unknown time"
     
     # Determine styling based on log level
     level_config = {

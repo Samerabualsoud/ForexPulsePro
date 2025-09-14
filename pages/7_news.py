@@ -294,10 +294,15 @@ st.markdown('<div class="section-header">📰 Latest News</div>', unsafe_allow_h
 
 if filtered_articles:
     for article in filtered_articles[:10]:  # Show top 10 articles
-        # Format published time
+        # Format published time in Saudi local time
         try:
-            pub_time = datetime.fromisoformat(article['published_at'].replace('Z', '+00:00'))
-            time_str = pub_time.strftime("%m/%d %H:%M")
+            # Add utils to path if not already added
+            import sys
+            from pathlib import Path
+            sys.path.append(str(Path(__file__).parent.parent / "utils"))
+            from timezone_utils import format_saudi_time
+            
+            time_str = format_saudi_time(article['published_at'])
         except:
             time_str = "Unknown"
         

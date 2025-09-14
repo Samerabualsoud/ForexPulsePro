@@ -67,6 +67,8 @@ from ..providers.finnhub_provider import FinnhubProvider
 from ..providers.exchangerate_provider import ExchangeRateProvider
 from ..providers.polygon_provider import PolygonProvider
 from ..providers.coingecko_provider import CoinGeckoProvider
+from ..providers.binance_provider import BinanceProvider
+from ..providers.coinbase_provider import CoinbaseProvider
 from ..risk.guards import RiskManager
 from ..regime.detector import regime_detector
 from ..providers.execution.mt5_bridge import MT5BridgeExecutionProvider
@@ -103,7 +105,9 @@ class SignalEngine:
     """Main signal generation engine"""
     
     def __init__(self):
-        # Initialize data providers (priority order: CoinGecko -> Polygon.io -> ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)
+        # Initialize data providers (priority order: Coinbase -> Binance -> CoinGecko -> Polygon.io -> ExchangeRate.host -> Finnhub -> FreeCurrency -> Alpha Vantage -> Mock)
+        self.coinbase_provider = CoinbaseProvider()
+        self.binance_provider = BinanceProvider()
         self.coingecko_provider = CoinGeckoProvider()
         self.polygon_provider = PolygonProvider()
         self.exchangerate_provider = ExchangeRateProvider()
@@ -202,9 +206,11 @@ class SignalEngine:
         """Get prioritized list of providers for specific asset class"""
         # Provider tuples: (provider_instance, provider_name)
         if asset_class == 'crypto':
-            # Crypto: Use providers that support crypto symbols (CoinGecko only for live data)
+            # Crypto: Use providers that support crypto symbols (Coinbase primary for real OHLC data)
             return [
-                (self.coingecko_provider, 'CoinGecko'),  # Primary crypto API for live data
+                (self.coinbase_provider, 'Coinbase'),  # Primary crypto provider with real OHLC data
+                (self.binance_provider, 'Binance'),  # Secondary (may be geo-blocked) 
+                (self.coingecko_provider, 'CoinGecko'),  # Tertiary crypto API 
                 (self.exchangerate_provider, 'ExchangeRate.host'),  # Has crypto hardcoded rates
                 (self.mt5_provider, 'MT5'),  # May support crypto
             ]

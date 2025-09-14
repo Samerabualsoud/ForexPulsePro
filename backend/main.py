@@ -36,6 +36,8 @@ async def lifespan(app: FastAPI):
     
     # Initialize AI agents for proper cleanup tracking
     ai_agents = []
+    signal_scheduler = None
+    
     try:
         from .services.multi_ai_consensus import MultiAIConsensus
         consensus_system = MultiAIConsensus()
@@ -47,8 +49,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Could not initialize AI agents for cleanup: {e}")
     
-    # **CRITICAL FIX**: Start the signal generation scheduler
-    signal_scheduler = None
+    # **CRITICAL FIX**: Start the signal generation scheduler with proper cleanup
     try:
         from .scheduler import SignalScheduler
         signal_scheduler = SignalScheduler()
@@ -60,6 +61,15 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        # Shutdown - cleanup scheduler first to prevent interpreter shutdown errors
+        if signal_scheduler:
+            try:
+                logger.info("Shutting down signal scheduler...")
+                signal_scheduler.scheduler.shutdown(wait=False)
+                logger.info("Signal scheduler shutdown complete")
+            except Exception as e:
+                logger.error(f"Error shutting down scheduler: {e}")
+        
         # Shutdown - cleanup AI agent resources
         logger.info("Starting AI agent cleanup...")
         for agent in ai_agents:

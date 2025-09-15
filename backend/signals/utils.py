@@ -312,9 +312,23 @@ def determine_mt5_order_type(
         
     config = config or {}
     
+    # Add debug logging
+    import structlog
+    logger = structlog.get_logger("backend.signals.mt5_order_type")
+    
     # Get market conditions
     market_regime = determine_market_regime(data, config)
     volatility_factor = calculate_volatility_factor(data)
+    
+    logger.info(
+        "MT5 order type determination",
+        signal_price=signal_price,
+        current_price=current_price,
+        base_action=base_action,
+        strategy_type=strategy_type,
+        market_regime=market_regime,
+        volatility_factor=volatility_factor
+    )
     
     # Calculate price differential
     price_diff_pct = abs(signal_price - current_price) / current_price
@@ -322,8 +336,16 @@ def determine_mt5_order_type(
     # Threshold for immediate vs pending orders (default 0.1% = 10 pips on major pairs)
     immediate_threshold = config.get('immediate_threshold_pct', 0.001)
     
-    # For very small price differences, use immediate orders
-    if price_diff_pct <= immediate_threshold:
+    # Only use immediate orders if explicitly configured for momentum strategies
+    # or if price difference is significant and strategy prefers immediate execution
+    force_immediate = config.get('force_immediate_execution', False)
+    if force_immediate or (price_diff_pct <= immediate_threshold and strategy_type in ['momentum', 'breakout']):
+        logger.info(
+            "Using immediate market order",
+            reason="force_immediate" if force_immediate else "momentum_strategy_small_diff",
+            price_diff_pct=price_diff_pct,
+            immediate_threshold=immediate_threshold
+        )
         return base_action  # BUY or SELL (market order)
     
     # Determine order type based on strategy and market conditions
@@ -331,38 +353,60 @@ def determine_mt5_order_type(
         if signal_price < current_price:
             # Buying below current price - expecting pullback
             if strategy_type == 'mean_reversion' or market_regime == 'RANGING':
-                return 'BUY LIMIT'
+                order_type = 'BUY LIMIT'
+                reason = f"pullback_entry_{strategy_type or market_regime.lower()}"
             elif volatility_factor > 0.7:
                 # High volatility - use stop limit for protection
-                return 'BUY STOP LIMIT'
+                order_type = 'BUY STOP LIMIT'
+                reason = "high_volatility_protection"
             else:
-                return 'BUY LIMIT'
+                order_type = 'BUY LIMIT'
+                reason = "default_pullback_entry"
         else:
             # Buying above current price - expecting breakout/continuation
             if strategy_type in ['breakout', 'momentum'] or market_regime == 'TRENDING':
-                return 'BUY STOP'
+                order_type = 'BUY STOP'
+                reason = f"breakout_entry_{strategy_type or market_regime.lower()}"
             elif volatility_factor > 0.7:
-                return 'BUY STOP LIMIT'
+                order_type = 'BUY STOP LIMIT'
+                reason = "high_volatility_breakout"
             else:
-                return 'BUY STOP'
+                order_type = 'BUY STOP'
+                reason = "default_breakout_entry"
                 
     else:  # SELL
         if signal_price > current_price:
             # Selling above current price - expecting pullback  
             if strategy_type == 'mean_reversion' or market_regime == 'RANGING':
-                return 'SELL LIMIT'
+                order_type = 'SELL LIMIT'
+                reason = f"pullback_exit_{strategy_type or market_regime.lower()}"
             elif volatility_factor > 0.7:
-                return 'SELL STOP LIMIT'
+                order_type = 'SELL STOP LIMIT'
+                reason = "high_volatility_protection"
             else:
-                return 'SELL LIMIT'
+                order_type = 'SELL LIMIT'
+                reason = "default_pullback_exit"
         else:
             # Selling below current price - expecting breakout/continuation
             if strategy_type in ['breakout', 'momentum'] or market_regime == 'TRENDING':
-                return 'SELL STOP'
+                order_type = 'SELL STOP'
+                reason = f"breakdown_exit_{strategy_type or market_regime.lower()}"
             elif volatility_factor > 0.7:
-                return 'SELL STOP LIMIT'
+                order_type = 'SELL STOP LIMIT'
+                reason = "high_volatility_breakdown"
             else:
-                return 'SELL STOP'
+                order_type = 'SELL STOP'
+                reason = "default_breakdown_exit"
+    
+    logger.info(
+        "MT5 order type selected",
+        order_type=order_type,
+        reason=reason,
+        price_direction="below" if signal_price < current_price else "above",
+        price_diff_pct=price_diff_pct
+    )
+    
+    return order_type
 
 
 def adjust_signal_price_for_order_type(
@@ -424,7 +468,8 @@ def enhance_signal_with_mt5_order_type(
     signal_data: Dict[str, Any],
     data: pd.DataFrame,
     config: Dict[str, Any] = None,
-    strategy_type: str = None
+    strategy_type: str = None,
+    target_price: float = None
 ) -> Dict[str, Any]:
     """
     Enhance existing signal data with MT5 order type determination
@@ -442,8 +487,24 @@ def enhance_signal_with_mt5_order_type(
         return signal_data
         
     current_price = data['close'].iloc[-1]
-    signal_price = signal_data.get('price', current_price)
+    # Use target_price if provided, otherwise use signal price, fallback to current price
+    signal_price = target_price if target_price is not None else signal_data.get('price', current_price)
     base_action = signal_data['action']
+    
+    # Add debug logging
+    import structlog
+    logger = structlog.get_logger("backend.signals.mt5_enhancement")
+    
+    logger.info(
+        "MT5 order type enhancement starting",
+        symbol=signal_data.get('symbol', 'UNKNOWN'),
+        base_action=base_action,
+        signal_price=signal_price,
+        current_price=current_price,
+        target_price=target_price,
+        strategy_type=strategy_type,
+        price_diff_pct=abs(signal_price - current_price) / current_price * 100
+    )
     
     # Determine MT5 order type
     mt5_order_type = determine_mt5_order_type(
@@ -453,6 +514,13 @@ def enhance_signal_with_mt5_order_type(
         data=data,
         config=config,
         strategy_type=strategy_type
+    )
+    
+    logger.info(
+        "MT5 order type determined",
+        original_action=base_action,
+        mt5_order_type=mt5_order_type,
+        decision_changed=mt5_order_type != base_action
     )
     
     # Adjust price if needed
@@ -472,6 +540,13 @@ def enhance_signal_with_mt5_order_type(
     enhanced_signal['current_market_price'] = current_price
     enhanced_signal['order_type_reasoning'] = _generate_order_type_reasoning(
         mt5_order_type, signal_price, current_price, strategy_type
+    )
+    
+    logger.info(
+        "MT5 enhancement complete",
+        final_action=enhanced_signal['action'],
+        final_price=enhanced_signal['price'],
+        reasoning=enhanced_signal['order_type_reasoning']
     )
     
     return enhanced_signal

@@ -318,13 +318,24 @@ class SignalEngine:
     async def process_symbol(self, symbol: str, db: Session):
         """Process signals for a single symbol"""
         try:
-            # STRICT MODE: Enhanced market open validation
-            if not self._is_market_open_for_symbol(symbol):
-                if StrictLiveConfig.ENABLED and StrictLiveConfig.REQUIRE_MARKET_OPEN:
-                    logger.warning(f"🔒 STRICT MODE BLOCKED {symbol}: Market closed - production safety requires open market")
+            # STRICT MODE: Enhanced market open validation with asset class exemptions
+            market_open = self._is_market_open_for_symbol(symbol)
+            if not market_open:
+                # Get asset class for exemption logic
+                asset_class = self._get_asset_class(symbol)
+                
+                # Allow metals and oil signals even when markets are closed
+                # These assets often have extended trading hours or 24/7 pricing availability
+                metals_oil_exemption = asset_class in ['metals_oil']
+                
+                if metals_oil_exemption:
+                    logger.info(f"✅ METALS/OIL EXEMPTION: Allowing {symbol} signal generation despite market closure (asset class: {asset_class})")
+                elif StrictLiveConfig.ENABLED and StrictLiveConfig.REQUIRE_MARKET_OPEN:
+                    logger.warning(f"🔒 STRICT MODE BLOCKED {symbol}: Market closed - production safety requires open market (asset class: {asset_class})")
+                    return
                 else:
-                    logger.info(f"Market closed - skipping signal generation for {symbol}")
-                return
+                    logger.info(f"Market closed - skipping signal generation for {symbol} (asset class: {asset_class})")
+                    return
                 
             logger.debug(f"Processing signals for {symbol}")
             

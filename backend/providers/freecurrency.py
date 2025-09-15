@@ -21,6 +21,9 @@ class FreeCurrencyAPIProvider(BaseDataProvider):
     """Live forex data provider using FreeCurrencyAPI.com"""
     
     def __init__(self):
+        super().__init__()
+        self.name = "FreeCurrencyAPI"
+        self.is_live_source = True
         self.base_url = "https://api.freecurrencyapi.com/v1"
         self.api_key = os.getenv('FREECURRENCY_API_KEY', None)  # Optional API key for higher limits
         self.cache_dir = Path("data/live")
@@ -167,7 +170,8 @@ class FreeCurrencyAPIProvider(BaseDataProvider):
                 if cached_file.exists():
                     df = pd.read_csv(cached_file)
                     df['timestamp'] = pd.to_datetime(df['timestamp'])
-                    return df.tail(limit)
+                    result_df = df.tail(limit)
+                    return self._add_metadata_to_dataframe(result_df, symbol)
             
             # Fetch fresh rates
             rates = await self.get_live_rates()
@@ -265,7 +269,10 @@ class FreeCurrencyAPIProvider(BaseDataProvider):
             self.last_update[cache_key] = now
             
             logger.info(f"Updated live data for {symbol}: rate={current_rate:.5f}")
-            return new_df.tail(limit)
+            
+            # Add metadata for real-time validation
+            result_df = new_df.tail(limit)
+            return self._add_metadata_to_dataframe(result_df, symbol)
             
         except Exception as e:
             logger.error(f"Error getting OHLC data for {symbol}: {e}")

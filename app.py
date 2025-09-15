@@ -120,36 +120,27 @@ from backend.main import app as fastapi_app
 from backend.scheduler import SignalScheduler
 from backend.database import init_db, create_default_data
 from backend.logs.logger import get_logger
+from config import get_backend_url
 import uvicorn
 
 logger = get_logger(__name__)
 
-# Initialize session state - using external Production Backend
-if 'backend_status_checked' not in st.session_state:
-    st.session_state.backend_status_checked = False
-if 'backend_available' not in st.session_state:
-    st.session_state.backend_available = False
+# Get dynamic backend URL
+backend_url = get_backend_url()
+logger.info(f"Using backend URL: {backend_url}")
 
-def check_backend_status():
-    """Check if the Production Backend is available"""
+@st.cache_data(ttl=5)
+def backend_healthy():
+    """Check if the Production Backend is available (cached for 5 seconds)"""
     try:
-        import requests
-        response = requests.get("http://localhost:8080/api/health", timeout=3)
-        if response.status_code == 200:
-            st.session_state.backend_available = True
-            logger.info("Production Backend is available on port 8080")
-        else:
-            st.session_state.backend_available = False
-            logger.warning(f"Production Backend returned status code: {response.status_code}")
+        response = requests.get(f"{backend_url}/api/health", timeout=2)
+        return response.status_code == 200
     except Exception as e:
-        st.session_state.backend_available = False
-        logger.warning(f"Production Backend not available: {e}")
-    
-    st.session_state.backend_status_checked = True
+        logger.debug(f"Backend health check failed: {e}")
+        return False
 
-# Check backend status
-if not st.session_state.backend_status_checked:
-    check_backend_status()
+# Get current backend status
+backend_available = backend_healthy()
 
 # Handle API routing through query parameters
 query_params = st.query_params
@@ -159,11 +150,11 @@ if "api_endpoint" in query_params:
     endpoint = query_params["api_endpoint"]
     try:
         if endpoint == "health":
-            response = requests.get("http://localhost:8080/api/health", timeout=5)
+            response = requests.get(f"{backend_url}/api/health", timeout=5)
             st.json(response.json())
             st.stop()
         elif endpoint == "metrics":
-            response = requests.get("http://localhost:8080/metrics", timeout=5)
+            response = requests.get(f"{backend_url}/metrics", timeout=5)
             st.text(response.text)
             st.stop()
         elif endpoint.startswith("monitoring"):
@@ -171,7 +162,7 @@ if "api_endpoint" in query_params:
             monitoring_path = endpoint.replace("monitoring_", "monitoring/")
             auth_header = query_params.get("auth", "")
             headers = {"Authorization": f"Bearer {auth_header}"} if auth_header else {}
-            response = requests.get(f"http://localhost:8080/api/{monitoring_path}", headers=headers, timeout=5)
+            response = requests.get(f"{backend_url}/api/{monitoring_path}", headers=headers, timeout=5)
             st.json(response.json())
             st.stop()
     except Exception as e:
@@ -187,28 +178,34 @@ st.markdown("---")
 st.sidebar.title("Navigation")
 st.sidebar.markdown("Select a page from the sidebar to get started.")
 
+# Auto-refresh when disconnected
+if not backend_available:
+    st.info("🔄 Backend disconnected - auto-refreshing every 5 seconds...")
+    time.sleep(1)  # Small delay to avoid excessive polling
+    st.rerun()
+
 # Status indicators
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric(
         "Production Backend",
-        "Connected" if st.session_state.backend_available else "Disconnected",
-        delta="Port 8080" if st.session_state.backend_available else "Unavailable"
+        "Connected" if backend_available else "Disconnected",
+        delta=f"URL: {backend_url}" if backend_available else "Unavailable"
     )
 
 with col2:
     st.metric(
         "Signal Generation", 
-        "Active" if st.session_state.backend_available else "Stopped",
-        delta="Live Data" if st.session_state.backend_available else "Offline"
+        "Active" if backend_available else "Stopped",
+        delta="Live Data" if backend_available else "Offline"
     )
 
 with col3:
     st.metric(
         "Environment Parity",
-        "Verified" if st.session_state.backend_available else "Unknown",
-        delta="Config: 7ef84f50535209cd" if st.session_state.backend_available else "Not checked"
+        "Verified" if backend_available else "Unknown",
+        delta="Config: 7ef84f50535209cd" if backend_available else "Not checked"
     )
 
 # Quick access section
@@ -235,7 +232,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="section-header">🔗 System Information</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="info-section">', unsafe_allow_html=True)
-st.markdown("""
+st.markdown(f"""
 **API Endpoints Available:**
 - Health Check: `GET /api/health`
 - Latest Signals: `GET /api/signals/latest`
@@ -244,7 +241,8 @@ st.markdown("""
 - Provider Diagnostics: `GET /api/diagnostics/providers`
 - System Metrics: `GET /metrics`
 
-**Server Status:** Production Backend API running on port 8080
+**Server Status:** Backend URL: `{backend_url}`
+**Connection Status:** {"✅ Connected" if backend_available else "❌ Disconnected (auto-refreshing)"}
 **Environment Parity:** Configuration fingerprint `7ef84f50535209cd` verified
 """)
 st.markdown('</div>', unsafe_allow_html=True)

@@ -110,14 +110,14 @@ class DeterministicProviderConfig:
             "Finnhub": ProviderConfig(
                 name="Finnhub",
                 provider_type=ProviderType.LIVE_DELAYED,
-                asset_classes=["forex"],
+                asset_classes=["forex", "metals_oil"],  # Added metals_oil support
                 priority=4,
                 is_enabled=os.getenv('FINNHUB_API_KEY', '').strip() != '',
                 requires_api_key=True,
                 api_key_env_var='FINNHUB_API_KEY',
                 timeout_seconds=10,
                 rate_limit_per_minute=60,
-                strict_mode_approved=False  # Has access issues
+                strict_mode_approved=True  # Approved for strict mode including metals_oil
             ),
             
             "CoinGecko": ProviderConfig(

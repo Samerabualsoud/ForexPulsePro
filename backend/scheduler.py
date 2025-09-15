@@ -112,6 +112,12 @@ class SignalScheduler:
                 'SOLUSD', 'BNBUSD', 'XRPUSD', 'MATICUSD'
             ]
             
+            # Metals & Oil symbols for commodities trading
+            metals_oil_symbols = [
+                'XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD',  # Gold, Silver, Platinum, Palladium
+                'USOIL', 'UKOUSD', 'WTIUSD', 'XBRUSD'    # Oil futures
+            ]
+            
             # Process forex pairs
             for symbol in forex_symbols:
                 try:
@@ -128,8 +134,16 @@ class SignalScheduler:
                 except Exception as e:
                     logger.error(f"Error processing crypto {symbol}: {e}")
             
-            total_symbols = len(forex_symbols) + len(crypto_symbols)
-            logger.info(f"Forex & Crypto signal generation completed for {len(forex_symbols)} forex + {len(crypto_symbols)} crypto = {total_symbols} total pairs at {datetime.utcnow()}")
+            # Process metals & oil pairs
+            for symbol in metals_oil_symbols:
+                try:
+                    await self.signal_engine.process_symbol(symbol, db)
+                    logger.debug(f"Processed metals/oil signals for {symbol}")
+                except Exception as e:
+                    logger.error(f"Error processing metals/oil {symbol}: {e}")
+            
+            total_symbols = len(forex_symbols) + len(crypto_symbols) + len(metals_oil_symbols)
+            logger.info(f"Signal generation completed for {len(forex_symbols)} forex + {len(crypto_symbols)} crypto + {len(metals_oil_symbols)} metals/oil = {total_symbols} total pairs at {datetime.utcnow()}")
             
         except Exception as e:
             logger.error(f"Forex & Crypto signal generation failed: {e}")

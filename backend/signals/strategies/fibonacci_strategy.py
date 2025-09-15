@@ -6,7 +6,7 @@ import numpy as np
 from typing import Dict, Any, Optional
 import talib as ta
 
-from ..utils import calculate_sl_tp
+from ..utils import calculate_sl_tp, enhance_signal_with_mt5_order_type
 from ...logs.logger import get_logger
 
 logger = get_logger(__name__)
@@ -142,7 +142,8 @@ class FibonacciStrategy:
                 tp_levels = [v for k, v in fib_levels.items() if v < current_price]
                 tp_price = max(tp_levels) if tp_levels else current_price * 0.985
             
-            signal = {
+            # Create base signal
+            base_signal = {
                 'action': action,
                 'price': round(current_price, 5),
                 'sl': round(sl_price, 5),
@@ -158,8 +159,22 @@ class FibonacciStrategy:
                 }
             }
             
-            logger.debug(f"Fibonacci signal generated: {signal}")
-            return signal
+            # Enhance with MT5 order type determination
+            # Note: Use current_price instead of closest_level for price comparison
+            base_signal['price'] = round(current_price, 5)
+            enhanced_signal = enhance_signal_with_mt5_order_type(
+                signal_data=base_signal,
+                data=data,
+                config=config,
+                strategy_type='retracement'  # Fibonacci is a retracement/support-resistance strategy
+            )
+            
+            # Restore the Fibonacci-calculated SL/TP levels
+            enhanced_signal['sl'] = round(sl_price, 5)
+            enhanced_signal['tp'] = round(tp_price, 5)
+            
+            logger.debug(f"Fibonacci signal generated: {enhanced_signal}")
+            return enhanced_signal
             
         except Exception as e:
             logger.error(f"Error generating Fibonacci signal: {e}")

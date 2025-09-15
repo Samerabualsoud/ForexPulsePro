@@ -39,7 +39,7 @@ class Signal(Base):
     id = Column(Integer, primary_key=True, index=True)
     symbol = Column(String(10), index=True, nullable=False)
     timeframe = Column(String(10), default="M1")
-    action = Column(String(10), nullable=False)  # BUY, SELL, FLAT
+    action = Column(String(20), nullable=False)  # BUY, SELL, BUY LIMIT, SELL LIMIT, BUY STOP, SELL STOP, BUY STOP LIMIT, SELL STOP LIMIT, FLAT
     price = Column(Float, nullable=False)
     sl = Column(Float)  # Stop Loss
     tp = Column(Float)  # Take Profit

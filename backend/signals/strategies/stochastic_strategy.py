@@ -6,7 +6,7 @@ import numpy as np
 from typing import Dict, Any, Optional
 import talib as ta
 
-from ..utils import calculate_sl_tp
+from ..utils import calculate_sl_tp, enhance_signal_with_mt5_order_type
 from ...logs.logger import get_logger
 
 logger = get_logger(__name__)
@@ -98,7 +98,8 @@ class StochasticStrategy:
                 config=config
             )
             
-            signal = {
+            # Create base signal
+            base_signal = {
                 'action': action,
                 'price': round(current_price, 5),
                 'sl': round(sl, 5) if sl else None,
@@ -112,8 +113,16 @@ class StochasticStrategy:
                 }
             }
             
-            logger.debug(f"Stochastic signal generated: {signal}")
-            return signal
+            # Enhance with MT5 order type determination
+            enhanced_signal = enhance_signal_with_mt5_order_type(
+                signal_data=base_signal,
+                data=data,
+                config=config,
+                strategy_type='momentum'  # Stochastic is a momentum/oscillator strategy
+            )
+            
+            logger.debug(f"Stochastic signal generated: {enhanced_signal}")
+            return enhanced_signal
             
         except Exception as e:
             logger.error(f"Error generating Stochastic signal: {e}")

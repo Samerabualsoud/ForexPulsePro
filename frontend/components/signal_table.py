@@ -73,9 +73,10 @@ def render_signal_table(
     def style_dataframe(df):
         """Apply custom styling to the dataframe"""
         def style_action(val):
-            if val == 'BUY':
+            # Handle all MT5 order types with appropriate colors
+            if val in ['BUY', 'BUY LIMIT', 'BUY STOP', 'BUY STOP LIMIT']:
                 return 'background-color: #d4edda; color: #155724; font-weight: bold'
-            elif val == 'SELL':
+            elif val in ['SELL', 'SELL LIMIT', 'SELL STOP', 'SELL STOP LIMIT']:
                 return 'background-color: #f8d7da; color: #721c24; font-weight: bold'
             return ''
         
@@ -169,8 +170,8 @@ def render_signal_summary(signals: List[Dict[str, Any]]) -> None:
     
     # Calculate metrics
     total_signals = len(signals)
-    buy_signals = len([s for s in signals if s.get('action') == 'BUY'])
-    sell_signals = len([s for s in signals if s.get('action') == 'SELL'])
+    buy_signals = len([s for s in signals if s.get('action', '').startswith('BUY')])
+    sell_signals = len([s for s in signals if s.get('action', '').startswith('SELL')])
     blocked_signals = len([s for s in signals if s.get('blocked_by_risk')])
     sent_signals = len([s for s in signals if s.get('sent_to_whatsapp')])
     
@@ -254,7 +255,7 @@ def render_signal_filters() -> Dict[str, Any]:
     with col2:
         action_filter = st.selectbox(
             "Action",
-            options=["ALL", "BUY", "SELL"],
+            options=["ALL", "BUY", "SELL", "BUY LIMIT", "SELL LIMIT", "BUY STOP", "SELL STOP", "BUY STOP LIMIT", "SELL STOP LIMIT"],
             index=0
         )
     
@@ -299,7 +300,12 @@ def apply_signal_filters(signals: List[Dict[str, Any]], filters: Dict[str, Any])
     
     # Apply action filter
     if filters.get('action'):
-        filtered_signals = [s for s in filtered_signals if s.get('action') == filters['action']]
+        if filters['action'] in ['BUY', 'SELL']:
+            # For backward compatibility, also match specific MT5 order types
+            filtered_signals = [s for s in filtered_signals if s.get('action', '').startswith(filters['action'])]
+        else:
+            # Exact match for specific MT5 order types
+            filtered_signals = [s for s in filtered_signals if s.get('action') == filters['action']]
     
     # Apply strategy filter
     if filters.get('strategy'):

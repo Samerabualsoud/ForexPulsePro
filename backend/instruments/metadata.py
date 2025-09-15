@@ -335,6 +335,60 @@ class InstrumentMetadataDB:
             'ADAUSD': InstrumentMetadata(
                 symbol='ADAUSD', asset_class=AssetClass.CRYPTO,
                 pip_size=0.0001, decimal_places=4, quote_precision=4,  # Cardano precision: $0.0001
+                min_lot_size=10.0, max_lot_size=10000.0, lot_step=10.0,
+                pip_value_per_lot=0.0001, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.05, description="Cardano vs US Dollar",
+                base_currency='ADA', quote_currency='USD'
+            ),
+            'DOGEUSD': InstrumentMetadata(
+                symbol='DOGEUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.0001, decimal_places=4, quote_precision=4,  # Dogecoin precision: $0.0001
+                min_lot_size=100.0, max_lot_size=100000.0, lot_step=100.0,
+                pip_value_per_lot=0.0001, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.05, description="Dogecoin vs US Dollar",
+                base_currency='DOGE', quote_currency='USD'
+            ),
+            'SOLUSD': InstrumentMetadata(
+                symbol='SOLUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # Solana precision: $0.01
+                min_lot_size=0.1, max_lot_size=1000.0, lot_step=0.1,
+                pip_value_per_lot=0.01, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.05, description="Solana vs US Dollar",
+                base_currency='SOL', quote_currency='USD'
+            ),
+            'BNBUSD': InstrumentMetadata(
+                symbol='BNBUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # Binance Coin precision: $0.01
+                min_lot_size=0.01, max_lot_size=1000.0, lot_step=0.01,
+                pip_value_per_lot=0.01, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.05, description="Binance Coin vs US Dollar",
+                base_currency='BNB', quote_currency='USD'
+            ),
+            'XRPUSD': InstrumentMetadata(
+                symbol='XRPUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.0001, decimal_places=4, quote_precision=4,  # Ripple precision: $0.0001
+                min_lot_size=10.0, max_lot_size=100000.0, lot_step=10.0,
+                pip_value_per_lot=0.0001, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.05, description="Ripple vs US Dollar",
+                base_currency='XRP', quote_currency='USD'
+            ),
+            'MATICUSD': InstrumentMetadata(
+                symbol='MATICUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.0001, decimal_places=4, quote_precision=4,  # Polygon precision: $0.0001
+                min_lot_size=10.0, max_lot_size=100000.0, lot_step=10.0,
+                pip_value_per_lot=0.0001, contract_size=1,  # Direct 1:1 contract size for crypto
+                market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
+                margin_percentage=0.05, description="Polygon vs US Dollar",
+                base_currency='MATIC', quote_currency='USD'
+            ),
+            'ADAUSD': InstrumentMetadata(
+                symbol='ADAUSD', asset_class=AssetClass.CRYPTO,
+                pip_size=0.0001, decimal_places=4, quote_precision=4,  # Cardano precision: $0.0001
                 min_lot_size=1.0, max_lot_size=100000.0, lot_step=1.0,
                 pip_value_per_lot=0.0001, contract_size=1,  # Direct 1:1 contract size for crypto
                 market_open_days=[0,1,2,3,4,5,6], market_open_hours=(0,24), is_24_7=True,  # 24/7 crypto market
@@ -418,6 +472,60 @@ class InstrumentMetadataDB:
                 market_open_days=[0,1,2,3,4], market_open_hours=(22,21), is_24_7=False,  # Sun 22:00 - Fri 21:00 UTC
                 margin_percentage=0.10, description="WTI Crude Oil",
                 base_currency='OIL', quote_currency='USD'
+            ),
+            'XAGUSD': InstrumentMetadata(
+                symbol='XAGUSD', asset_class=AssetClass.METALS,
+                pip_size=0.001, decimal_places=3, quote_precision=3,  # Silver precision: $0.001 per troy ounce
+                min_lot_size=0.01, max_lot_size=500.0, lot_step=0.01,
+                pip_value_per_lot=0.001, contract_size=5000,  # 5000 troy ounces per lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(22,21), is_24_7=False,  # Sun 22:00 - Fri 21:00 UTC
+                margin_percentage=0.07, description="Silver vs US Dollar",
+                base_currency='XAG', quote_currency='USD'
+            ),
+            'XPTUSD': InstrumentMetadata(
+                symbol='XPTUSD', asset_class=AssetClass.METALS,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # Platinum precision: $0.01 per troy ounce
+                min_lot_size=0.01, max_lot_size=100.0, lot_step=0.01,
+                pip_value_per_lot=0.01, contract_size=100,  # 100 troy ounces per lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(22,21), is_24_7=False,  # Sun 22:00 - Fri 21:00 UTC
+                margin_percentage=0.08, description="Platinum vs US Dollar",
+                base_currency='XPT', quote_currency='USD'
+            ),
+            'XPDUSD': InstrumentMetadata(
+                symbol='XPDUSD', asset_class=AssetClass.METALS,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # Palladium precision: $0.01 per troy ounce
+                min_lot_size=0.01, max_lot_size=100.0, lot_step=0.01,
+                pip_value_per_lot=0.01, contract_size=100,  # 100 troy ounces per lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(22,21), is_24_7=False,  # Sun 22:00 - Fri 21:00 UTC
+                margin_percentage=0.09, description="Palladium vs US Dollar",
+                base_currency='XPD', quote_currency='USD'
+            ),
+            'UKOUSD': InstrumentMetadata(
+                symbol='UKOUSD', asset_class=AssetClass.OIL,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # Brent Crude Oil precision: $0.01 per barrel
+                min_lot_size=0.01, max_lot_size=100.0, lot_step=0.01,
+                pip_value_per_lot=0.01, contract_size=1000,  # 1000 barrels per lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(22,21), is_24_7=False,  # Sun 22:00 - Fri 21:00 UTC
+                margin_percentage=0.10, description="Brent Crude Oil",
+                base_currency='UKO', quote_currency='USD'
+            ),
+            'WTIUSD': InstrumentMetadata(
+                symbol='WTIUSD', asset_class=AssetClass.OIL,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # WTI Crude Oil precision: $0.01 per barrel
+                min_lot_size=0.01, max_lot_size=100.0, lot_step=0.01,
+                pip_value_per_lot=0.01, contract_size=1000,  # 1000 barrels per lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(22,21), is_24_7=False,  # Sun 22:00 - Fri 21:00 UTC
+                margin_percentage=0.10, description="WTI Crude Oil Alternative Symbol",
+                base_currency='WTI', quote_currency='USD'
+            ),
+            'XBRUSD': InstrumentMetadata(
+                symbol='XBRUSD', asset_class=AssetClass.OIL,
+                pip_size=0.01, decimal_places=2, quote_precision=2,  # Brent Crude Oil precision: $0.01 per barrel
+                min_lot_size=0.01, max_lot_size=100.0, lot_step=0.01,
+                pip_value_per_lot=0.01, contract_size=1000,  # 1000 barrels per lot
+                market_open_days=[0,1,2,3,4], market_open_hours=(22,21), is_24_7=False,  # Sun 22:00 - Fri 21:00 UTC
+                margin_percentage=0.10, description="Brent Crude Oil Alternative Symbol",
+                base_currency='XBR', quote_currency='USD'
             )
         }
         

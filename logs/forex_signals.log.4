@@ -1,4 +1,3 @@
-HTTP Request: GET https://api.exchange.coinbase.com/products/XRP-USD/candles?start=2025-09-06T13%3A48%3A05.679701%2B00%3A00&end=2025-09-14T21%3A48%3A05.679701%2B00%3A00&granularity=3600 "HTTP/1.1 200 OK"
 {"event": "Coinbase: Successfully fetched 200 OHLC bars for XRPUSD", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-14T21:48:05.868104Z"}
 {"event": "Data freshness PASSED for XRPUSD: Data age 0.0s within limit (15.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:05.872819Z"}
 {"event": "\ud83d\udd12 STRICT MODE APPROVED XRPUSD: Data source 'Coinbase' validation passed", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:05.873318Z"}
@@ -275,14 +274,14 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/BTC-USD/candles?sta
 {"event": "Error retrieving data for CADCHF: <asyncio.locks.Lock object at 0x7f7f8828e390 [unlocked, waiters:1]> is bound to a different event loop", "logger": "backend.providers.alphavantage", "level": "error", "timestamp": "2025-09-14T21:48:17.694552Z"}
 {"event": "\ud83d\udd12 STRICT MODE VALIDATION PASSED for BTCUSD: Production-grade data from Coinbase", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.696193Z"}
 {"event": "Getting crypto data for BTCUSD using 5 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.690103Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for CADCHF ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.697370Z"}
 {"event": "Using Coinbase real crypto data for BTCUSD", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.697877Z"}
 {"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for BTCUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.699716Z"}
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.699910Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.700082Z"}
-{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for CADCHF ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.697370Z"}
+{"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.700274Z"}
 {"event": "Total providers tested: 4", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.700689Z"}
 {"event": "Live data sources: 1 | Cached sources: 3", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.701119Z"}
-{"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.700274Z"}
 {"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.701337Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.701578Z"}
 {"event": "  Polygon.io [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:17.701806Z"}
@@ -1014,8 +1013,8 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/XRP-USD/candles?sta
 {"event": "Data freshness PASSED for XRPUSD: Data age 0.0s within limit (15.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.029451Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.029773Z"}
 {"event": "\ud83d\udd12 STRICT MODE APPROVED XRPUSD: Data source 'Coinbase' validation passed", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.029971Z"}
-{"event": "\ud83d\udd12 STRICT MODE VALIDATION PASSED for XRPUSD: Production-grade data from Coinbase", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.031413Z"}
 {"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.030359Z"}
+{"event": "\ud83d\udd12 STRICT MODE VALIDATION PASSED for XRPUSD: Production-grade data from Coinbase", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.031413Z"}
 {"event": "Using Coinbase real crypto data for XRPUSD", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.031627Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.031855Z"}
 {"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for XRPUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.032009Z"}
@@ -1091,8 +1090,8 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/MATIC-USD/candles?s
 {"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.516107Z"}
 {"event": "Using Coinbase real crypto data for MATICUSD", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.516439Z"}
 {"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.516646Z"}
-{"event": "Getting crypto data for XRPUSD using 5 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.517416Z"}
 {"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for MATICUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.516973Z"}
+{"event": "Getting crypto data for XRPUSD using 5 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.517416Z"}
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.519551Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.519823Z"}
 {"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:48:36.520257Z"}
@@ -1707,8 +1706,8 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/MATIC-USD/candles?s
 Running job "Generate Forex & Crypto Signals (trigger: interval[0:01:00], next run at: 2025-09-14 21:50:16 UTC)" (scheduled at 2025-09-14 21:49:16.041599+00:00)
 {"event": "Getting forex data for EURUSD using 6 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:16.043068Z"}
 Job "Generate Forex & Crypto Signals (trigger: interval[0:01:00], next run at: 2025-09-14 21:50:16 UTC)" executed successfully
-Running job "Evaluate Signals (trigger: interval[0:01:00], next run at: 2025-09-14 21:50:16 UTC)" (scheduled at 2025-09-14 21:49:16.043816+00:00)
 Failed to get historical data for EURUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f7f304b0790 [unlocked, waiters:1]> is bound to a different event loop
+Running job "Evaluate Signals (trigger: interval[0:01:00], next run at: 2025-09-14 21:50:16 UTC)" (scheduled at 2025-09-14 21:49:16.043816+00:00)
 Job "Evaluate Signals (trigger: interval[0:01:00], next run at: 2025-09-14 21:50:16 UTC)" executed successfully
 {"event": "Signal evaluation completed: {'evaluated_count': 0, 'expired_count': 0, 'success_count': 0, 'loss_count': 0}", "logger": "backend.scheduler", "level": "info", "timestamp": "2025-09-14T21:49:16.127209Z"}
 {"event": "MT5 bridge timeout for USDCHF", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T21:49:16.266553Z"}
@@ -1861,9 +1860,9 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/BTC-USD/candles?sta
 {"event": "\ud83d\udd12 STRICT MODE BLOCKED CADCHF: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T21:49:17.409462Z"}
 {"event": "Using Coinbase real crypto data for BTCUSD", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:17.409631Z"}
 {"event": "\ud83d\udd12 STRICT MODE BLOCKED NZDCAD: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T21:49:17.409931Z"}
+{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for BTCUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:17.410118Z"}
 {"event": "\ud83d\udd12 STRICT MODE BLOCKED NZDCHF: Market closed - production safety requires open market", "logger": "backend.signals.engine", "level": "warning", "timestamp": "2025-09-14T21:49:17.410342Z"}
 {"event": "Getting crypto data for BTCUSD using 5 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:17.410551Z"}
-{"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for BTCUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:17.410118Z"}
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:17.411666Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:17.412038Z"}
 {"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:17.412360Z"}
@@ -2170,10 +2169,10 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/ETH-USD/candles?sta
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:19.117308Z"}
 {"event": "Coinbase: Successfully fetched 200 OHLC bars for ETHUSD", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-14T21:49:19.118564Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:19.119700Z"}
+{"event": "Data freshness PASSED for ETHUSD: Data age 0.0s within limit (15.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:19.120709Z"}
 {"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:19.121832Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:19.122163Z"}
 {"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:19.122460Z"}
-{"event": "Data freshness PASSED for ETHUSD: Data age 0.0s within limit (15.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:19.120709Z"}
 {"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:19.122849Z"}
 {"event": "\ud83d\udd12 STRICT MODE APPROVED ETHUSD: Data source 'Coinbase' validation passed", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:19.123649Z"}
 {"event": "\ud83d\udd12 STRICT MODE VALIDATION PASSED for ETHUSD: Production-grade data from Coinbase", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:49:19.126163Z"}
@@ -3347,8 +3346,8 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/MATIC-USD/candles?s
 Running job "Generate Forex & Crypto Signals (trigger: interval[0:01:00], next run at: 2025-09-14 21:51:16 UTC)" (scheduled at 2025-09-14 21:50:16.041599+00:00)
 Job "Generate Forex & Crypto Signals (trigger: interval[0:01:00], next run at: 2025-09-14 21:51:16 UTC)" executed successfully
 {"event": "Getting forex data for EURUSD using 6 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:16.043463Z"}
-Running job "Evaluate Signals (trigger: interval[0:01:00], next run at: 2025-09-14 21:51:16 UTC)" (scheduled at 2025-09-14 21:50:16.043816+00:00)
 Failed to get historical data for EURUSD from Polygon.io: <asyncio.locks.Lock object at 0x7f7f304b0790 [unlocked, waiters:1]> is bound to a different event loop
+Running job "Evaluate Signals (trigger: interval[0:01:00], next run at: 2025-09-14 21:51:16 UTC)" (scheduled at 2025-09-14 21:50:16.043816+00:00)
 Job "Evaluate Signals (trigger: interval[0:01:00], next run at: 2025-09-14 21:51:16 UTC)" executed successfully
 {"event": "Signal evaluation completed: {'evaluated_count': 0, 'expired_count': 0, 'success_count': 0, 'loss_count': 0}", "logger": "backend.scheduler", "level": "info", "timestamp": "2025-09-14T21:50:16.123613Z"}
 {"event": "MT5 bridge timeout for USDCHF", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-14T21:50:16.247258Z"}
@@ -3757,6 +3756,7 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/ADA-USD/candles?sta
 {"event": "Using Coinbase real crypto data for ADAUSD", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.885201Z"}
 {"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.885520Z"}
 {"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for ADAUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.885835Z"}
+{"event": "Getting crypto data for ADAUSD using 5 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.886406Z"}
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.886803Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.887005Z"}
 {"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.887177Z"}
@@ -3764,7 +3764,6 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/ADA-USD/candles?sta
 {"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.887532Z"}
 {"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.887707Z"}
 {"event": "Getting crypto data for ADAUSD using 5 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.887946Z"}
-{"event": "Getting crypto data for ADAUSD using 5 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:18.886406Z"}
 HTTP Request: GET https://api.exchange.coinbase.com/products/ETH-USD/candles?start=2025-09-06T13%3A50%3A18.753887%2B00%3A00&end=2025-09-14T21%3A50%3A18.753887%2B00%3A00&granularity=3600 "HTTP/1.1 200 OK"
 {"event": "Coinbase: Successfully fetched 200 OHLC bars for ETHUSD", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-14T21:50:19.010223Z"}
 {"event": "Data freshness PASSED for ETHUSD: Data age 0.0s within limit (15.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:19.010513Z"}
@@ -4320,10 +4319,10 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/XRP-USD/candles?sta
 {"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for BNBUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.168120Z"}
 {"event": "Total providers tested: 4", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.168575Z"}
 {"event": "Live data sources: 3 | Cached sources: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.168957Z"}
+{"event": "Coinbase: Successfully fetched 200 OHLC bars for XRPUSD", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-14T21:50:36.166356Z"}
 {"event": "Successful validations: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.169614Z"}
 {"event": "  Coinbase [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.169838Z"}
 {"event": "  Binance [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.170009Z"}
-{"event": "Coinbase: Successfully fetched 200 OHLC bars for XRPUSD", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-14T21:50:36.166356Z"}
 {"event": "  CoinGecko [LIVE]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.170300Z"}
 {"event": "Data freshness PASSED for XRPUSD: Data age 0.0s within limit (15.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.170758Z"}
 {"event": "  MT5 [CACHED]: \u274c FAILED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.170951Z"}
@@ -4338,8 +4337,8 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/XRP-USD/candles?sta
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.178995Z"}
 {"event": "Tried 5 compatible providers for crypto asset class", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T21:50:36.179473Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.180125Z"}
-{"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.180937Z"}
 {"event": "\ud83d\udd12 STRICT MODE BLOCKED BNBUSD: No real market data available - signal generation BLOCKED for safety", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T21:50:36.180557Z"}
+{"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.180937Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.181723Z"}
 {"event": "\ud83d\udd12 Production safety requires verified real-time data. Ensure approved data providers are available.", "logger": "backend.signals.engine", "level": "error", "timestamp": "2025-09-14T21:50:36.182028Z"}
 {"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:50:36.182559Z"}
@@ -5335,11 +5334,11 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/ETH-USD/candles?sta
 {"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for ETHUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.368948Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.369141Z"}
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.369573Z"}
+{"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.369893Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.370140Z"}
 {"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.370290Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.370440Z"}
 {"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.370587Z"}
-{"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.369893Z"}
 {"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.370764Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.371130Z"}
 {"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:18.372250Z"}
@@ -5451,9 +5450,9 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/ETH-USD/candles?sta
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:19.082120Z"}
 {"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:19.082460Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:19.082780Z"}
+{"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:19.083061Z"}
 {"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:19.084052Z"}
 {"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:19.084219Z"}
-{"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:19.083061Z"}
 {"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:19.085083Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:19.085222Z"}
 {"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:51:19.085332Z"}
@@ -6979,10 +6978,10 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/ETH-USD/candles?sta
 {"event": "Using Coinbase real crypto data for ETHUSD", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.313387Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.313555Z"}
 {"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for ETHUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.313729Z"}
+{"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.313952Z"}
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.314182Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.314352Z"}
 {"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.314510Z"}
-{"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.313952Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.314682Z"}
 {"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.314890Z"}
 {"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:18.315193Z"}
@@ -7255,6 +7254,7 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/SOL-USD/candles?sta
 {"event": "\ud83d\udd12 STRICT MODE APPROVED DOGEUSD: Data source 'Coinbase' validation passed", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.007649Z"}
 {"event": "\ud83d\udd12 STRICT MODE VALIDATION PASSED for DOGEUSD: Production-grade data from Coinbase", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.031557Z"}
 {"event": "Coinbase: Successfully fetched 200 OHLC bars for SOLUSD", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-14T21:52:20.032167Z"}
+{"event": "Using Coinbase real crypto data for DOGEUSD", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.032873Z"}
 {"event": "Data freshness PASSED for SOLUSD: Data age 0.0s within limit (15.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.033436Z"}
 {"event": "\ud83d\udd12 STRICT MODE APPROVED SOLUSD: Data source 'Coinbase' validation passed", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.033613Z"}
 {"event": "\ud83d\udd12 STRICT MODE VALIDATION PASSED for SOLUSD: Production-grade data from Coinbase", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.034142Z"}
@@ -7267,7 +7267,6 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/SOL-USD/candles?sta
 {"event": "\u2705 SELECTED: Coinbase - Real-time validation PASSED", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.035461Z"}
 {"event": "=== END VALIDATION SUMMARY ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.035630Z"}
 {"event": "Getting crypto data for SOLUSD using 5 compatible providers", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.035880Z"}
-{"event": "Using Coinbase real crypto data for DOGEUSD", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.032873Z"}
 {"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for DOGEUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.036865Z"}
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.037036Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:52:20.037211Z"}
@@ -8799,8 +8798,8 @@ HTTP Request: GET https://api.exchange.coinbase.com/products/ADA-USD/candles?sta
 {"event": "Total providers tested: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:53:19.425014Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:53:19.425190Z"}
 {"event": "Using Coinbase real crypto data for ADAUSD", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:53:19.425347Z"}
-{"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:53:19.426166Z"}
 {"event": "Live data sources: 1 | Cached sources: 0", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:53:19.425935Z"}
+{"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:53:19.426166Z"}
 {"event": "=== CROSS-PROVIDER VALIDATION SUMMARY for ADAUSD ===", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:53:19.426433Z"}
 {"event": "  Coinbase [LIVE]: \u2705 PASSED (age: 0.0s)", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:53:19.426768Z"}
 {"event": "Successful validations: 1", "logger": "backend.signals.engine", "level": "info", "timestamp": "2025-09-14T21:53:19.427086Z"}

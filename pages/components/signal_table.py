@@ -187,8 +187,10 @@ def _render_action_section(signals: List[Dict[str, Any]]) -> None:
     
     if signal_options:
         # Use timestamp-based key to ensure fresh state during auto-refresh
-        import time
-        refresh_key = f"detailed_signal_select_{int(time.time() // 30)}"  # Updates every 30s
+        import time, hashlib
+        # Create unique key based on signals content to avoid duplicates across tabs
+        signals_hash = hashlib.md5(str(sorted([s.get('id', 0) for s in signals])).encode()).hexdigest()[:8]
+        refresh_key = f"detailed_signal_select_{int(time.time() // 30)}_{signals_hash}"
         selected_signal_str = st.selectbox(
             "Select Signal:",
             options=signal_options,

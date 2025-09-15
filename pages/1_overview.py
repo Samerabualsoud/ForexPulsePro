@@ -299,7 +299,11 @@ def get_demo_data(endpoint):
         # Always show signals - crypto trades 24/7 and users need historical data
         # Demo signals with proper structure matching Signal model
         signals = []
-        symbols = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "BTCUSD", "ETHUSD", "LTCUSD", "ADAUSD", "SOLUSD"]
+        # Use mix of symbols from all three categories (forex, crypto, metals/oil)
+        forex_symbols = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "EURGBP", "EURJPY", "GBPJPY"]
+        crypto_symbols = ["BTCUSD", "ETHUSD", "ADAUSD", "DOGEUSD", "SOLUSD", "BNBUSD", "XRPUSD", "MATICUSD"] 
+        metals_oil_symbols = ["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", "USOIL", "UKOUSD", "WTIUSD", "XBRUSD"]
+        symbols = forex_symbols + crypto_symbols + metals_oil_symbols
         strategies = ["ema_rsi", "donchian_atr", "meanrev_bb", "macd_strategy"]
         current_time = datetime.now()
         
@@ -488,10 +492,23 @@ st.markdown("---")
 # Separate signals by type
 def separate_signals_by_type(signals: Sequence[Mapping[str, Any]]):
     """Separate signals into Forex Major, Crypto, and Metals & Oil categories"""
-    forex_majors = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD', 
-                   'EURJPY', 'GBPJPY', 'EURGBP', 'AUDJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'AUDCAD']
-    crypto_pairs = ['BTCUSD', 'ETHUSD', 'BTCEUR', 'ETHEUR', 'BTCGBP', 'ETHGBP', 'LTCUSD', 'ADAUSD', 'DOGUSD', 'SOLUSD', 'AVAXUSD']
-    metals_oil = ['XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD', 'XPTUSD', 'XPDUSD', 'WTIUSD', 'XBRUSD', 'XPDUSD', 'XRHHUSD']
+    # All 26 forex symbols that the backend processes (from scheduler.py)
+    forex_majors = [
+        # USD Major Pairs
+        'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD',
+        # EUR Cross Pairs
+        'EURGBP', 'EURJPY', 'EURCHF', 'EURAUD', 'EURCAD',
+        # GBP Cross Pairs
+        'GBPJPY', 'GBPAUD', 'GBPCHF', 'GBPCAD',
+        # JPY Cross Pairs
+        'AUDJPY', 'CADJPY', 'CHFJPY', 'NZDJPY',
+        # Other Major Cross Pairs
+        'AUDCAD', 'AUDCHF', 'AUDNZD', 'CADCHF', 'NZDCAD', 'NZDCHF'
+    ]
+    # All 8 crypto symbols that the backend processes (from scheduler.py)
+    crypto_pairs = ['BTCUSD', 'ETHUSD', 'ADAUSD', 'DOGEUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD', 'MATICUSD']
+    # All 8 metals & oil symbols that the backend processes (from scheduler.py)
+    metals_oil = ['XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD', 'USOIL', 'UKOUSD', 'WTIUSD', 'XBRUSD']
     
     # Filter to only dict items and safely access symbol
     valid_signals = [s for s in signals if isinstance(s, dict)]

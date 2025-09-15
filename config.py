@@ -36,11 +36,12 @@ def get_backend_url() -> str:
     except:
         pass
     
-    # Fallback: Try to construct production URL if we have Replit environment
+    # Fallback: In Replit environment, both frontend and backend run in same workspace  
+    # so we can use localhost for internal communication
     replit_domain = os.getenv("REPL_SLUG") or os.getenv("REPL_ID")
     if replit_domain:
-        # In Replit published apps, try the .replit.app domain
-        return f"https://{replit_domain}.replit.app:8080"
+        # In Replit workspace, services communicate internally via localhost
+        return localhost_url
     
     # Final fallback: return localhost (will trigger demo mode if unreachable)
     return localhost_url

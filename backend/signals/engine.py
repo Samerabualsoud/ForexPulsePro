@@ -867,6 +867,29 @@ class SignalEngine:
                     logger.info(f"Manus AI adjusted confidence for {symbol} {strategy_name}: "
                                f"{original_confidence:.1%} -> {confidence:.1%}")
             
+            # Determine immediate execution requirements
+            immediate_execution = False
+            urgency_level = "NORMAL"
+            immediate_expiry = None
+            execution_window = 0
+            
+            if confidence is not None:
+                # High confidence signals (90%+) need immediate execution
+                if confidence >= 0.90:
+                    immediate_execution = True
+                    urgency_level = "CRITICAL"
+                    execution_window = 5  # 5 minutes
+                    immediate_expiry = datetime.utcnow() + timedelta(minutes=5)
+                    logger.info(f"🚨 CRITICAL immediate execution signal for {symbol}: {confidence:.1%} confidence")
+                
+                # Very high confidence signals (85%+) are high urgency
+                elif confidence >= 0.85:
+                    immediate_execution = True
+                    urgency_level = "HIGH" 
+                    execution_window = 10  # 10 minutes
+                    immediate_expiry = datetime.utcnow() + timedelta(minutes=10)
+                    logger.info(f"⚡ HIGH urgency signal for {symbol}: {confidence:.1%} confidence")
+            
             signal = Signal(
                 symbol=symbol,
                 action=signal_data['action'],
@@ -875,7 +898,11 @@ class SignalEngine:
                 tp=tp,
                 confidence=confidence,
                 strategy=strategy_name,
-                expires_at=expires_at
+                expires_at=expires_at,
+                immediate_execution=immediate_execution,
+                urgency_level=urgency_level,
+                immediate_expiry=immediate_expiry,
+                execution_window=execution_window
             )
             
             # Apply sentiment analysis to enhance signal confidence - TEMPORARILY DISABLED
@@ -1036,6 +1063,29 @@ class SignalEngine:
             tp = float(base_signal.get('tp')) if base_signal.get('tp') is not None else None
             confidence = float(confidence) if confidence is not None else None
             
+            # Determine immediate execution requirements
+            immediate_execution = False
+            urgency_level = "NORMAL"
+            immediate_expiry = None
+            execution_window = 0
+            
+            if confidence is not None:
+                # High confidence signals (90%+) need immediate execution
+                if confidence >= 0.90:
+                    immediate_execution = True
+                    urgency_level = "CRITICAL"
+                    execution_window = 5  # 5 minutes
+                    immediate_expiry = datetime.utcnow() + timedelta(minutes=5)
+                    logger.info(f"🚨 CRITICAL immediate execution signal for {symbol}: {confidence:.1%} confidence")
+                
+                # Very high confidence signals (85%+) are high urgency
+                elif confidence >= 0.85:
+                    immediate_execution = True
+                    urgency_level = "HIGH" 
+                    execution_window = 10  # 10 minutes
+                    immediate_expiry = datetime.utcnow() + timedelta(minutes=10)
+                    logger.info(f"⚡ HIGH urgency signal for {symbol}: {confidence:.1%} confidence")
+            
             signal = Signal(
                 symbol=symbol,
                 action=final_action,
@@ -1044,7 +1094,11 @@ class SignalEngine:
                 tp=tp,
                 confidence=confidence,
                 strategy=strategy_name,
-                expires_at=expires_at
+                expires_at=expires_at,
+                immediate_execution=immediate_execution,
+                urgency_level=urgency_level,
+                immediate_expiry=immediate_expiry,
+                execution_window=execution_window
             )
             
             # Handle risk flags from multi-AI consensus

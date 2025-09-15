@@ -33,6 +33,12 @@ class SignalResponse(SignalBase):
     evaluated_at: Optional[datetime] = None
     pips_result: Optional[float] = None
     
+    # Immediate execution fields
+    immediate_execution: bool = False
+    urgency_level: str = "NORMAL"
+    immediate_expiry: Optional[datetime] = None
+    execution_window: int = 0
+    
     class Config:
         from_attributes = True
 

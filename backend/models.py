@@ -78,6 +78,12 @@ class Signal(Base):
     strategy_ranking = Column(Integer, nullable=True)      # Strategy rank in AI consensus (1=top)
     conflict_resolution = Column(String(50), nullable=True) # How AI conflicts were resolved
     
+    # Immediate Execution Fields
+    immediate_execution = Column(Boolean, default=False)    # Whether signal needs immediate execution
+    urgency_level = Column(String(20), default="NORMAL")   # NORMAL, HIGH, CRITICAL
+    immediate_expiry = Column(DateTime, nullable=True)     # Quick expiry for immediate signals (5-15 minutes)
+    execution_window = Column(Integer, default=0)          # Minutes for immediate execution window
+    
     # Sentiment analysis fields removed temporarily to fix schema mismatch
     
     def to_dict(self):
@@ -114,7 +120,12 @@ class Signal(Base):
             "chatgpt_confidence": self.chatgpt_confidence,
             "ai_enhanced": self.ai_enhanced,
             "strategy_ranking": self.strategy_ranking,
-            "conflict_resolution": self.conflict_resolution
+            "conflict_resolution": self.conflict_resolution,
+            # Immediate execution fields
+            "immediate_execution": self.immediate_execution,
+            "urgency_level": self.urgency_level,
+            "immediate_expiry": self.immediate_expiry.isoformat() if self.immediate_expiry else None,
+            "execution_window": self.execution_window
         }
 
 class Strategy(Base):

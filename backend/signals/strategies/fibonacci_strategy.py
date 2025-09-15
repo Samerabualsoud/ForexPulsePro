@@ -160,13 +160,13 @@ class FibonacciStrategy:
             }
             
             # Enhance with MT5 order type determination
-            # Note: Use current_price instead of closest_level for price comparison
-            base_signal['price'] = round(current_price, 5)
+            # Pass closest Fibonacci level as target price for proper order type selection
             enhanced_signal = enhance_signal_with_mt5_order_type(
                 signal_data=base_signal,
                 data=data,
                 config=config,
-                strategy_type='retracement'  # Fibonacci is a retracement/support-resistance strategy
+                strategy_type='retracement',  # Fibonacci is a retracement/support-resistance strategy
+                target_price=closest_level  # Use Fibonacci level as target for MT5 order type logic
             )
             
             # Restore the Fibonacci-calculated SL/TP levels

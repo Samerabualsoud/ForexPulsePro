@@ -6,6 +6,7 @@ import pandas as pd
 import requests
 from datetime import datetime, timedelta
 import sys
+import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional, TypedDict, Mapping, Sequence
 
@@ -121,8 +122,121 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Main title
-st.markdown('<h1 class="dashboard-title">📈 Trading Signals Dashboard</h1>', unsafe_allow_html=True)
+# Production mode check function
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_production_mode_status() -> Dict[str, Any]:
+    """Get production mode status from backend API"""
+    try:
+        base_url = get_backend_url()
+        response = requests.get(f"{base_url}/api/system/production-mode", timeout=10)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            # Fallback to demo mode if API fails
+            return {
+                "is_production_mode": False,
+                "status": "🟡 DEMO MODE",
+                "data_source": "demo",
+                "note": "Production mode check failed"
+            }
+    except requests.exceptions.RequestException:
+        # Fallback to demo mode if API not available
+        return {
+            "is_production_mode": False,
+            "status": "🟡 DEMO MODE",
+            "data_source": "demo",
+            "note": "API not available"
+        }
+
+# Auto-refresh functionality
+if "auto_refresh_enabled" not in st.session_state:
+    st.session_state.auto_refresh_enabled = True
+if "last_refresh" not in st.session_state:
+    st.session_state.last_refresh = time.time()
+
+# Production mode status
+production_status = get_production_mode_status()
+is_production = production_status.get('is_production_mode', False)
+status_text = production_status.get('status', '🟡 DEMO MODE')
+
+# Production mode indicator at the top
+if is_production:
+    st.markdown(
+        f'<div style="background: linear-gradient(90deg, #27ae60, #2ecc71); color: white; padding: 1rem; border-radius: 8px; text-align: center; font-weight: 600; font-size: 1.1rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">'  
+        f'🟢 LIVE MARKET DATA | Real-time trading signals powered by live market feeds'  
+        f'</div>',
+        unsafe_allow_html=True
+    )
+else:
+    st.markdown(
+        f'<div style="background: linear-gradient(90deg, #f39c12, #e67e22); color: white; padding: 1rem; border-radius: 8px; text-align: center; font-weight: 600; font-size: 1.1rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">'  
+        f'🟡 DEMO MODE | Displaying sample data for demonstration purposes'  
+        f'</div>',
+        unsafe_allow_html=True
+    )
+
+# Auto-refresh controls and timer
+col_title, col_refresh = st.columns([4, 1])
+
+with col_title:
+    st.markdown('<h1 class="dashboard-title">📈 Trading Signals Dashboard</h1>', unsafe_allow_html=True)
+
+with col_refresh:
+    # Auto-refresh toggle
+    auto_refresh = st.toggle("Auto-refresh (30s)", value=st.session_state.auto_refresh_enabled)
+    st.session_state.auto_refresh_enabled = auto_refresh
+    
+    # Manual refresh button
+    if st.button("🔄 Refresh Now"):
+        st.cache_data.clear()
+        st.session_state.last_refresh = time.time()
+        st.rerun()
+
+# Auto-refresh timer logic - use st.components for reliable auto-refresh  
+if st.session_state.auto_refresh_enabled:
+    import streamlit.components.v1 as components
+    
+    # Use Streamlit components for reliable auto-refresh JavaScript execution
+    components.html(
+        """
+        <meta http-equiv="refresh" content="30">
+        <script>
+        // Live countdown timer that actually works in Streamlit
+        let timeLeft = 30;
+        let countdownElement = null;
+        
+        function updateCountdown() {
+            if (!countdownElement) {
+                countdownElement = document.createElement('div');
+                countdownElement.style.cssText = 'position: fixed; top: 80px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 6px; z-index: 9999; font-family: monospace; font-size: 12px;';
+                document.body.appendChild(countdownElement);
+            }
+            
+            timeLeft--;
+            if (timeLeft <= 0) {
+                countdownElement.innerHTML = '🔄 Refreshing...';
+                // Force page reload
+                setTimeout(() => window.location.reload(), 500);
+                return;
+            }
+            
+            countdownElement.innerHTML = '⏱️ Refresh: ' + timeLeft + 's';
+        }
+        
+        // Start countdown immediately
+        updateCountdown();
+        const countdownTimer = setInterval(updateCountdown, 1000);
+        
+        // Ensure cleanup
+        window.addEventListener('beforeunload', () => clearInterval(countdownTimer));
+        </script>
+        """,
+        height=0,  # Invisible component, just for JavaScript execution
+    )
+else:
+    # Show manual refresh reminder when auto-refresh is disabled
+    st.markdown('<div style="text-align: right; color: #999; font-size: 0.9rem; margin-bottom: 1rem;">Auto-refresh disabled - use refresh button for latest data</div>', unsafe_allow_html=True)
 
 # Helper function for API calls
 def call_api(endpoint: str, method: str = "GET", data: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any] | List[Dict[str, Any]]]:
@@ -263,8 +377,11 @@ def load_dashboard_data():
         "stats": get_stats()
     }
 
-# Force refresh to fix status display issue
-st.cache_data.clear()  # Clear cache to ensure fresh data with result field
+# Clear cache if auto-refresh is enabled to ensure fresh data
+if st.session_state.auto_refresh_enabled:
+    # Only clear cache if we haven't refreshed recently to avoid excessive API calls
+    if time.time() - st.session_state.last_refresh > 25:  # Clear cache 5 seconds before refresh
+        st.cache_data.clear()
 
 # Load dashboard data
 data = load_dashboard_data()

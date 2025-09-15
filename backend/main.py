@@ -577,6 +577,83 @@ async def get_news_providers_status():
         logger.error(f"Error getting provider status: {e}")
         raise HTTPException(status_code=500, detail="Failed to get provider status")
 
+@app.get("/api/system/production-mode")
+async def get_production_mode_status():
+    """Check if system is in production mode (using live data) vs demo mode"""
+    try:
+        from .config.provider_config import deterministic_provider_config
+        
+        # Initialize providers to check their availability
+        try:
+            from .providers.polygon_provider import PolygonProvider
+            from .providers.freecurrency import FreeCurrencyAPIProvider
+            from .providers.finnhub_provider import FinnhubProvider
+            from .providers.coinbase_provider import CoinbaseProvider
+            
+            # Check live data providers
+            live_providers = []
+            
+            # Check major live providers
+            polygon = PolygonProvider()
+            if polygon.is_available():
+                live_providers.append({"name": "Polygon.io", "type": "live_real_time", "status": "available"})
+            
+            freecurrency = FreeCurrencyAPIProvider()
+            if hasattr(freecurrency, 'api_key') and freecurrency.api_key:
+                live_providers.append({"name": "FreeCurrencyAPI", "type": "live_real_time", "status": "available"})
+            elif not hasattr(freecurrency, '_is_api_available') or freecurrency._is_api_available != False:
+                # FreeCurrencyAPI works without API key for basic usage
+                live_providers.append({"name": "FreeCurrencyAPI", "type": "live_real_time", "status": "available"})
+            
+            finnhub = FinnhubProvider()
+            if finnhub.api_key and finnhub.client:
+                live_providers.append({"name": "Finnhub", "type": "live_delayed", "status": "available"})
+            
+            coinbase = CoinbaseProvider()
+            # Only add Coinbase if it's actually available and can be verified
+            try:
+                if hasattr(coinbase, 'is_available') and coinbase.is_available():
+                    live_providers.append({"name": "Coinbase", "type": "live_real_time", "status": "available"})
+                else:
+                    logger.debug("Coinbase provider not available - failed is_available() check")
+            except Exception as coinbase_error:
+                logger.debug(f"Coinbase provider check failed: {coinbase_error}")
+            
+            # Determine production mode
+            is_production = len(live_providers) > 0
+            
+            return {
+                "is_production_mode": is_production,
+                "live_providers_count": len(live_providers),
+                "active_live_providers": live_providers,
+                "status": "🟢 LIVE DATA" if is_production else "🟡 DEMO MODE",
+                "data_source": "live" if is_production else "demo",
+                "last_checked": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.warning(f"Error checking provider status: {e}")
+            # Fallback: assume production if we have any API keys configured
+            has_polygon = bool(os.getenv('POLYGON_API_KEY'))
+            has_finnhub = bool(os.getenv('FINNHUB_API_KEY'))
+            has_freecurrency = bool(os.getenv('FREECURRENCY_API_KEY'))
+            
+            has_live_providers = has_polygon or has_finnhub or has_freecurrency
+            
+            return {
+                "is_production_mode": has_live_providers,
+                "live_providers_count": sum([has_polygon, has_finnhub, has_freecurrency]),
+                "active_live_providers": [],
+                "status": "🟢 LIVE DATA" if has_live_providers else "🟡 DEMO MODE",
+                "data_source": "live" if has_live_providers else "demo", 
+                "last_checked": datetime.utcnow().isoformat(),
+                "note": "Provider status check failed, using API key detection"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting production mode status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get production mode status")
+
 @app.get("/api/news/stats")
 async def get_news_statistics(
     days: int = 7,

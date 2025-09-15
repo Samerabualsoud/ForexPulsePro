@@ -186,10 +186,13 @@ def _render_action_section(signals: List[Dict[str, Any]]) -> None:
     ]
     
     if signal_options:
+        # Use timestamp-based key to ensure fresh state during auto-refresh
+        import time
+        refresh_key = f"detailed_signal_select_{int(time.time() // 30)}"  # Updates every 30s
         selected_signal_str = st.selectbox(
             "Select Signal:",
             options=signal_options,
-            key="detailed_signal_select"
+            key=refresh_key
         )
         
         # Extract signal ID
@@ -203,15 +206,15 @@ def _render_action_section(signals: List[Dict[str, Any]]) -> None:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("📋 Test Message", key="test_detailed"):
+                if st.button("📋 Test Message", key=f"test_detailed_{refresh_key}"):
                     _handle_test_signal(selected_signal)
             
             with col2:
-                if st.button("📱 Resend Signal", key="resend_detailed"):
+                if st.button("📱 Resend Signal", key=f"resend_detailed_{refresh_key}"):
                     _handle_resend_signal(selected_signal)
             
             with col3:
-                if st.button("🔍 View Details", key="details_detailed"):
+                if st.button("🔍 View Details", key=f"details_detailed_{refresh_key}"):
                     st.json(selected_signal)
 
 def _handle_test_signal(signal: Dict[str, Any]) -> None:

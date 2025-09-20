@@ -181,14 +181,14 @@ class DeterministicProviderConfig:
             "AlphaVantage": ProviderConfig(
                 name="AlphaVantage",
                 provider_type=ProviderType.CACHED_STALE,
-                asset_classes=["forex"],
-                priority=9,
-                is_enabled=os.getenv('ALPHAVANTAGE_API_KEY', '').strip() != '',
+                asset_classes=["forex", "metals_oil"],  # Added metals_oil support
+                priority=5,  # Moved up to be after Finnhub for metals_oil fallback
+                is_enabled=os.getenv('ALPHAVANTAGE_KEY', '').strip() != '',
                 requires_api_key=True,
-                api_key_env_var='ALPHAVANTAGE_API_KEY',
+                api_key_env_var='ALPHAVANTAGE_KEY',
                 timeout_seconds=15,
                 rate_limit_per_minute=5,  # Very strict rate limit
-                strict_mode_approved=False  # Rate limiting issues
+                strict_mode_approved=True  # Approved for metals_oil commodity data
             ),
             
             # === TIER 5: MOCK/TEST DATA ===

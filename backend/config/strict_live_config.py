@@ -35,7 +35,7 @@ class StrictLiveConfig:
     APPROVED_LIVE_SOURCES = [
         source.strip() for source in os.getenv(
             'STRICT_LIVE_APPROVED_SOURCES',
-            'Polygon.io,Finnhub,MT5,FreeCurrencyAPI,CoinGecko,Coinbase'
+            'Polygon.io,Finnhub,MT5,FreeCurrencyAPI,CoinGecko,Coinbase,AlphaVantage'
         ).split(',')
     ]
     
@@ -43,7 +43,7 @@ class StrictLiveConfig:
     BLOCKED_SOURCES = [
         source.strip() for source in os.getenv(
             'STRICT_LIVE_BLOCKED_SOURCES', 
-            'ExchangeRate.host,AlphaVantage,MockDataProvider'
+            'ExchangeRate.host,MockDataProvider'
         ).split(',')
     ]
     

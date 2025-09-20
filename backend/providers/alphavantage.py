@@ -45,6 +45,8 @@ class AlphaVantageProvider(BaseDataProvider):
         self.commodity_mapping = {
             'XAUUSD': {'function': 'PRECIOUS_METALS', 'symbol': 'XAU', 'market': 'USD'},
             'XAGUSD': {'function': 'PRECIOUS_METALS', 'symbol': 'XAG', 'market': 'USD'}, 
+            'XPTUSD': {'function': 'PRECIOUS_METALS', 'symbol': 'XPT', 'market': 'USD'},
+            'XPDUSD': {'function': 'PRECIOUS_METALS', 'symbol': 'XPD', 'market': 'USD'},
             'USOIL': {'function': 'CRUDE_OIL', 'symbol': 'WTI', 'market': 'USD'}
         }
         

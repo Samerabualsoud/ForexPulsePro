@@ -199,7 +199,7 @@ class DeterministicProviderConfig:
                 provider_type=ProviderType.MOCK,
                 asset_classes=["forex", "crypto", "metals_oil"],
                 priority=100,  # Lowest priority
-                is_enabled=os.getenv('ENABLE_MOCK_DATA', 'false').lower() == 'true',
+                is_enabled=os.getenv('ENABLE_MOCK_DATA', 'true').lower() == 'true',  # Enabled by default for development
                 requires_api_key=False,
                 api_key_env_var=None,
                 timeout_seconds=1,

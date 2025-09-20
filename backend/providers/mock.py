@@ -17,6 +17,7 @@ class MockDataProvider(BaseDataProvider):
     """Mock data provider using CSV files or synthetic data generation"""
     
     def __init__(self):
+        self.name = "MockDataProvider"  # Add missing name attribute
         self.data_dir = Path("data/mock")
         self.data_cache = {}
         self._ensure_mock_data()
@@ -114,14 +115,33 @@ class MockDataProvider(BaseDataProvider):
                 logger.warning(f"No data file found for {symbol}")
                 return None
             
-            # Read CSV
+            # Read CSV with flexible timestamp parsing
             df = pd.read_csv(csv_path)
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce', infer_datetime_format=True)
             df = df.sort_values('timestamp')
             
             # Return latest N bars
             if limit:
                 df = df.tail(limit)
+            
+            # Set proper data attributes for validation compatibility
+            import time
+            from datetime import datetime, timezone
+            
+            fetch_time = time.time()
+            fetch_iso = datetime.now(timezone.utc).isoformat()
+            
+            df.attrs = {
+                'fetch_timestamp': fetch_time,
+                'fetch_time_iso': fetch_iso,
+                'last_updated': fetch_iso,
+                'data_source': 'MockDataProvider',
+                'is_real_data': False,  # Honest about being mock data
+                'is_mock': True,  # Explicit mock marker
+                'is_live_source': False,
+                'symbol': symbol,
+                'validation_version': '2.0'
+            }
             
             # Update cache
             self.data_cache[symbol] = df

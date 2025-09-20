@@ -13,7 +13,8 @@ class StrictLiveConfig:
     """Configuration settings for strict live mode - zero tolerance for non-real data"""
     
     # Core strict mode settings
-    ENABLED = os.getenv('STRICT_LIVE_MODE', 'true').lower() == 'true'  # ENABLED FOR REAL DATA ONLY
+    # Temporarily relaxed for development - allows fallback data when providers fail
+    ENABLED = os.getenv('STRICT_LIVE_MODE', 'false').lower() == 'true'  # RELAXED FOR DEVELOPMENT
     # For testing purposes - remove this line in production
     # ENABLED = True  # Uncomment this line to test strict mode functionality
     

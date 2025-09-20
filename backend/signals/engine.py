@@ -534,9 +534,9 @@ class SignalEngine:
                 if StrictLiveConfig.VERBOSE_LOGGING:
                     logger.info(f"🔒 STRICT MODE APPROVED {symbol}: Data source '{data_source}' validation passed")
             else:
-                # Legacy validation for non-strict mode
-                verified_live_sources = ['Polygon.io', 'Finnhub', 'MT5', 'FreeCurrencyAPI', 'CoinGecko']
-                cached_sources = ['ExchangeRate.host', 'AlphaVantage', 'MockDataProvider']  # These may have cached data
+                # Legacy validation for non-strict mode - use approved sources from StrictLiveConfig for consistency
+                verified_live_sources = StrictLiveConfig.APPROVED_LIVE_SOURCES
+                cached_sources = StrictLiveConfig.BLOCKED_SOURCES  # These may have cached data
                 
                 if data_source in verified_live_sources and is_live_source:
                     logger.debug(f"Data source verification PASSED for {symbol}: Verified live source '{data_source}'")

@@ -25,7 +25,10 @@ Preferred communication style: Simple, everyday language.
 - **Error Handling**: Structured error responses with appropriate HTTP status codes
 
 ### Data Processing
-- **Signal Engine**: APScheduler-based system running signal analysis every 5 minutes (reduced from 1 minute to prevent noise)
+- **Signal Engine**: APScheduler-based system running comprehensive signal analysis every minute with market hours validation
+- **Multi-Asset Class Processing**: Sequential processing of forex (26 pairs), crypto (8 pairs), and metals/oil (8 pairs) with proper asset class routing
+- **Market Hours Validation**: Forex signals respect market hours (Sunday 21:00 UTC - Friday 21:00 UTC) with metals/oil exemption for 24/7 trading
+- **Timeout Protection**: 30-second per-symbol timeouts prevent infinite loops and ensure reliable progression through all asset classes
 - **Strategy Pattern**: Pluggable strategy architecture with seven advanced trading strategies
 - **Cross-Strategy Consensus**: Intelligent conflict resolution requiring 80%+ confidence for opposing signals
 - **Signal Cooldown**: 15-minute cooldown per symbol to prevent whipsaw trading

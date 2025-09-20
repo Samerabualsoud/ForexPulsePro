@@ -74,14 +74,14 @@ class SignalScheduler:
     def _run_forex_signal_generation(self):
         """Run forex signal generation with institutional 15-minute frequency"""
         def run_async():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
             try:
-                loop.run_until_complete(self._generate_signals())
-            finally:
-                loop.close()
+                # Use asyncio.run() which properly manages event loop lifecycle
+                asyncio.run(self._generate_signals())
+            except Exception as e:
+                logger.error(f"Error in signal generation thread: {e}")
         
         thread = threading.Thread(target=run_async)
+        thread.daemon = True  # Make thread daemon so it doesn't block shutdown
         thread.start()
     
     # Removed _run_metals_signal_generation - forex-only configuration

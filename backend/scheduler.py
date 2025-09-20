@@ -9,7 +9,7 @@ import threading
 from sqlalchemy.orm import sessionmaker
 
 from .database import engine
-from .signals.engine import SignalEngine
+from .signals.engine import SignalEngine, is_forex_market_open
 from .services.signal_evaluator import evaluator
 from .logs.logger import get_logger
 
@@ -92,6 +92,9 @@ class SignalScheduler:
         """Generate signals for major forex pairs and cryptocurrency pairs with comprehensive analysis"""
         db = self.SessionLocal()
         try:
+            # Check forex market hours before processing
+            forex_market_open = is_forex_market_open()
+            logger.info(f"🕐 Forex market status: {'OPEN' if forex_market_open else 'CLOSED'}")
             # All major forex pairs for comprehensive trading coverage
             forex_symbols = [
                 # USD Major Pairs
@@ -118,32 +121,68 @@ class SignalScheduler:
                 'USOIL', 'UKOUSD', 'WTIUSD', 'XBRUSD'    # Oil futures
             ]
             
-            # Process forex pairs
-            for symbol in forex_symbols:
-                try:
-                    await self.signal_engine.process_symbol(symbol, db)
-                    logger.debug(f"Processed forex signals for {symbol}")
-                except Exception as e:
-                    logger.error(f"Error processing forex {symbol}: {e}")
+            # Process forex pairs (only if market is open)
+            forex_processed = 0
+            if forex_market_open:
+                logger.info(f"🔄 Starting forex processing: {len(forex_symbols)} symbols")
+                for i, symbol in enumerate(forex_symbols):
+                    try:
+                        logger.debug(f"Processing forex {i+1}/{len(forex_symbols)}: {symbol}")
+                        await asyncio.wait_for(
+                            self.signal_engine.process_symbol(symbol, db),
+                            timeout=30  # 30 second timeout per symbol
+                        )
+                        forex_processed += 1
+                        logger.debug(f"✅ Processed forex signals for {symbol} ({forex_processed}/{len(forex_symbols)})")
+                    except asyncio.TimeoutError:
+                        logger.warning(f"⏰ Timeout processing forex {symbol} - continuing to next symbol")
+                    except Exception as e:
+                        logger.error(f"❌ Error processing forex {symbol}: {e}")
+                logger.info(f"📊 Forex processing completed: {forex_processed}/{len(forex_symbols)} symbols processed")
+            else:
+                logger.info(f"⏸️ Skipping forex processing - market is closed")
             
-            # Process crypto pairs
-            for symbol in crypto_symbols:
+            # Process crypto pairs (24/7 availability)
+            logger.info(f"🪙 Starting crypto processing: {len(crypto_symbols)} symbols")
+            crypto_processed = 0
+            for i, symbol in enumerate(crypto_symbols):
                 try:
-                    await self.signal_engine.process_symbol(symbol, db)
-                    logger.debug(f"Processed crypto signals for {symbol}")
+                    logger.debug(f"Processing crypto {i+1}/{len(crypto_symbols)}: {symbol}")
+                    await asyncio.wait_for(
+                        self.signal_engine.process_symbol(symbol, db),
+                        timeout=30  # 30 second timeout per symbol
+                    )
+                    crypto_processed += 1
+                    logger.debug(f"✅ Processed crypto signals for {symbol} ({crypto_processed}/{len(crypto_symbols)})")
+                except asyncio.TimeoutError:
+                    logger.warning(f"⏰ Timeout processing crypto {symbol} - continuing to next symbol")
                 except Exception as e:
-                    logger.error(f"Error processing crypto {symbol}: {e}")
+                    logger.error(f"❌ Error processing crypto {symbol}: {e}")
+            logger.info(f"📊 Crypto processing completed: {crypto_processed}/{len(crypto_symbols)} symbols processed")
             
-            # Process metals & oil pairs
-            for symbol in metals_oil_symbols:
+            # Process metals & oil pairs (extended hours availability)
+            logger.info(f"🥇 Starting metals/oil processing: {len(metals_oil_symbols)} symbols")
+            metals_processed = 0
+            for i, symbol in enumerate(metals_oil_symbols):
                 try:
-                    await self.signal_engine.process_symbol(symbol, db)
-                    logger.debug(f"Processed metals/oil signals for {symbol}")
+                    logger.debug(f"Processing metals/oil {i+1}/{len(metals_oil_symbols)}: {symbol}")
+                    await asyncio.wait_for(
+                        self.signal_engine.process_symbol(symbol, db),
+                        timeout=30  # 30 second timeout per symbol
+                    )
+                    metals_processed += 1
+                    logger.debug(f"✅ Processed metals/oil signals for {symbol} ({metals_processed}/{len(metals_oil_symbols)})")
+                except asyncio.TimeoutError:
+                    logger.warning(f"⏰ Timeout processing metals/oil {symbol} - continuing to next symbol")
                 except Exception as e:
-                    logger.error(f"Error processing metals/oil {symbol}: {e}")
+                    logger.error(f"❌ Error processing metals/oil {symbol}: {e}")
+            logger.info(f"📊 Metals/oil processing completed: {metals_processed}/{len(metals_oil_symbols)} symbols processed")
             
+            total_processed = forex_processed + crypto_processed + metals_processed
             total_symbols = len(forex_symbols) + len(crypto_symbols) + len(metals_oil_symbols)
-            logger.info(f"Signal generation completed for {len(forex_symbols)} forex + {len(crypto_symbols)} crypto + {len(metals_oil_symbols)} metals/oil = {total_symbols} total pairs at {datetime.utcnow()}")
+            logger.info(f"🏁 SIGNAL GENERATION COMPLETED: {total_processed}/{total_symbols} symbols processed")
+            logger.info(f"📈 Breakdown: {forex_processed}/{len(forex_symbols)} forex + {crypto_processed}/{len(crypto_symbols)} crypto + {metals_processed}/{len(metals_oil_symbols)} metals/oil")
+            logger.info(f"⏰ Completion time: {datetime.utcnow()}")
             
         except Exception as e:
             logger.error(f"Forex & Crypto signal generation failed: {e}")

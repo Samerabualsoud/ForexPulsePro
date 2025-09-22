@@ -491,7 +491,7 @@ st.markdown("---")
 
 # Separate signals by type
 def separate_signals_by_type(signals: Sequence[Mapping[str, Any]]):
-    """Separate signals into Forex Major, Crypto, and Metals & Oil categories"""
+    """Separate signals into Forex Major, Crypto, and Metals & Oil categories, sorted by timing"""
     # All 26 forex symbols that the backend processes (from scheduler.py)
     forex_majors = [
         # USD Major Pairs
@@ -513,9 +513,18 @@ def separate_signals_by_type(signals: Sequence[Mapping[str, Any]]):
     # Filter to only dict items and safely access symbol
     valid_signals = [s for s in signals if isinstance(s, dict)]
     
+    # Helper function to sort signals by timing (most recent first)
+    def sort_signals_by_timing(signal_list):
+        return sorted(signal_list, key=lambda s: s.get('issued_at', '1970-01-01T00:00:00Z'), reverse=True)
+    
     forex_signals = [s for s in valid_signals if s.get('symbol', '').upper() in forex_majors]
     crypto_signals = [s for s in valid_signals if s.get('symbol', '').upper() in crypto_pairs]
     metals_oil_signals = [s for s in valid_signals if s.get('symbol', '').upper() in metals_oil]
+    
+    # Sort each category by timing (most recent first)
+    forex_signals = sort_signals_by_timing(forex_signals)
+    crypto_signals = sort_signals_by_timing(crypto_signals)
+    metals_oil_signals = sort_signals_by_timing(metals_oil_signals)
     
     return forex_signals, crypto_signals, metals_oil_signals
 

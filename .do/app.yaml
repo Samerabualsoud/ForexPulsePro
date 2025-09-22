@@ -1,0 +1,32 @@
+name: forexpulsepro
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: Samerabualsoud/ForexPulsePro
+    branch: main
+  run_command: |
+    export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+    python -m uvicorn backend.main:app --host 0.0.0.0 --port 8080 &
+    streamlit run app.py --server.port 5000 --server.address 0.0.0.0
+  environment_slug: python
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  http_port: 5000
+  routes:
+  - path: /
+  envs:
+  - key: BACKEND_URL
+    value: http://localhost:8080
+  - key: BACKEND_HOST
+    value: localhost
+  - key: BACKEND_PORT
+    value: "8080"
+  - key: FRONTEND_PORT
+    value: "5000"
+  - key: JWT_SECRET
+    value: your_secure_jwt_secret_change_in_production
+  - key: LOG_LEVEL
+    value: INFO
+  - key: CORS_ORIGINS
+    value: "*"

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ForexPulsePro Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            margin: 2rem;
+        }
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+        .status {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .feature {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        .feature h3 {
+            margin: 0 0 0.5rem 0;
+            color: #2c3e50;
+        }
+        .feature p {
+            margin: 0;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">📊</div>
+        <h1>ForexPulsePro</h1>
+        <p class="subtitle">Professional Forex Signal Trading Platform</p>
+        
+        <div class="status" id="status">
+            <div class="loading"></div>
+            <strong>Initializing Application...</strong>
+            <p>Please wait while the trading dashboard starts up.</p>
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <h3>🎯 Signal Generation</h3>
+                <p>Advanced trading algorithms with real-time market analysis</p>
+            </div>
+            <div class="feature">
+                <h3>🛡️ Risk Management</h3>
+                <p>Comprehensive risk controls and safety mechanisms</p>
+            </div>
+            <div class="feature">
+                <h3>📱 WhatsApp Integration</h3>
+                <p>Instant signal delivery to your mobile device</p>
+            </div>
+            <div class="feature">
+                <h3>📈 Live Dashboard</h3>
+                <p>Real-time monitoring and strategy configuration</p>
+            </div>
+        </div>
+        
+        <div id="actions" style="display: none;">
+            <a href="/streamlit/" class="btn">Open Dashboard</a>
+            <a href="/api/health" class="btn">System Status</a>
+        </div>
+    </div>
+
+    <script>
+        let checkCount = 0;
+        const maxChecks = 30; // 5 minutes maximum
+        
+        function checkApplication() {
+            checkCount++;
+            
+            fetch('/health')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'healthy' || (data.backend && data.frontend)) {
+                        document.getElementById('status').innerHTML = 
+                            '<strong style="color: #27ae60;">✅ Application Ready!</strong><p>Your ForexPulsePro dashboard is now available.</p>';
+                        document.getElementById('actions').style.display = 'block';
+                    } else if (checkCount >= maxChecks) {
+                        document.getElementById('status').innerHTML = 
+                            '<strong style="color: #e74c3c;">⚠️ Startup Taking Longer Than Expected</strong><p>The application may need more time to initialize. Please try refreshing the page.</p>';
+                    } else {
+                        setTimeout(checkApplication, 10000); // Check every 10 seconds
+                    }
+                })
+                .catch(error => {
+                    if (checkCount >= maxChecks) {
+                        document.getElementById('status').innerHTML = 
+                            '<strong style="color: #e74c3c;">❌ Application Not Responding</strong><p>There may be an issue with the deployment. Please check the logs.</p>';
+                    } else {
+                        setTimeout(checkApplication, 10000);
+                    }
+                });
+        }
+        
+        // Start checking after 5 seconds
+        setTimeout(checkApplication, 5000);
+    </script>
+</body>
+</html>

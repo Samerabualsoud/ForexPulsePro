@@ -14386,3 +14386,118 @@ Polygon.io provider initialized for real live market data
 {"event": "    6. MT5                  [cached_fresh   ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:27:19.933145Z"}
 {"event": "    8. ExchangeRate.host    [cached_stale   ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:27:19.933205Z"}
 {"event": "   100. MockDataProvider     [mock           ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:27:19.933263Z"}
+{"event": "ForexPairNormalizer initialized with 30 standard pairs", "logger": "backend.instruments.metadata", "level": "info", "timestamp": "2025-09-22T17:31:42.238108Z"}
+{"event": "VADER sentiment analyzer initialized successfully", "logger": "SentimentAnalyzer", "level": "info", "timestamp": "2025-09-22T17:31:42.554309Z"}
+{"event": "Sentiment analyzer initialized with financial keyword dictionaries", "logger": "SentimentAnalyzer", "level": "info", "timestamp": "2025-09-22T17:31:42.554633Z"}
+{"event": "Alpha Vantage provider disabled - no API key provided", "logger": "backend.providers.alphavantage", "level": "info", "timestamp": "2025-09-22T17:31:42.555118Z"}
+{"event": "No Finnhub API key found", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.555292Z"}
+{"event": "Finnhub provider initialized with API key: \u2717", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.555389Z"}
+{"event": "VADER sentiment analyzer initialized successfully", "logger": "SentimentAnalyzer", "level": "info", "timestamp": "2025-09-22T17:31:42.563674Z"}
+{"event": "Sentiment analyzer initialized with financial keyword dictionaries", "logger": "SentimentAnalyzer", "level": "info", "timestamp": "2025-09-22T17:31:42.563952Z"}
+{"event": "News collector initialized with AlphaVantage, Finnhub, and sentiment analysis", "logger": "NewsCollector", "level": "info", "timestamp": "2025-09-22T17:31:42.564085Z"}
+{"event": "Coinbase provider initialized for real crypto market data", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.567150Z"}
+{"event": "Binance provider initialized for real crypto market data", "logger": "backend.providers.binance_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.567342Z"}
+CoinGecko provider initialized for real crypto market data
+Polygon.io provider initialized for real live market data
+{"event": "ExchangeRate.host provider initialized without API key - Provider will be unavailable", "logger": "backend.providers.exchangerate_provider", "level": "warning", "timestamp": "2025-09-22T17:31:42.567580Z"}
+{"event": "No Finnhub API key found", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.567663Z"}
+{"event": "Finnhub provider initialized with API key: \u2717", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.567735Z"}
+{"event": "MT5 bridge not configured - MT5_BRIDGE_URL or MT5_BRIDGE_SECRET missing", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-22T17:31:42.567835Z"}
+{"event": "Alpha Vantage provider disabled - no API key provided", "logger": "backend.providers.alphavantage", "level": "info", "timestamp": "2025-09-22T17:31:42.567991Z"}
+{"event": "Coinbase provider initialized for real crypto market data", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.568256Z"}
+{"event": "Binance provider initialized for real crypto market data", "logger": "backend.providers.binance_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.568339Z"}
+CoinGecko provider initialized for real crypto market data
+Polygon.io provider initialized for real live market data
+{"event": "ExchangeRate.host provider initialized without API key - Provider will be unavailable", "logger": "backend.providers.exchangerate_provider", "level": "warning", "timestamp": "2025-09-22T17:31:42.568515Z"}
+{"event": "No Finnhub API key found", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.568599Z"}
+{"event": "Finnhub provider initialized with API key: \u2717", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.568666Z"}
+{"event": "MT5 bridge not configured - MT5_BRIDGE_URL or MT5_BRIDGE_SECRET missing", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-22T17:31:42.568732Z"}
+{"event": "Alpha Vantage provider disabled - no API key provided", "logger": "backend.providers.alphavantage", "level": "info", "timestamp": "2025-09-22T17:31:42.568844Z"}
+{"event": "Coinbase provider initialized for real crypto market data", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.569056Z"}
+{"event": "Binance provider initialized for real crypto market data", "logger": "backend.providers.binance_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.569136Z"}
+CoinGecko provider initialized for real crypto market data
+Polygon.io provider initialized for real live market data
+{"event": "ExchangeRate.host provider initialized without API key - Provider will be unavailable", "logger": "backend.providers.exchangerate_provider", "level": "warning", "timestamp": "2025-09-22T17:31:42.569303Z"}
+{"event": "No Finnhub API key found", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.569369Z"}
+{"event": "Finnhub provider initialized with API key: \u2717", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.569432Z"}
+{"event": "MT5 bridge not configured - MT5_BRIDGE_URL or MT5_BRIDGE_SECRET missing", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-22T17:31:42.569496Z"}
+{"event": "Alpha Vantage provider disabled - no API key provided", "logger": "backend.providers.alphavantage", "level": "info", "timestamp": "2025-09-22T17:31:42.569607Z"}
+{"event": "Missing API keys for providers: [('Polygon.io', 'POLYGON_API_KEY'), ('Finnhub', 'FINNHUB_API_KEY'), ('FreeCurrencyAPI', 'FREECURRENCY_API_KEY'), ('AlphaVantage', 'ALPHAVANTAGE_KEY')]", "logger": "backend.config.provider_config", "level": "warning", "timestamp": "2025-09-22T17:31:42.569810Z"}
+{"event": "\ud83d\udd27 DETERMINISTIC PROVIDER CONFIGURATION LOADED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.569892Z"}
+{"event": "Coinbase provider initialized for real crypto market data", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.569979Z"}
+{"event": "Binance provider initialized for real crypto market data", "logger": "backend.providers.binance_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.570055Z"}
+CoinGecko provider initialized for real crypto market data
+Polygon.io provider initialized for real live market data
+{"event": "ExchangeRate.host provider initialized without API key - Provider will be unavailable", "logger": "backend.providers.exchangerate_provider", "level": "warning", "timestamp": "2025-09-22T17:31:42.570212Z"}
+{"event": "No Finnhub API key found", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.570278Z"}
+{"event": "Finnhub provider initialized with API key: \u2717", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.570339Z"}
+{"event": "MT5 bridge not configured - MT5_BRIDGE_URL or MT5_BRIDGE_SECRET missing", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-22T17:31:42.570402Z"}
+{"event": "Alpha Vantage provider disabled - no API key provided", "logger": "backend.providers.alphavantage", "level": "info", "timestamp": "2025-09-22T17:31:42.570542Z"}
+{"event": "\ud83d\udcca FOREX PROVIDERS (3/7 available):", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.570774Z"}
+{"event": "    2. Polygon.io           [live_real_time ] \u274c UNAVAILABLE \ud83d\udd12 STRICT-OK", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.570886Z"}
+{"event": "      \u2514\u2500 Missing API key: POLYGON_API_KEY", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.570972Z"}
+{"event": "    4. Finnhub              [live_delayed   ] \u274c UNAVAILABLE \ud83d\udd12 STRICT-OK", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.571047Z"}
+{"event": "      \u2514\u2500 Missing API key: FINNHUB_API_KEY", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.571108Z"}
+{"event": "    5. AlphaVantage         [cached_stale   ] \u274c UNAVAILABLE \ud83d\udd12 STRICT-OK", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.571169Z"}
+{"event": "      \u2514\u2500 Missing API key: ALPHAVANTAGE_KEY", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.571239Z"}
+{"event": "    6. MT5                  [cached_fresh   ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.571298Z"}
+{"event": "    7. FreeCurrencyAPI      [cached_fresh   ] \u274c UNAVAILABLE \ud83d\udd12 STRICT-OK", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.571358Z"}
+{"event": "      \u2514\u2500 Missing API key: FREECURRENCY_API_KEY", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.571415Z"}
+{"event": "    8. ExchangeRate.host    [cached_stale   ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.571474Z"}
+{"event": "   100. MockDataProvider     [mock           ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.571533Z"}
+{"event": "Coinbase provider initialized for real crypto market data", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.571617Z"}
+{"event": "Binance provider initialized for real crypto market data", "logger": "backend.providers.binance_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.571682Z"}
+CoinGecko provider initialized for real crypto market data
+Polygon.io provider initialized for real live market data
+{"event": "ExchangeRate.host provider initialized without API key - Provider will be unavailable", "logger": "backend.providers.exchangerate_provider", "level": "warning", "timestamp": "2025-09-22T17:31:42.571854Z"}
+{"event": "No Finnhub API key found", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.571919Z"}
+{"event": "Finnhub provider initialized with API key: \u2717", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.571982Z"}
+{"event": "MT5 bridge not configured - MT5_BRIDGE_URL or MT5_BRIDGE_SECRET missing", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-22T17:31:42.572055Z"}
+{"event": "Alpha Vantage provider disabled - no API key provided", "logger": "backend.providers.alphavantage", "level": "info", "timestamp": "2025-09-22T17:31:42.572165Z"}
+{"event": "\ud83d\udcca CRYPTO PROVIDERS (5/6 available):", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.572347Z"}
+{"event": "    1. Coinbase             [live_real_time ] \u2705 READY \ud83d\udd12 STRICT-OK", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.572425Z"}
+{"event": "    2. Polygon.io           [live_real_time ] \u274c UNAVAILABLE \ud83d\udd12 STRICT-OK", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.572492Z"}
+{"event": "      \u2514\u2500 Missing API key: POLYGON_API_KEY", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.572560Z"}
+{"event": "    3. Binance              [live_delayed   ] \u2705 READY \ud83d\udd12 STRICT-OK", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.572623Z"}
+{"event": "    5. CoinGecko            [live_delayed   ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.572684Z"}
+{"event": "    8. ExchangeRate.host    [cached_stale   ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.572744Z"}
+{"event": "   100. MockDataProvider     [mock           ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.572803Z"}
+{"event": "Coinbase provider initialized for real crypto market data", "logger": "backend.providers.coinbase_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.572883Z"}
+{"event": "Binance provider initialized for real crypto market data", "logger": "backend.providers.binance_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.572947Z"}
+CoinGecko provider initialized for real crypto market data
+Polygon.io provider initialized for real live market data
+{"event": "ExchangeRate.host provider initialized without API key - Provider will be unavailable", "logger": "backend.providers.exchangerate_provider", "level": "warning", "timestamp": "2025-09-22T17:31:42.573112Z"}
+{"event": "No Finnhub API key found", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.573177Z"}
+{"event": "Finnhub provider initialized with API key: \u2717", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-22T17:31:42.573240Z"}
+{"event": "MT5 bridge not configured - MT5_BRIDGE_URL or MT5_BRIDGE_SECRET missing", "logger": "backend.providers.mt5_data", "level": "warning", "timestamp": "2025-09-22T17:31:42.573303Z"}
+{"event": "Alpha Vantage provider disabled - no API key provided", "logger": "backend.providers.alphavantage", "level": "info", "timestamp": "2025-09-22T17:31:42.573410Z"}
+{"event": "\ud83d\udcca METALS_OIL PROVIDERS (3/5 available):", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.573631Z"}
+{"event": "    4. Finnhub              [live_delayed   ] \u274c UNAVAILABLE \ud83d\udd12 STRICT-OK", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.573736Z"}
+{"event": "      \u2514\u2500 Missing API key: FINNHUB_API_KEY", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.573805Z"}
+{"event": "    5. AlphaVantage         [cached_stale   ] \u274c UNAVAILABLE \ud83d\udd12 STRICT-OK", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.573869Z"}
+{"event": "      \u2514\u2500 Missing API key: ALPHAVANTAGE_KEY", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.573929Z"}
+{"event": "    6. MT5                  [cached_fresh   ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.573989Z"}
+{"event": "    8. ExchangeRate.host    [cached_stale   ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.574057Z"}
+{"event": "   100. MockDataProvider     [mock           ] \u2705 READY \u26a0\ufe0f STRICT-BLOCKED", "logger": "backend.config.provider_config", "level": "info", "timestamp": "2025-09-22T17:31:42.574118Z"}
+{"event": "DeepSeek agent disabled by configuration", "logger": "backend.services.multi_ai_consensus", "level": "info", "timestamp": "2025-09-22T17:31:42.623547Z"}
+{"event": "OpenAI package not available: No module named 'openai'", "logger": "backend.ai_capabilities", "level": "info", "timestamp": "2025-09-22T17:31:42.624626Z"}
+{"event": "Perplexity API key not provided (PERPLEXITY_API_KEY)", "logger": "backend.ai_capabilities", "level": "info", "timestamp": "2025-09-22T17:31:42.624797Z"}
+{"event": "DeepSeek integration disabled by configuration", "logger": "backend.ai_capabilities", "level": "info", "timestamp": "2025-09-22T17:31:42.624881Z"}
+{"event": "Hugging Face API token not provided (HUGGINGFACE_API_TOKEN)", "logger": "backend.ai_capabilities", "level": "info", "timestamp": "2025-09-22T17:31:42.624950Z"}
+{"event": "Groq API key not provided (GROQ_API_KEY)", "logger": "backend.ai_capabilities", "level": "info", "timestamp": "2025-09-22T17:31:42.625016Z"}
+{"event": "Multi-AI System Status: 1 agents available, Multi-AI: False", "logger": "backend.ai_capabilities", "level": "info", "timestamp": "2025-09-22T17:31:42.625094Z"}
+{"event": "Single-AI mode: Manus AI only (OpenAI package not installed)", "logger": "backend.ai_capabilities", "level": "info", "timestamp": "2025-09-22T17:31:42.625172Z"}
+{"event": "Available capabilities: fallback_manus_ai", "logger": "backend.ai_capabilities", "level": "info", "timestamp": "2025-09-22T17:31:42.625233Z"}
+{"event": "VADER sentiment analyzer initialized successfully", "logger": "SentimentAnalyzer", "level": "info", "timestamp": "2025-09-22T17:31:42.634303Z"}
+{"event": "Sentiment analyzer initialized with financial keyword dictionaries", "logger": "SentimentAnalyzer", "level": "info", "timestamp": "2025-09-22T17:31:42.634565Z"}
+{"event": "Enhanced Manus AI service initialized with market-type-aware strategy selection", "logger": "backend.services.manus_ai", "level": "info", "timestamp": "2025-09-22T17:31:42.634680Z"}
+{"event": "Perplexity News Agent: PERPLEXITY_API_KEY not provided", "logger": "backend.services.perplexity_news_agent", "level": "info", "timestamp": "2025-09-22T17:31:42.634789Z"}
+{"event": "FinBERT News Sentiment Agent: HUGGINGFACE_API_TOKEN not provided", "logger": "backend.services.finbert_sentiment_agent", "level": "info", "timestamp": "2025-09-22T17:31:42.634889Z"}
+{"event": "Groq Reasoning Agent not available", "logger": "backend.services.groq_reasoning_agent", "level": "warning", "timestamp": "2025-09-22T17:31:42.634968Z"}
+{"event": "Multi-AI Consensus initialized with 4 agents: manus_ai=True, perplexity_news=False, finbert_sentiment=False, groq_reasoning=False", "logger": "backend.services.multi_ai_consensus", "level": "info", "timestamp": "2025-09-22T17:31:42.635056Z"}
+{"event": "Available agent count: 1 out of 4", "logger": "backend.services.multi_ai_consensus", "level": "info", "timestamp": "2025-09-22T17:31:42.635126Z"}
+{"event": "Initialized 1 AI agents for resource management", "logger": "backend.main", "level": "info", "timestamp": "2025-09-22T17:31:42.635201Z"}
+{"event": "Failed to start signal scheduler: unexpected indent (scheduler.py, line 200)", "logger": "backend.main", "level": "error", "timestamp": "2025-09-22T17:31:42.638390Z"}
+{"event": "Starting AI agent cleanup...", "logger": "backend.main", "level": "info", "timestamp": "2025-09-22T17:31:51.068207Z"}
+{"event": "Database engine disposed successfully", "logger": "backend.main", "level": "info", "timestamp": "2025-09-22T17:31:51.068434Z"}
+{"event": "Shutdown complete", "logger": "backend.main", "level": "info", "timestamp": "2025-09-22T17:31:51.068528Z"}

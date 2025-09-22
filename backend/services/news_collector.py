@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc
 
 from ..models import NewsArticle, NewsSentiment
-from ..database import SessionLocal
+from ..database import get_session_local
 from ..logs.logger import get_logger
 from ..providers.alphavantage import AlphaVantageProvider
 from ..providers.finnhub_provider import FinnhubProvider
@@ -321,6 +321,7 @@ class NewsCollector:
             Stored NewsArticle or None if duplicate/error
         """
         try:
+            SessionLocal = get_session_local()
             db = SessionLocal()
             
             # Extract and normalize article data
@@ -414,6 +415,7 @@ class NewsCollector:
             True if analysis was successful
         """
         try:
+            SessionLocal = get_session_local()
             db = SessionLocal()
             
             # Check if sentiment analysis already exists

@@ -11,7 +11,7 @@ from sqlalchemy import func
 
 from ..models import Signal
 from ..logs.logger import get_logger
-from ..database import engine
+from ..database import get_engine
 
 logger = get_logger(__name__)
 
@@ -132,7 +132,7 @@ class PnLTracker:
         try:
             if not db:
                 from sqlalchemy.orm import sessionmaker
-                SessionLocal = sessionmaker(bind=engine)
+                SessionLocal = sessionmaker(bind=get_engine())
                 db = SessionLocal()
                 close_session = True
             else:
@@ -205,7 +205,7 @@ class PnLTracker:
         try:
             if not db:
                 from sqlalchemy.orm import sessionmaker
-                SessionLocal = sessionmaker(bind=engine)
+                SessionLocal = sessionmaker(bind=get_engine())
                 db = SessionLocal()
                 close_session = True
             else:

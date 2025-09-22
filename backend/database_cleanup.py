@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from datetime import datetime
 
-from backend.database import SessionLocal
+from backend.database import get_session_local
 from backend.models import Signal
 from backend.instruments.metadata import get_pip_size, get_asset_class, AssetClass
 from backend.logs.logger import get_logger
@@ -193,6 +193,7 @@ def main():
     print("=" * 60)
     
     cleanup = DatabaseCleanup()
+    SessionLocal = get_session_local()
     db = SessionLocal()
     
     try:

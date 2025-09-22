@@ -14,7 +14,7 @@ from .schemas import (
     KillSwitchRequest, RiskConfigUpdate, NewsArticleResponse, NewsSentimentResponse,
     SentimentSummaryResponse, NewsAnalysisRequest, NewsFilters
 )
-from .database import get_db, SessionLocal
+from .database import get_db, get_session_local
 from .risk.guards import RiskManager
 from .logs.logger import get_logger
 from .services.signal_evaluator import evaluator

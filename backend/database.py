@@ -12,30 +12,44 @@ from .logs.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Database URL with fallback to SQLite
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    # Fallback to SQLite
-    DATABASE_URL = "sqlite:///./forex_signals.db"
-    logger.info("Using SQLite database (fallback)")
-else:
-    logger.info("Using PostgreSQL database")
+def get_database_url():
+    """Get database URL dynamically from environment"""
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        # Fallback to SQLite
+        database_url = "sqlite:///./forex_signals.db"
+        logger.info("Using SQLite database (fallback)")
+    else:
+        logger.info(f"Using PostgreSQL database: {database_url[:50]}...")
+    return database_url
 
-# Create engine
-if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool
-    )
-else:
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+def get_engine():
+    """Create database engine dynamically"""
+    database_url = get_database_url()
+    
+    # Create engine
+    if database_url.startswith("sqlite"):
+        return create_engine(
+            database_url,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool
+        )
+    else:
+        return create_engine(database_url, pool_pre_ping=True)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Create engine dynamically each time
+def get_session_local():
+    """Get a fresh SessionLocal with current database engine"""
+    current_engine = get_engine()
+    return sessionmaker(autocommit=False, autoflush=False, bind=current_engine)
+
+# For backward compatibility
+SessionLocal = get_session_local()
 
 def get_db() -> Generator[Session, None, None]:
     """Get database session"""
-    db = SessionLocal()
+    session_local = get_session_local()
+    db = session_local()
     try:
         yield db
     finally:
@@ -44,7 +58,8 @@ def get_db() -> Generator[Session, None, None]:
 def init_db():
     """Initialize database tables"""
     try:
-        Base.metadata.create_all(bind=engine, checkfirst=True)
+        current_engine = get_engine()
+        Base.metadata.create_all(bind=current_engine, checkfirst=True)
         logger.info("Database tables created successfully")
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
@@ -54,7 +69,8 @@ def init_db():
 
 def create_default_data():
     """Create default users, strategies, and configurations"""
-    db = SessionLocal()
+    session_local = get_session_local()
+    db = session_local()
     try:
         # Create default admin user if not exists
         admin_user = db.query(User).filter(User.username == "admin").first()

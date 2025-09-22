@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from ..models import Signal
-from ..database import SessionLocal
+from ..database import get_session_local
 from ..logs.logger import get_logger
 from ..instruments.metadata import get_pip_size, get_asset_class, AssetClass
 
@@ -25,6 +25,7 @@ class SignalEvaluator:
         Evaluate signals that have expired but not been marked as evaluated
         """
         if not db:
+            SessionLocal = get_session_local()
             db = SessionLocal()
             should_close = True
         else:
@@ -192,6 +193,7 @@ class SignalEvaluator:
         Get success rate statistics for the specified period
         """
         if not db:
+            SessionLocal = get_session_local()
             db = SessionLocal()
             should_close = True
         else:

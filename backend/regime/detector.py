@@ -17,7 +17,7 @@ except ImportError:
 
 from ..logs.logger import get_logger
 from ..models import MarketRegime
-from ..database import engine
+from ..database import get_engine
 
 logger = get_logger(__name__)
 

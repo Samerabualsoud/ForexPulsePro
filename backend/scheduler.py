@@ -8,7 +8,7 @@ import asyncio
 import threading
 from sqlalchemy.orm import sessionmaker
 
-from .database import engine
+from .database import get_engine
 from .signals.engine import SignalEngine, is_forex_market_open
 from .services.signal_evaluator import evaluator
 from .logs.logger import get_logger
@@ -19,7 +19,7 @@ class SignalScheduler:
     def __init__(self):
         self.scheduler = BackgroundScheduler(timezone='UTC')
         self.signal_engine = SignalEngine()
-        self.SessionLocal = sessionmaker(bind=engine)
+        self.SessionLocal = sessionmaker(bind=get_engine())
         
     def start(self):
         """Start the scheduler"""

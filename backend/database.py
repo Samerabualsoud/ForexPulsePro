@@ -2,10 +2,11 @@
 Database Configuration and Initialization
 """
 import os
+import threading
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from typing import Generator
-from sqlalchemy.pool import StaticPool
+from typing import Generator, Optional
+from sqlalchemy.pool import StaticPool, NullPool
 
 from .models import Base, User, Strategy, RiskConfig
 from .logs.logger import get_logger
@@ -20,36 +21,121 @@ def get_database_url():
         database_url = "sqlite:///./forex_signals.db"
         logger.info("Using SQLite database (fallback)")
     else:
-        logger.info(f"Using PostgreSQL database: {database_url[:50]}...")
+        # Log only host info to avoid credential leakage
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(database_url)
+            logger.info(f"Using PostgreSQL database: {parsed.hostname}:{parsed.port}/{parsed.path.lstrip('/')}")
+        except:
+            logger.info("Using PostgreSQL database: [host info unavailable]")
     return database_url
 
-def get_engine():
-    """Create database engine dynamically"""
-    database_url = get_database_url()
+class DatabaseEngineManager:
+    """Thread-safe database engine manager that can hot-swap engines"""
     
-    # Create engine
-    if database_url.startswith("sqlite"):
-        return create_engine(
-            database_url,
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool
-        )
-    else:
-        return create_engine(database_url, pool_pre_ping=True)
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._engine = None
+        self._sessionmaker = None
+        self._current_url = None
+        self._instance_id = 0
+    
+    def get_engine(self):
+        """Get current engine, creating new one if URL changed"""
+        current_url = get_database_url()
+        
+        with self._lock:
+            if self._engine is None or self._current_url != current_url:
+                # Dispose old engine if exists
+                if self._engine is not None:
+                    logger.info(f"Disposing old database engine (URL changed)")
+                    self._engine.dispose()
+                
+                # Create new engine
+                if current_url.startswith("sqlite"):
+                    self._engine = create_engine(
+                        current_url,
+                        connect_args={"check_same_thread": False},
+                        poolclass=StaticPool
+                    )
+                else:
+                    # Use NullPool temporarily to avoid connection caching issues
+                    self._engine = create_engine(
+                        current_url, 
+                        pool_pre_ping=True,
+                        poolclass=NullPool
+                    )
+                
+                self._current_url = current_url
+                self._sessionmaker = None  # Reset sessionmaker
+                self._instance_id += 1
+                logger.info(f"Created new database engine (instance #{self._instance_id})")
+            
+            return self._engine
+    
+    def get_sessionmaker(self):
+        """Get current sessionmaker, creating new one if engine changed"""
+        engine = self.get_engine()  # This handles URL changes
+        
+        with self._lock:
+            if self._sessionmaker is None:
+                self._sessionmaker = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+                logger.info(f"Created new sessionmaker for engine instance #{self._instance_id}")
+            
+            return self._sessionmaker
+    
+    def dispose(self):
+        """Dispose of current engine and reset"""
+        with self._lock:
+            if self._engine is not None:
+                self._engine.dispose()
+                self._engine = None
+                self._sessionmaker = None
+                self._current_url = None
+                logger.info("Database engine disposed")
+    
+    def get_fingerprint(self):
+        """Get current database fingerprint for diagnostics"""
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(self._current_url or "")
+            return {
+                "host": parsed.hostname,
+                "port": parsed.port,
+                "database": parsed.path.lstrip('/') if parsed.path else None,
+                "engine_instance_id": self._instance_id,
+                "url_set": self._current_url is not None
+            }
+        except:
+            return {
+                "error": "Unable to parse URL",
+                "engine_instance_id": self._instance_id,
+                "url_set": self._current_url is not None
+            }
 
-# Create engine dynamically each time
+# Global engine manager instance
+_engine_manager = DatabaseEngineManager()
+
+def get_engine():
+    """Get current database engine"""
+    return _engine_manager.get_engine()
+
 def get_session_local():
-    """Get a fresh SessionLocal with current database engine"""
-    current_engine = get_engine()
-    return sessionmaker(autocommit=False, autoflush=False, bind=current_engine)
+    """Get current sessionmaker (hot-swappable when URL changes)"""
+    return _engine_manager.get_sessionmaker()
 
-# For backward compatibility
-SessionLocal = get_session_local()
+def dispose_engine():
+    """Dispose current engine (for cleanup)"""
+    _engine_manager.dispose()
+
+def get_db_fingerprint():
+    """Get database connection fingerprint for diagnostics"""
+    return _engine_manager.get_fingerprint()
 
 def get_db() -> Generator[Session, None, None]:
-    """Get database session"""
-    session_local = get_session_local()
-    db = session_local()
+    """Get database session with fresh sessionmaker"""
+    SessionLocal = get_session_local()  # Always get fresh sessionmaker
+    db = SessionLocal()
     try:
         yield db
     finally:

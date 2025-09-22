@@ -8,7 +8,7 @@ import asyncio
 import threading
 from sqlalchemy.orm import sessionmaker
 
-from .database import get_engine
+from .database import get_session_local
 from .signals.engine import SignalEngine, is_forex_market_open
 from .services.signal_evaluator import evaluator
 from .logs.logger import get_logger
@@ -19,7 +19,7 @@ class SignalScheduler:
     def __init__(self):
         self.scheduler = BackgroundScheduler(timezone='UTC')
         self.signal_engine = SignalEngine()
-        self.SessionLocal = sessionmaker(bind=get_engine())
+        # Don't cache SessionLocal - get fresh one at runtime
         
     def start(self):
         """Start the scheduler"""
@@ -90,7 +90,8 @@ class SignalScheduler:
     
     async def _generate_signals(self):
         """Generate signals for major forex pairs and cryptocurrency pairs with comprehensive analysis"""
-        db = self.SessionLocal()
+        SessionLocal = get_session_local()  # Get fresh sessionmaker
+        db = SessionLocal()
         try:
             # Check forex market hours before processing
             forex_market_open = is_forex_market_open()
@@ -194,7 +195,8 @@ class SignalScheduler:
     def _run_signal_evaluation(self):
         """Run signal evaluation in a separate thread"""
         def run_evaluation():
-            db = self.SessionLocal()
+            SessionLocal = get_session_local()  # Get fresh sessionmaker
+        db = SessionLocal()
             try:
                 # First, evaluate expired signals
                 results = evaluator.evaluate_expired_signals(db)

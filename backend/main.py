@@ -14,7 +14,7 @@ from .schemas import (
     KillSwitchRequest, RiskConfigUpdate, NewsArticleResponse, NewsSentimentResponse,
     SentimentSummaryResponse, NewsAnalysisRequest, NewsFilters
 )
-from .database import get_db, get_session_local
+from .database import get_db, get_session_local, get_db_fingerprint, dispose_engine
 from .risk.guards import RiskManager
 from .logs.logger import get_logger
 from .services.signal_evaluator import evaluator
@@ -81,6 +81,13 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.error(f"Error cleaning up {agent.__class__.__name__}: {e}")
         
+        # Dispose database engine to clean up connection pools
+        try:
+            dispose_engine()
+            logger.info("Database engine disposed successfully")
+        except Exception as e:
+            logger.error(f"Error disposing database engine: {e}")
+        
         logger.info("Shutdown complete")
 
 # Initialize FastAPI app with lifespan
@@ -107,6 +114,23 @@ app.include_router(environment_router)
 logger = get_logger(__name__)
 
 # Lifespan function already defined above
+
+@app.get("/api/db_fingerprint")
+async def database_fingerprint():
+    """Get database connection fingerprint for diagnostics"""
+    try:
+        fingerprint = get_db_fingerprint()
+        return {
+            "status": "success",
+            "fingerprint": fingerprint,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Failed to get database fingerprint: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get database fingerprint: {str(e)}"
+        )
 
 @app.get("/api/health")
 async def health_check(db: Session = Depends(get_db)):

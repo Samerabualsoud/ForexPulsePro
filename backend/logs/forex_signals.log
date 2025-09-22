@@ -1,0 +1,36 @@
+{"event": "Finnhub client initialized successfully", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-13T11:27:24.419195Z"}
+{"event": "Finnhub provider initialized with API key: \u2713", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-13T11:27:24.420006Z"}
+{"event": "Alpha Vantage provider initialized with rate limiting", "logger": "backend.providers.alphavantage", "level": "info", "timestamp": "2025-09-13T11:27:26.065605Z"}
+{"event": "Finnhub client initialized successfully", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-13T11:27:36.773390Z"}
+{"event": "Finnhub provider initialized with API key: \u2713", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-13T11:27:36.774204Z"}
+{"event": "Retrieved 2 general news articles from Finnhub", "logger": "backend.providers.finnhub_provider", "level": "info", "timestamp": "2025-09-13T11:27:36.999826Z"}
+{"event": "Using PostgreSQL database", "logger": "backend.database", "level": "info", "timestamp": "2025-09-14T08:25:47.566069Z"}
+{"event": "Error analyzing bad signals: Boolean value of this clause is not defined", "logger": "DatabaseCleanup", "level": "error", "timestamp": "2025-09-14T08:25:47.634632Z"}
+{"event": "Cleanup script failed: Boolean value of this clause is not defined", "logger": "__main__", "level": "error", "timestamp": "2025-09-14T08:25:47.635378Z"}
+{"event": "Using PostgreSQL database", "logger": "backend.database", "level": "info", "timestamp": "2025-09-14T08:26:03.752364Z"}
+{"event": "DRY RUN - Would fix Signal 4: 10815000.0 \u2192 540.8 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:04.271046Z"}
+{"event": "DRY RUN - Would fix Signal 5: 2502813.1 \u2192 125.1 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:04.271806Z"}
+{"event": "DRY RUN - Would fix Signal 6: 2868963.9 \u2192 143.4 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:04.272722Z"}
+{"event": "DRY RUN - Would fix Signal 9: 3031092.2 \u2192 151.6 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:04.273693Z"}
+{"event": "DRY RUN - Would fix Signal 11: 3168846.0 \u2192 158.4 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:04.274448Z"}
+{"event": "DRY RUN - Would fix Signal 19: 2811606.6 \u2192 140.6 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:04.275651Z"}
+{"event": "DRY RUN - Would fix Signal 20: 108099.1 \u2192 54.0 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:04.276634Z"}
+{"event": "DRY RUN completed: 7 signals analyzed", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:04.277359Z"}
+{"event": "Cleanup script failed: EOF when reading a line", "logger": "__main__", "level": "error", "timestamp": "2025-09-14T08:26:04.279384Z"}
+{"event": "Using PostgreSQL database", "logger": "backend.database", "level": "info", "timestamp": "2025-09-14T08:26:19.242242Z"}
+{"event": "DRY RUN - Would fix Signal 4: 10815000.0 \u2192 540.8 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.818465Z"}
+{"event": "DRY RUN - Would fix Signal 5: 2502813.1 \u2192 125.1 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.819558Z"}
+{"event": "DRY RUN - Would fix Signal 6: 2868963.9 \u2192 143.4 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.828414Z"}
+{"event": "DRY RUN - Would fix Signal 9: 3031092.2 \u2192 151.6 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.830279Z"}
+{"event": "DRY RUN - Would fix Signal 11: 3168846.0 \u2192 158.4 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.833418Z"}
+{"event": "DRY RUN - Would fix Signal 19: 2811606.6 \u2192 140.6 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.833796Z"}
+{"event": "DRY RUN - Would fix Signal 20: 108099.1 \u2192 54.0 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.834203Z"}
+{"event": "DRY RUN completed: 7 signals analyzed", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.834534Z"}
+{"event": "Fixed Signal 4: 10815000.0 \u2192 540.8 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.859375Z"}
+{"event": "Fixed Signal 5: 2502813.1 \u2192 125.1 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.860328Z"}
+{"event": "Fixed Signal 6: 2868963.9 \u2192 143.4 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.860836Z"}
+{"event": "Fixed Signal 9: 3031092.2 \u2192 151.6 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.861373Z"}
+{"event": "Fixed Signal 11: 3168846.0 \u2192 158.4 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.861808Z"}
+{"event": "Fixed Signal 19: 2811606.6 \u2192 140.6 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.862862Z"}
+{"event": "Fixed Signal 20: 108099.1 \u2192 54.0 pips", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:19.863245Z"}
+{"event": "Database changes committed: 7 signals fixed", "logger": "DatabaseCleanup", "level": "info", "timestamp": "2025-09-14T08:26:20.034753Z"}

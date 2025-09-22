@@ -38,7 +38,7 @@ def get_cached_signals(symbol: Optional[str] = None, limit: int = 50) -> Dict[st
     """
     try:
         # Call backend API with retry logic
-        base_url = "http://localhost:8000"
+        base_url = "http://localhost:8080"
         params = {"limit": limit}
         if symbol:
             params["symbol"] = symbol
@@ -111,7 +111,7 @@ def get_cached_performance_stats() -> Dict[str, Any]:
     """Cache performance statistics and metrics"""
     try:
         # Call API for real stats
-        base_url = "http://localhost:8000"
+        base_url = "http://localhost:8080"
         response = requests.get(f"{base_url}/api/monitoring/stats", timeout=5)
         
         if response.status_code == 200:
